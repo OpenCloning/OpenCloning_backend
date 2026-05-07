@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
 from pydna.dseqrecord import Dseqrecord
@@ -10,6 +11,7 @@ from pydna.opencloning_models import TextFileSequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from opencloning_db.config import get_config
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
@@ -18,6 +20,7 @@ from .helpers import (
     assert_get_missing_workspace_header_422,
     assert_get_non_member_workspace_403,
     assert_get_unauthenticated_401,
+    assert_post_unauthenticated_401,
     attach_standard_tokens,
     bearer_headers,
     post_sequencing_file_upload,
@@ -81,13 +84,39 @@ def sequences_client(engine_client_config):
             )
         )
 
+        dseqr = Dseqrecord('atgcgatcgatac', circular=True, name='circ_plasmid')
+        dseqr.add_feature(0, 4, type_='CDS')
         seq_circ = dseqrecord_to_db(
-            Dseqrecord('atgcgatcgatac', circular=True, name='circ_plasmid'),
+            dseqr,
             session,
             w1,
         )
         seq_patch_linear = dseqrecord_to_db(
             Dseqrecord('atgcag', name='patch-linear-target'),
+            session,
+            w1,
+        )
+
+        seq_with_overhangs = dseqrecord_to_db(
+            Dseqrecord(Dseq.from_full_sequence_and_overhangs('atgcag', 1, 1), name='with-overhangs'),
+            session,
+            w1,
+        )
+
+        dseqr = Dseqrecord('ACGT', circular=True, name='with-origin-spanning-feature')
+        dseqr.add_feature(0, 4, type_='CDS')
+        dseqr = dseqr.shifted(2)
+        dseqr.id = '0'
+        seq_with_origin_spanning_feature = dseqrecord_to_db(
+            dseqr,
+            session,
+            w1,
+        )
+
+        dseqr_rc = dseqr.reverse_complement()
+        dseqr_rc.source = None
+        seq_with_origin_spanning_feature_rc = dseqrecord_to_db(
+            dseqr_rc,
             session,
             w1,
         )
@@ -115,6 +144,9 @@ def sequences_client(engine_client_config):
                 'filter_tag_id': tag.id,
                 'seq_circ_id': seq_circ.id,
                 'seq_patch_linear_id': seq_patch_linear.id,
+                'seq_with_overhangs_id': seq_with_overhangs.id,
+                'seq_with_origin_spanning_feature_id': seq_with_origin_spanning_feature.id,
+                'seq_with_origin_spanning_feature_rc_id': seq_with_origin_spanning_feature_rc.id,
             }
         )
 
@@ -334,6 +366,155 @@ def test_patch_sequence_viewer_forbidden(sequences_client):
     )
     assert response.status_code == 403
     assert 'Not allowed' in response.json()['detail']
+
+
+def _parse_dseqr(payload: dict) -> Dseqrecord:
+    return read_dsrecord_from_json(TextFileSequence.model_validate(payload))
+
+
+def test_change_circularity_isolated_linear_to_circular(sequences_client):
+    """Isolated linear sequence toggles to circular with new GenBank file and old file removed."""
+    c = sequences_client['client']
+    sid = sequences_client['seq_patch_linear_id']
+    headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    base = Path(get_config().sequence_files_dir)
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        old_relative = seq.file_path
+    old_path = base / old_relative
+    assert old_path.exists()
+
+    r0 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
+    assert r0.status_code == 200
+    assert _parse_dseqr(r0.json()).seq == Dseq('atgcag'.upper())
+
+    r = c.post(f'/sequences/{sid}/change_circularity', headers=headers)
+    assert r.status_code == 200
+    assert r.json()['id'] == sid
+
+    r1 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
+    assert r1.status_code == 200
+    assert _parse_dseqr(r1.json()).seq == Dseq('atgcag'.upper(), circular=True)
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        assert seq.file_path != old_relative
+        new_path = base / seq.file_path
+
+    assert not old_path.exists()
+    assert new_path.exists()
+
+
+def test_change_circularity_isolated_circular_to_linear(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_circ_id']
+    headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    base = Path(get_config().sequence_files_dir)
+
+    with Session(sequences_client['engine']) as session:
+        old_relative = session.get(Sequence, sid).file_path
+    old_path = base / old_relative
+
+    r0 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
+    assert _parse_dseqr(r0.json()).seq == Dseq('atgcgatcgatac'.upper(), circular=True)
+
+    r = c.post(f'/sequences/{sid}/change_circularity', headers=headers)
+    assert r.status_code == 200
+
+    r1 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
+    assert _parse_dseqr(r1.json()).seq == Dseq('atgcgatcgatac'.upper())
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        new_path = base / seq.file_path
+    assert not old_path.exists()
+    assert new_path.exists()
+
+
+def test_change_circularity_rejects_when_sequence_has_children(sequences_client):
+    c = sequences_client['client']
+    tid = sequences_client['pcr_template_id']
+    r = c.post(
+        f'/sequences/{tid}/change_circularity',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 400
+    assert 'child sequences' in r.json()['detail']
+
+
+def test_change_circularity_rejects_when_sequence_has_parents(sequences_client):
+    c = sequences_client['client']
+    pid = sequences_client['pcr_product_id']
+    r = c.post(
+        f'/sequences/{pid}/change_circularity',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 400
+    assert 'parent sequences' in r.json()['detail']
+
+
+def test_change_circularity_rejects_when_sequence_has_overhangs(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_with_overhangs_id']
+    r = c.post(
+        f'/sequences/{sid}/change_circularity',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 400
+    assert 'overhangs' in r.json()['detail']
+
+
+@pytest.mark.parametrize(
+    'sid',
+    [
+        'seq_with_origin_spanning_feature_id',
+        'seq_with_origin_spanning_feature_rc_id',
+    ],
+)
+def test_change_circularity_rejects_when_sequence_has_features_spanning_origin(sequences_client, sid):
+    c = sequences_client['client']
+    sid = sequences_client[sid]
+    r = c.post(
+        f'/sequences/{sid}/change_circularity',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 400
+    assert 'features spanning the origin' in r.json()['detail']
+
+
+def test_change_circularity_viewer_forbidden(sequences_client):
+    c = sequences_client['client']
+    tok = sequences_client['token_viewer_w1']
+    r = c.post(
+        f"/sequences/{sequences_client['seq_w1_id']}/change_circularity",
+        headers=workspace_headers(tok, sequences_client['w1']),
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_change_circularity_workspace_mismatch_404(sequences_client):
+    c = sequences_client['client']
+    r = c.post(
+        f"/sequences/{sequences_client['seq_w2_id']}/change_circularity",
+        headers=workspace_headers(
+            sequences_client['token_owner_both'],
+            sequences_client['w1'],
+        ),
+    )
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Sequence not found'
+
+
+def test_change_circularity_unauthenticated_401(sequences_client):
+    c = sequences_client['client']
+    assert_post_unauthenticated_401(
+        c,
+        f"/sequences/{sequences_client['seq_w1_id']}/change_circularity",
+        sequences_client['w1'],
+        json={},
+    )
 
 
 def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):

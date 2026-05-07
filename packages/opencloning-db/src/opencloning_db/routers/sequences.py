@@ -8,6 +8,8 @@ import opencloning_linkml.datamodel.models as opencloning_models
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
 from fastapi import status
 
+from pydna.utils import location_boundaries
+from sqlalchemy.orm import Session
 from fastapi.responses import FileResponse, JSONResponse
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload
@@ -43,6 +45,7 @@ from opencloning_db.models import (
     SequenceSample,
     SourceInput,
     WorkspaceRole,
+    generate_unique_filename,
 )
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -162,6 +165,83 @@ def patch_sequence(
 
     session.commit()
     session.refresh(db_sequence)
+    return sequence_ref(db_sequence)
+
+
+def _replace_sequence_file(session: Session, db_sequence: Sequence, file_content: str):
+
+    seq_files_dir = Path(get_config().sequence_files_dir)
+    old_relative = db_sequence.file_path
+    old_path = seq_files_dir / old_relative
+    new_filename = generate_unique_filename(str(seq_files_dir), '.gb')
+    new_path = seq_files_dir / new_filename
+
+    try:
+        new_path.write_text(file_content, encoding='utf-8')
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f'Failed to write sequence file: {e}') from e
+
+    db_sequence.file_path = new_filename
+
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        try:
+            new_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+    session.refresh(db_sequence)
+
+    try:
+        old_path.unlink()
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f'Committed new sequence file but failed to remove old file: {e}',
+        ) from e
+
+
+def _feature_spans_origin(feature) -> bool:
+    x, y = location_boundaries(feature.location)
+    return x >= y
+
+
+@router.post('/sequences/{sequence_id}/change_circularity', response_model=SequenceRef)
+def change_sequence_circularity(
+    sequence_id: int,
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+):
+    """Toggle sequence circularity; only allowed when the sequence has no parents nor children."""
+    current_user, session, workspace_id = ctx
+    db_sequence = get_sequence_in_workspace_for_user(
+        session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
+    )
+
+    if db_sequence.source_inputs:
+        raise HTTPException(status_code=400, detail='Cannot change circularity: sequence has child sequences.')
+    parent_source = db_sequence.output_of_source
+    if parent_source is not None and parent_source.input:
+        raise HTTPException(status_code=400, detail='Cannot change circularity: sequence has parent sequences.')
+
+    dseqr = read_dsrecord_from_json(db_sequence.to_pydantic_sequence())
+    if dseqr.seq.ovhg != 0 or dseqr.seq.watson_ovhg != 0:
+        raise HTTPException(status_code=400, detail='Cannot change circularity: sequence has overhangs.')
+
+    if dseqr.circular and any(_feature_spans_origin(feature) for feature in dseqr.features):
+        raise HTTPException(
+            status_code=400, detail='Cannot change circularity: sequence has features spanning the origin.'
+        )
+
+    toggled = dseqr[:] if dseqr.circular else dseqr.looped()
+    db_sequence.seguid = toggled.seq.seguid()
+
+    _replace_sequence_file(session, db_sequence, toggled.format('genbank'))
+
     return sequence_ref(db_sequence)
 
 
