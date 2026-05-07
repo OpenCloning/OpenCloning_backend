@@ -220,7 +220,7 @@ class Sequence(InputEntity):
     sequence_type: Mapped[Optional[SequenceType]] = mapped_column(
         Enum(SequenceType, validate_strings=True), default=None, nullable=True
     )
-    seguid: Mapped[Optional[str]] = mapped_column(nullable=True)
+    seguid: Mapped[Optional[str]] = mapped_column(nullable=False)
 
     file_path: Mapped[str]
     sequencing_files: Mapped[List['SequencingFile']] = relationship(

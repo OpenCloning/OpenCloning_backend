@@ -255,3 +255,22 @@ class SequenceSearchResult(ApiModel):
     sequence: opencloning_models.TextFileSequence
     shift: int = 0
     reverse_complemented: bool = False
+
+
+class SequenceValidationRow(ApiModel):
+    file_name: str
+    reading_error: bool
+
+    sequence: opencloning_models.TextFileSequence | None = None
+    name: str | None = None
+    length: int | None = None
+    circular: bool | None = None
+    seguid: str | None = None
+    circularised_seguid: str | None = None
+
+    sequence_exists: bool | None = None
+    sequence_circularised_exists: bool | None = None
+    name_exists: bool | None = None
+
+    duplicated_seguid: bool | None = None
+    duplicated_name: bool | None = None

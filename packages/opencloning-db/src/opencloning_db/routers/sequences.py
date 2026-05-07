@@ -1,5 +1,6 @@
 """Sequence, sequencing files, and cloning strategy endpoints."""
 
+from collections import Counter
 from typing import Annotated, List, TypeVar
 
 from opencloning.dna_functions import read_dsrecord_from_json
@@ -13,11 +14,13 @@ from sqlalchemy import and_, exists, select, Select
 from pathlib import Path
 
 from pydantic import create_model
+from pydna.parsers import parse as pydna_parse
 
 from opencloning_db.apimodels import (
     CloningStrategyIdMapping,
     CloningStrategyResponse,
     SequenceRef,
+    SequenceValidationRow,
     SequenceSearchResult,
     SequenceUpdate,
     SequencingFileRef,
@@ -200,6 +203,96 @@ def _seguid_query(seguid: str, workspace_id: int) -> Select[Sequence]:
             selectinload(Sequence.instances),
         )
     )
+
+
+def _frequency_duplicates(values: list[str]) -> set[str]:
+    return {value for value, count in Counter(values).items() if count > 1}
+
+
+@router.post('/sequences/validate-upload', response_model=list[SequenceValidationRow])
+async def validate_upload_sequences(
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    files: List[UploadFile] = File(...),
+):
+    _, session, workspace_id = ctx
+    if len(files) > 100:
+        raise HTTPException(status_code=400, detail='A maximum of 100 sequence files can be submitted')
+
+    rows: list[SequenceValidationRow] = []
+    parsed_indices: list[int] = []
+    parsed_names: list[str] = []
+    parsed_seguids: list[str] = []
+    linear_circularized_seguids: list[str] = []
+
+    for file in files:
+        file_name = file.filename or 'unnamed'
+        file_bytes = await file.read()
+        file_content = file_bytes.decode('utf-8', errors='replace')
+        try:
+            parsed_records = list(pydna_parse(file_content))
+            if len(parsed_records) != 1:
+                raise ValueError('More than one sequence found in file')
+            dseqr = parsed_records[0]
+            seguid = dseqr.seq.seguid()
+            name = dseqr.name
+            is_circular = dseqr.circular
+            text_file_sequence = opencloning_models.TextFileSequence(
+                id=0,
+                file_content=dseqr.format('genbank'),
+                overhang_crick_3prime=dseqr.seq.ovhg,
+                overhang_watson_3prime=dseqr.seq.watson_ovhg,
+                sequence_file_format='genbank',
+            )
+            row = SequenceValidationRow(
+                file_name=file_name,
+                reading_error=False,
+                sequence=text_file_sequence,
+                name=name,
+                length=len(dseqr),
+                circular=is_circular,
+                seguid=seguid,
+                circularised_seguid=None if is_circular else dseqr.looped().seq.seguid(),
+            )
+            rows.append(row)
+            parsed_indices.append(len(rows) - 1)
+            parsed_names.append(name)
+            parsed_seguids.append(seguid)
+            if row.circularised_seguid is not None:
+                linear_circularized_seguids.append(row.circularised_seguid)
+        except Exception:
+            rows.append(SequenceValidationRow(file_name=file_name, reading_error=True))
+
+    duplicate_names = _frequency_duplicates(parsed_names)
+    duplicate_seguids = _frequency_duplicates(parsed_seguids)
+    circularized_candidates = set(linear_circularized_seguids)
+
+    db_name_matches = set(
+        session.scalars(
+            select(Sequence.name).where(
+                Sequence.workspace_id == workspace_id,
+                Sequence.name.in_(set(parsed_names)),
+            )
+        ).all()
+    )
+    db_seguid_matches = set(
+        session.scalars(
+            select(Sequence.seguid).where(
+                Sequence.workspace_id == workspace_id,
+                Sequence.seguid.in_(set(parsed_seguids) | circularized_candidates),
+            )
+        ).all()
+    )
+
+    for row in rows:
+        if row.reading_error:
+            continue
+        row.name_exists = row.name is not None and row.name in db_name_matches
+        row.sequence_exists = row.seguid in db_seguid_matches
+        row.sequence_circularised_exists = False if row.circular else row.circularised_seguid in db_seguid_matches
+        row.duplicated_name = row.name is not None and row.name in duplicate_names
+        row.duplicated_seguid = row.seguid in duplicate_seguids
+
+    return rows
 
 
 @router.get('/sequences/by-seguid/{seguid}', response_model=list[SequenceRef])

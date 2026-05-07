@@ -387,6 +387,123 @@ def test_get_sequences_by_seguid_unknown_empty(sequences_client):
     assert r.json() == []
 
 
+def _post_validate_upload_sequences(client, token: str, workspace_id: int, files: list[tuple[str, bytes]]):
+    return client.post(
+        '/sequences/validate-upload',
+        headers=workspace_headers(token, workspace_id),
+        files=[('files', (filename, body, 'application/octet-stream')) for filename, body in files],
+    )
+
+
+def test_validate_upload_sequences_returns_flags(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+
+    dup = Dseqrecord('ATGCATGC', name='dup_name')
+    linear_same_as_existing_circular = Dseqrecord('atgcgatcgatac', name='lin_to_existing_circular')
+    invalid_content = b'not a valid sequence format'
+    files = [
+        ('dup1.gb', dup.format('genbank').encode('utf-8')),
+        ('dup2.gb', dup.format('genbank').encode('utf-8')),
+        ('linear.gb', linear_same_as_existing_circular.format('genbank').encode('utf-8')),
+        ('bad.gb', invalid_content),
+    ]
+
+    r = _post_validate_upload_sequences(c, h_token, wid, files)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 4
+
+    assert rows[0]['file_name'] == 'dup1.gb'
+    assert rows[0]['reading_error'] is False
+    assert rows[0]['name'] == 'dup_name'
+    assert rows[0]['length'] == len(dup)
+    assert rows[0]['circular'] is False
+    assert rows[0]['sequence_exists'] is False
+    assert rows[0]['name_exists'] is False
+    assert rows[0]['duplicated_name'] is True
+    assert rows[0]['duplicated_seguid'] is True
+    assert rows[0]['sequence_circularised_exists'] is False
+    assert rows[0]['circularised_seguid'] == dup.looped().seq.seguid()
+
+    assert rows[1]['duplicated_name'] is True
+    assert rows[1]['duplicated_seguid'] is True
+    assert rows[1]['circularised_seguid'] == dup.looped().seq.seguid()
+
+    assert rows[2]['file_name'] == 'linear.gb'
+    assert rows[2]['reading_error'] is False
+    assert rows[2]['circular'] is False
+    assert rows[2]['sequence_exists'] is False
+    assert rows[2]['sequence_circularised_exists'] is True
+    assert rows[2]['circularised_seguid'] is not None
+    assert rows[2]['duplicated_name'] is False
+    assert rows[2]['duplicated_seguid'] is False
+
+    assert rows[3]['file_name'] == 'bad.gb'
+    assert rows[3]['reading_error'] is True
+    assert rows[3]['sequence'] is None
+    assert rows[3]['name'] is None
+    assert rows[3]['length'] is None
+    assert rows[3]['circular'] is None
+    assert rows[3]['seguid'] is None
+    assert rows[3]['circularised_seguid'] is None
+    assert rows[3]['sequence_exists'] is None
+    assert rows[3]['sequence_circularised_exists'] is None
+    assert rows[3]['name_exists'] is None
+    assert rows[3]['duplicated_seguid'] is None
+    assert rows[3]['duplicated_name'] is None
+
+
+def test_validate_upload_sequences_limit_100(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    rec = Dseqrecord('ATGCATGC', name='bulk')
+    body = rec.format('genbank').encode('utf-8')
+    files = [(f'seq_{i}.gb', body) for i in range(101)]
+    r = _post_validate_upload_sequences(c, h_token, wid, files)
+    assert r.status_code == 400
+    assert 'maximum of 100' in r.json()['detail']
+
+
+def test_validate_upload_sequences_viewer_ok(sequences_client):
+    c = sequences_client['client']
+    rec = Dseqrecord('ATGCATGC', name='viewer_file')
+    r = _post_validate_upload_sequences(
+        c,
+        sequences_client['token_viewer_w1'],
+        sequences_client['w1'],
+        [('viewer.gb', rec.format('genbank').encode('utf-8'))],
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 1
+
+
+def test_validate_upload_sequences_non_member_forbidden(sequences_client):
+    c = sequences_client['client']
+    rec = Dseqrecord('ATGCATGC', name='forbidden_file')
+    r = _post_validate_upload_sequences(
+        c,
+        sequences_client['token_owner_w2'],
+        sequences_client['w1'],
+        [('forbidden.gb', rec.format('genbank').encode('utf-8'))],
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_validate_upload_sequences_missing_workspace_header_422(sequences_client):
+    c = sequences_client['client']
+    rec = Dseqrecord('ATGCATGC', name='missing_header')
+    r = c.post(
+        '/sequences/validate-upload',
+        headers=bearer_headers(sequences_client['token_owner_w1']),
+        files={'files': ('missing.gb', rec.format('genbank').encode('utf-8'), 'application/octet-stream')},
+    )
+    assert r.status_code == 422
+
+
 def test_get_text_file_sequence_ok(sequences_client):
     c = sequences_client['client']
     r = c.get(
