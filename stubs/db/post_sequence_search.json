@@ -7,7 +7,7 @@
     "sequence_file_format": "genbank",
     "type": "TextFileSequence"
   },
-  "endpoint": "/sequence/search",
+  "endpoint": "/sequences/search",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

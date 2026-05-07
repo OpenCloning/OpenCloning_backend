@@ -156,7 +156,7 @@ def get_primers(
     return paginate(session, query)
 
 
-@router.post('/primer', response_model=IdResponse)
+@router.post('/primers', response_model=IdResponse)
 def post_primer(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     primer: PrimerCreate,
@@ -246,7 +246,7 @@ def post_primers_bulk(
     ]
 
 
-@router.get('/primer/{primer_id}', response_model=PrimerRef)
+@router.get('/primers/{primer_id}', response_model=PrimerRef)
 def get_primer(
     primer_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -264,7 +264,7 @@ def get_primer(
 
 
 @router.get(
-    '/primer/{primer_id}/sequences',
+    '/primers/{primer_id}/sequences',
     response_model=create_model('PrimerSequences', templates=list[SequenceRef], products=list[SequenceRef]),
 )
 def get_primer_sequences(
@@ -309,7 +309,7 @@ def get_primer_sequences(
     }
 
 
-@router.patch('/primer/{primer_id}', response_model=PrimerRef)
+@router.patch('/primers/{primer_id}', response_model=PrimerRef)
 def patch_primer(
     primer_id: int,
     body: PrimerUpdate,

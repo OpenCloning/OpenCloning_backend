@@ -102,7 +102,7 @@ def test_post_tag_viewer_forbidden(tags_client):
     c = tags_client['client']
     tok = tags_client['token_viewer_w1']
     response = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={'name': 'viewer-new'},
     )
@@ -115,7 +115,7 @@ def test_post_tag_conflict_same_workspace(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     response = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={'name': 'tag-w1'},
     )
@@ -128,7 +128,7 @@ def test_post_tag_owner_success(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     response = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={'name': 'tag-created'},
     )
@@ -141,7 +141,7 @@ def test_get_tag_viewer_ok(tags_client):
     c = tags_client['client']
     tok = tags_client['token_viewer_w1']
     response = c.get(
-        f"/tag/{tags_client['tag_w1_id']}",
+        f"/tags/{tags_client['tag_w1_id']}",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert response.status_code == 200
@@ -153,7 +153,7 @@ def test_get_tag_forbidden_cross_workspace(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w2']
     response = c.get(
-        f"/tag/{tags_client['tag_w1_id']}",
+        f"/tags/{tags_client['tag_w1_id']}",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert response.status_code == 403
@@ -165,7 +165,7 @@ def test_get_tag_selected_workspace_mismatch_returns_404(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_both']
     response = c.get(
-        f"/tag/{tags_client['tag_w2_id']}",
+        f"/tags/{tags_client['tag_w2_id']}",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert response.status_code == 404
@@ -177,7 +177,7 @@ def test_get_entity_tags_selected_workspace_mismatch_returns_404(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_both']
     response = c.get(
-        f"/input_entity/{tags_client['primer_w2_id']}/tags",
+        f"/input_entities/{tags_client['primer_w2_id']}/tags",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert response.status_code == 404
@@ -185,12 +185,12 @@ def test_get_entity_tags_selected_workspace_mismatch_returns_404(tags_client):
 
 
 def test_get_tag_entities_lists_linked_input_entities(tags_client):
-    """GET /tag/{id}/input_entities returns linked sequence/primer refs."""
+    """GET /tags/{id}/input_entities returns linked sequence/primer refs."""
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     response = c.get(
-        f"/tag/{tags_client['tag_w1_id']}/input_entities",
+        f"/tags/{tags_client['tag_w1_id']}/input_entities",
         headers=workspace_headers(tok, w1),
     )
     assert response.status_code == 200
@@ -203,7 +203,7 @@ def test_attach_input_entity_tag_cross_workspace_blocked(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     response = c.post(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags",
         headers=workspace_headers(tok, tags_client['w1']),
         json={'tag_id': tags_client['tag_w2_id']},
     )
@@ -217,7 +217,7 @@ def test_attach_input_entity_tag_ok_and_remove(tags_client):
     tok = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     attach = c.post(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags",
         headers=workspace_headers(tok, w1),
         json={'tag_id': tags_client['tag_w1_free_id']},
     )
@@ -225,7 +225,7 @@ def test_attach_input_entity_tag_ok_and_remove(tags_client):
     assert attach.json()['id'] == tags_client['tag_w1_free_id']
 
     remove = c.delete(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags/" f"{tags_client['tag_w1_free_id']}",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags/" f"{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(tok, w1),
     )
     assert remove.status_code == 200
@@ -238,7 +238,7 @@ def test_attach_input_entity_tag_conflict_409(tags_client):
     tok = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     again = c.post(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags",
         headers=workspace_headers(tok, w1),
         json={'tag_id': tags_client['tag_w1_id']},
     )
@@ -251,7 +251,7 @@ def test_delete_input_entity_tag_not_found_tag_404(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     response = c.delete(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags/999999",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags/999999",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert response.status_code == 404
@@ -263,7 +263,7 @@ def test_delete_input_entity_tag_unlinked_404(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     response = c.delete(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert response.status_code == 404
@@ -275,7 +275,7 @@ def test_attach_line_tag_cross_workspace_blocked(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     response = c.post(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(tok, tags_client['w1']),
         json={'tag_id': tags_client['tag_w2_id']},
     )
@@ -290,14 +290,14 @@ def test_remove_line_tag_viewer_forbidden(tags_client):
     viewer_tok = tags_client['token_viewer_w1']
     w1 = tags_client['w1']
     attach = c.post(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(owner_tok, w1),
         json={'tag_id': tags_client['tag_w1_free_id']},
     )
     assert attach.status_code == 200
 
     remove = c.delete(
-        f"/line/{tags_client['line_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
+        f"/lines/{tags_client['line_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(viewer_tok, w1),
     )
     assert remove.status_code == 403
@@ -338,7 +338,7 @@ def test_post_tag_empty_name_422(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     r = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={'name': ''},
     )
@@ -351,7 +351,7 @@ def test_post_tag_whitespace_only_name_422(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     r = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={'name': '   '},
     )
@@ -360,11 +360,11 @@ def test_post_tag_whitespace_only_name_422(tags_client):
 
 
 def test_post_tag_missing_name_422(tags_client):
-    """POST /tag without name field is rejected (422)."""
+    """POST /tags without name field is rejected (422)."""
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     r = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={},
     )
@@ -377,7 +377,7 @@ def test_attach_input_entity_tag_viewer_forbidden(tags_client):
     c = tags_client['client']
     tok = tags_client['token_viewer_w1']
     response = c.post(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags",
         headers=workspace_headers(tok, tags_client['w1']),
         json={'tag_id': tags_client['tag_w1_id']},
     )
@@ -392,13 +392,13 @@ def test_delete_input_entity_tag_viewer_forbidden(tags_client):
     viewer = tags_client['token_viewer_w1']
     w1 = tags_client['w1']
     attach = c.post(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags",
         headers=workspace_headers(owner, w1),
         json={'tag_id': tags_client['tag_w1_free_id']},
     )
     assert attach.status_code == 200
     remove = c.delete(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags/" f"{tags_client['tag_w1_free_id']}",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags/" f"{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(viewer, w1),
     )
     assert remove.status_code == 403
@@ -411,13 +411,13 @@ def test_delete_input_entity_tag_non_member_forbidden(tags_client):
     owner = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     attach = c.post(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags",
         headers=workspace_headers(owner, w1),
         json={'tag_id': tags_client['tag_w1_free_id']},
     )
     assert attach.status_code == 200
     remove = c.delete(
-        f"/input_entity/{tags_client['primer_w1_id']}/tags/" f"{tags_client['tag_w1_free_id']}",
+        f"/input_entities/{tags_client['primer_w1_id']}/tags/" f"{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(tags_client['token_owner_w2'], w1),
     )
     assert remove.status_code == 403
@@ -428,7 +428,7 @@ def test_post_line_tag_viewer_forbidden(tags_client):
     """Viewer cannot POST attach a tag to a line."""
     c = tags_client['client']
     response = c.post(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(
             tags_client['token_viewer_w1'],
             tags_client['w1'],
@@ -443,7 +443,7 @@ def test_post_line_tag_non_member_forbidden(tags_client):
     """Non-member cannot POST a line tag using another workspace header."""
     c = tags_client['client']
     response = c.post(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(
             tags_client['token_owner_w2'],
             tags_client['w1'],
@@ -460,7 +460,7 @@ def test_remove_line_tag_non_member_forbidden(tags_client):
     owner_tok = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     attach = c.post(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(owner_tok, w1),
         json={'tag_id': tags_client['tag_w1_free_id']},
     )
@@ -468,7 +468,7 @@ def test_remove_line_tag_non_member_forbidden(tags_client):
 
     other_tok = tags_client['token_owner_w2']
     remove = c.delete(
-        f"/line/{tags_client['line_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
+        f"/lines/{tags_client['line_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(other_tok, w1),
     )
     assert remove.status_code == 403
@@ -476,12 +476,12 @@ def test_remove_line_tag_non_member_forbidden(tags_client):
 
 
 def test_get_line_tags_success(tags_client):
-    """GET /line/{id}/tags returns tags linked to line."""
+    """GET /lines/{id}/tags returns tags linked to line."""
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     response = c.get(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(tok, w1),
     )
     assert response.status_code == 200
@@ -495,14 +495,14 @@ def test_remove_line_tag_success(tags_client):
     tok = tags_client['token_owner_w1']
     w1 = tags_client['w1']
     attach = c.post(
-        f"/line/{tags_client['line_w1_id']}/tags",
+        f"/lines/{tags_client['line_w1_id']}/tags",
         headers=workspace_headers(tok, w1),
         json={'tag_id': tags_client['tag_w1_free_id']},
     )
     assert attach.status_code == 200
     assert attach.json()['id'] == tags_client['tag_w1_free_id']
     remove = c.delete(
-        f"/line/{tags_client['line_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
+        f"/lines/{tags_client['line_w1_id']}/tags/{tags_client['tag_w1_free_id']}",
         headers=workspace_headers(tok, w1),
     )
     assert remove.status_code == 200
@@ -514,14 +514,14 @@ def test_delete_tag_success(tags_client):
     c = tags_client['client']
     tok = tags_client['token_owner_w1']
     create = c.post(
-        '/tag',
+        '/tags',
         headers=workspace_headers(tok, tags_client['w1']),
         json={'name': 'to-delete'},
     )
     assert create.status_code == 200
     tag_id = create.json()['id']
     delete = c.delete(
-        f"/tag/{tag_id}",
+        f"/tags/{tag_id}",
         headers=workspace_headers(tok, tags_client['w1']),
     )
     assert delete.status_code == 200

@@ -244,7 +244,7 @@ def test_get_sequence_owner_ok(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['pcr_product_id']
     r = c.get(
-        f"/sequence/{sid}",
+        f"/sequences/{sid}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert r.status_code == 200
@@ -258,7 +258,7 @@ def test_get_sequence_forbidden_cross_workspace(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_owner_w2']
     response = c.get(
-        f"/sequence/{sequences_client['seq_w1_id']}", headers=workspace_headers(tok, sequences_client['w1'])
+        f"/sequences/{sequences_client['seq_w1_id']}", headers=workspace_headers(tok, sequences_client['w1'])
     )
     assert response.status_code == 403
     assert 'Not allowed' in response.json()['detail']
@@ -269,7 +269,7 @@ def test_get_sequence_workspace_mismatch_404(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_owner_both']
     response = c.get(
-        f"/sequence/{sequences_client['seq_w2_id']}", headers=workspace_headers(tok, sequences_client['w1'])
+        f"/sequences/{sequences_client['seq_w2_id']}", headers=workspace_headers(tok, sequences_client['w1'])
     )
     assert response.status_code == 404
     assert response.json()['detail'] == 'Sequence not found'
@@ -279,7 +279,7 @@ def test_patch_sequence_owner_rename_ok(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
     r = c.patch(
-        f"/sequence/{sid}",
+        f"/sequences/{sid}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
         json={'name': 'renamed-linear'},
     )
@@ -290,7 +290,7 @@ def test_patch_sequence_owner_rename_ok(sequences_client):
 def test_patch_sequence_empty_name_400(sequences_client):
     c = sequences_client['client']
     r = c.patch(
-        f"/sequence/{sequences_client['seq_patch_linear_id']}",
+        f"/sequences/{sequences_client['seq_patch_linear_id']}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
         json={'name': ''},
     )
@@ -302,7 +302,7 @@ def test_patch_sequence_type_linear_ok(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
     r = c.patch(
-        f"/sequence/{sid}",
+        f"/sequences/{sid}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
         json={'sequence_type': 'pcr_product'},
     )
@@ -313,7 +313,7 @@ def test_patch_sequence_type_linear_ok(sequences_client):
 def test_patch_sequence_circular_rejects_non_plasmid_type(sequences_client):
     c = sequences_client['client']
     r = c.patch(
-        f"/sequence/{sequences_client['seq_circ_id']}",
+        f"/sequences/{sequences_client['seq_circ_id']}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
         json={'sequence_type': 'allele'},
     )
@@ -326,7 +326,7 @@ def test_patch_sequence_viewer_forbidden(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_viewer_w1']
     response = c.patch(
-        f"/sequence/{sequences_client['seq_w1_id']}",
+        f"/sequences/{sequences_client['seq_w1_id']}",
         headers=workspace_headers(tok, sequences_client['w1']),
         json={'name': 'new-name'},
     )
@@ -339,7 +339,7 @@ def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_owner_w1']
     response = c.get(
-        f"/sequence/by-uid/{sequences_client['uid_w1']}", headers=workspace_headers(tok, sequences_client['w1'])
+        f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=workspace_headers(tok, sequences_client['w1'])
     )
     assert response.status_code == 200
     assert response.json()['id'] == sequences_client['seq_w1_id']
@@ -348,7 +348,7 @@ def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):
 def test_get_sequence_by_uid_not_found_404(sequences_client):
     c = sequences_client['client']
     r = c.get(
-        '/sequence/by-uid/no-such-uid-xyz',
+        '/sequences/by-uid/no-such-uid-xyz',
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert r.status_code == 404
@@ -360,7 +360,7 @@ def test_get_sequence_by_uid_forbidden_non_member(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_owner_w2']
     response = c.get(
-        f"/sequence/by-uid/{sequences_client['uid_w1']}", headers=workspace_headers(tok, sequences_client['w1'])
+        f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=workspace_headers(tok, sequences_client['w1'])
     )
     assert response.status_code == 403
     assert 'Not allowed' in response.json()['detail']
@@ -390,7 +390,7 @@ def test_get_sequences_by_seguid_unknown_empty(sequences_client):
 def test_get_text_file_sequence_ok(sequences_client):
     c = sequences_client['client']
     r = c.get(
-        f"/sequence/{sequences_client['pcr_product_id']}/text_file_sequence",
+        f"/sequences/{sequences_client['pcr_product_id']}/text_file_sequence",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert r.status_code == 200
@@ -418,7 +418,7 @@ def test_post_sequence_search_finds_linear_and_circular_rotation(
     c = sequences_client['client']
     headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
     linear_query = TextFileSequence.from_dseqrecord(query_sequence)
-    linear_r = c.post('/sequence/search', headers=headers, json=linear_query.model_dump(mode='json'))
+    linear_r = c.post('/sequences/search', headers=headers, json=linear_query.model_dump(mode='json'))
     assert linear_r.status_code == 200
     matches = linear_r.json()
     assert len(matches) == result_count
@@ -431,7 +431,7 @@ def test_post_sequence_search_finds_linear_and_circular_rotation(
 def test_get_cloning_strategy_pcr_product(sequences_client):
     c = sequences_client['client']
     r = c.get(
-        f"/sequence/{sequences_client['pcr_product_id']}/cloning_strategy",
+        f"/sequences/{sequences_client['pcr_product_id']}/cloning_strategy",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert r.status_code == 200
@@ -444,7 +444,7 @@ def test_get_cloning_strategy_pcr_product(sequences_client):
 def test_get_sequence_children_template_to_product(sequences_client):
     c = sequences_client['client']
     r = c.get(
-        f"/sequence/{sequences_client['pcr_template_id']}/children",
+        f"/sequences/{sequences_client['pcr_template_id']}/children",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert r.status_code == 200
@@ -456,13 +456,13 @@ def test_get_sequence_primers_pcr_template_and_product(sequences_client):
     """Template sequence is PCR input (template-side primers); product sequence lists output-side primers."""
     c = sequences_client['client']
     h = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
-    t_r = c.get(f"/sequence/{sequences_client['pcr_template_id']}/primers", headers=h)
+    t_r = c.get(f"/sequences/{sequences_client['pcr_template_id']}/primers", headers=h)
     assert t_r.status_code == 200
     t_data = t_r.json()
     assert len(t_data['templates']) == 2
     assert t_data['products'] == []
 
-    p_r = c.get(f"/sequence/{sequences_client['pcr_product_id']}/primers", headers=h)
+    p_r = c.get(f"/sequences/{sequences_client['pcr_product_id']}/primers", headers=h)
     assert p_r.status_code == 200
     p_data = p_r.json()
     assert len(p_data['products']) == 2
@@ -483,7 +483,7 @@ def test_post_sequencing_files_owner_ok(sequences_client):
     assert set(data[0]) == {'id', 'original_name'}
 
     listed = c.get(
-        f"/sequence/{sid}/sequencing_files",
+        f"/sequences/{sid}/sequencing_files",
         headers=workspace_headers(tok, wid),
     )
     assert listed.status_code == 200
@@ -555,7 +555,7 @@ def test_get_sequence_sequencing_files_viewer_ok(sequences_client):
     assert up.status_code == 200
 
     listed = c.get(
-        f"/sequence/{sid}/sequencing_files",
+        f"/sequences/{sid}/sequencing_files",
         headers=workspace_headers(viewer, wid),
     )
     assert listed.status_code == 200
@@ -566,7 +566,7 @@ def test_get_sequence_sequencing_files_non_member_forbidden(sequences_client):
     """Non-member cannot list sequencing files for another workspace."""
     c = sequences_client['client']
     listed = c.get(
-        f"/sequence/{sequences_client['seq_w1_id']}/sequencing_files",
+        f"/sequences/{sequences_client['seq_w1_id']}/sequencing_files",
         headers=workspace_headers(
             sequences_client['token_owner_w2'],
             sequences_client['w1'],
@@ -587,7 +587,7 @@ def test_delete_sequencing_file_owner_204(sequences_client):
     file_id = up.json()[0]['id']
 
     r = c.delete(
-        f"/sequence/{sid}/sequencing_files/{file_id}",
+        f"/sequences/{sid}/sequencing_files/{file_id}",
         headers=workspace_headers(tok, wid),
     )
     assert r.status_code == 204
@@ -605,7 +605,7 @@ def test_delete_sequencing_file_viewer_forbidden(sequences_client):
     file_id = up.json()[0]['id']
 
     r = c.delete(
-        f"/sequence/{sid}/sequencing_files/{file_id}",
+        f"/sequences/{sid}/sequencing_files/{file_id}",
         headers=workspace_headers(viewer, wid),
     )
     assert r.status_code == 403
@@ -626,7 +626,7 @@ def test_delete_sequencing_file_wrong_sequence_404(sequences_client):
     file_id = up.json()[0]['id']
 
     r = c.delete(
-        f"/sequence/{sid2}/sequencing_files/{file_id}",
+        f"/sequences/{sid2}/sequencing_files/{file_id}",
         headers=workspace_headers(both, w2),
     )
     assert r.status_code == 404
@@ -808,7 +808,7 @@ def test_patch_sequence_cross_workspace_header_404(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_owner_both']
     response = c.patch(
-        f"/sequence/{sequences_client['seq_w2_id']}",
+        f"/sequences/{sequences_client['seq_w2_id']}",
         headers=workspace_headers(tok, sequences_client['w1']),
         json={'name': 'should-not-apply'},
     )
@@ -820,7 +820,7 @@ def test_post_cloning_strategy_from_example(sequences_client):
     c = sequences_client['client']
     body = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json')).model_dump(mode='json')
     r = c.post(
-        '/sequence',
+        '/sequences',
         headers=workspace_headers(
             sequences_client['token_owner_w1'],
             sequences_client['w1'],

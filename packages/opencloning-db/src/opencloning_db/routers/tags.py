@@ -86,7 +86,7 @@ def get_tags(ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)]
     return [TagRead(id=t.id, name=t.name) for t in tags]
 
 
-@router.post('/tag', response_model=TagRead)
+@router.post('/tags', response_model=TagRead)
 def post_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     body: TagCreate,
@@ -103,7 +103,7 @@ def post_tag(
     return TagRead(id=tag.id, name=tag.name)
 
 
-@router.get('/tag/{tag_id}', response_model=TagRead)
+@router.get('/tags/{tag_id}', response_model=TagRead)
 def get_tag(
     tag_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -114,7 +114,7 @@ def get_tag(
     return TagRead(id=tag.id, name=tag.name)
 
 
-@router.get('/tag/{tag_id}/input_entities', response_model=list[InputEntityRef])
+@router.get('/tags/{tag_id}/input_entities', response_model=list[InputEntityRef])
 def get_tag_entities(
     tag_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -125,7 +125,7 @@ def get_tag_entities(
     return [InputEntityRef(id=e.id, type=e.type, name=e.name) for e in tag.input_entities]
 
 
-@router.delete('/tag/{tag_id}', response_model=DeletedResponse)
+@router.delete('/tags/{tag_id}', response_model=DeletedResponse)
 def delete_tag(
     tag_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
@@ -138,7 +138,7 @@ def delete_tag(
     return DeletedResponse(deleted=tag_id)
 
 
-@router.get('/input_entity/{entity_id}/tags', response_model=list[TagRead])
+@router.get('/input_entities/{entity_id}/tags', response_model=list[TagRead])
 def get_entity_tags(
     entity_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -154,7 +154,7 @@ def get_entity_tags(
     )
 
 
-@router.post('/input_entity/{entity_id}/tags', response_model=TagRead)
+@router.post('/input_entities/{entity_id}/tags', response_model=TagRead)
 def post_entity_tag(
     entity_id: int,
     body: EntityTagAttach,
@@ -173,7 +173,7 @@ def post_entity_tag(
     )
 
 
-@router.delete('/input_entity/{entity_id}/tags/{tag_id}', response_model=RemovedResponse)
+@router.delete('/input_entities/{entity_id}/tags/{tag_id}', response_model=RemovedResponse)
 def delete_entity_tag(
     entity_id: int,
     tag_id: int,
@@ -192,7 +192,7 @@ def delete_entity_tag(
     )
 
 
-@router.get('/line/{line_id}/tags', response_model=list[TagRead])
+@router.get('/lines/{line_id}/tags', response_model=list[TagRead])
 def get_line_tags(
     line_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -208,7 +208,7 @@ def get_line_tags(
     )
 
 
-@router.post('/line/{line_id}/tags', response_model=TagRead)
+@router.post('/lines/{line_id}/tags', response_model=TagRead)
 def post_line_tag(
     line_id: int,
     body: EntityTagAttach,
@@ -227,7 +227,7 @@ def post_line_tag(
     )
 
 
-@router.delete('/line/{line_id}/tags/{tag_id}', response_model=RemovedResponse)
+@router.delete('/lines/{line_id}/tags/{tag_id}', response_model=RemovedResponse)
 def delete_line_tag(
     line_id: int,
     tag_id: int,

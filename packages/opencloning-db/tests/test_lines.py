@@ -218,7 +218,7 @@ def test_get_line_forbidden_cross_workspace(lines_client):
     """User not in W1 cannot GET a W1 line with W1 header."""
     c = lines_client['client']
     token = lines_client['token_owner_w2']
-    response = c.get(f"/line/{lines_client['line_w1_id']}", headers=workspace_headers(token, lines_client['w1']))
+    response = c.get(f"/lines/{lines_client['line_w1_id']}", headers=workspace_headers(token, lines_client['w1']))
     assert response.status_code == 403
     assert 'Not allowed' in response.json()['detail']
 
@@ -227,7 +227,7 @@ def test_get_line_selected_workspace_mismatch_returns_404(lines_client):
     """Line in W1 with header W2 returns 404."""
     c = lines_client['client']
     token = lines_client['token_owner_both']
-    response = c.get(f"/line/{lines_client['line_w1_id']}", headers=workspace_headers(token, lines_client['w2']))
+    response = c.get(f"/lines/{lines_client['line_w1_id']}", headers=workspace_headers(token, lines_client['w2']))
     assert response.status_code == 404
     assert response.json()['detail'] == 'Line not found'
 
@@ -235,7 +235,7 @@ def test_get_line_selected_workspace_mismatch_returns_404(lines_client):
 def test_get_line_ok(lines_client):
     c = lines_client['client']
     response = c.get(
-        f"/line/{lines_client['line_filter_id']}",
+        f"/lines/{lines_client['line_filter_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 200
@@ -248,7 +248,7 @@ def test_get_line_ok(lines_client):
 def test_get_line_seeded_parent_ids_ok(lines_client):
     c = lines_client['client']
     response = c.get(
-        f"/line/{lines_client['line_seeded_parented_id']}",
+        f"/lines/{lines_client['line_seeded_parented_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 200
@@ -258,7 +258,7 @@ def test_get_line_seeded_parent_ids_ok(lines_client):
 def test_get_line_children_ok(lines_client):
     c = lines_client['client']
     response = c.get(
-        f"/line/{lines_client['line_w1_id']}/children",
+        f"/lines/{lines_client['line_w1_id']}/children",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 200
@@ -269,7 +269,7 @@ def test_get_line_children_ok(lines_client):
 def test_get_line_children_empty_ok(lines_client):
     c = lines_client['client']
     response = c.get(
-        f"/line/{lines_client['line_with_parent_to_be_added']}/children",
+        f"/lines/{lines_client['line_with_parent_to_be_added']}/children",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 200
@@ -281,7 +281,7 @@ def test_post_line_viewer_forbidden(lines_client):
     c = lines_client['client']
     token = lines_client['token_viewer_w1']
     response = c.post(
-        '/line',
+        '/lines',
         headers=workspace_headers(token, lines_client['w1']),
         json={
             'uid': 'L-NEW-VIEWER',
@@ -299,7 +299,7 @@ def test_post_line_owner_ok(lines_client):
     c = lines_client['client']
     token = lines_client['token_owner_w1']
     response = c.post(
-        '/line',
+        '/lines',
         headers=workspace_headers(token, lines_client['w1']),
         json={
             'uid': 'L-NEW-OWNER',
@@ -315,7 +315,7 @@ def test_post_line_owner_ok(lines_client):
 def test_post_line_duplicate_uid_409(lines_client):
     c = lines_client['client']
     response = c.post(
-        '/line',
+        '/lines',
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={
             'uid': 'L-W1',
@@ -331,7 +331,7 @@ def test_post_line_duplicate_uid_409(lines_client):
 def test_post_line_with_parent_ids_ok(lines_client):
     c = lines_client['client']
     response = c.post(
-        '/line',
+        '/lines',
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={
             'uid': 'L-WITH-PARENT',
@@ -349,7 +349,7 @@ def test_patch_line_viewer_forbidden(lines_client):
     c = lines_client['client']
     token = lines_client['token_viewer_w1']
     response = c.patch(
-        f"/line/{lines_client['line_w1_id']}",
+        f"/lines/{lines_client['line_w1_id']}",
         headers=workspace_headers(token, lines_client['w1']),
         json={'parent_ids': []},
     )
@@ -391,7 +391,7 @@ def test_post_line_with_allele_from_other_workspace_returns_404(lines_client):
     c = lines_client['client']
     tok = lines_client['token_owner_both']
     response = c.post(
-        '/line',
+        '/lines',
         headers=workspace_headers(tok, lines_client['w1']),
         json={
             'uid': 'L-CROSS-ALLELE',
@@ -410,7 +410,7 @@ def test_patch_line_other_workspace_plasmid_404(lines_client):
     owner = lines_client['token_owner_w1']
     w1 = lines_client['w1']
     create = c.post(
-        '/line',
+        '/lines',
         headers=workspace_headers(owner, w1),
         json={
             'uid': 'L-PATCH-PLAS',
@@ -424,7 +424,7 @@ def test_patch_line_other_workspace_plasmid_404(lines_client):
 
     both = lines_client['token_owner_both']
     response = c.patch(
-        f"/line/{line_id}",
+        f"/lines/{line_id}",
         headers=workspace_headers(both, w1),
         json={'plasmid_ids': [lines_client['plasmid_w2_id']]},
     )
@@ -435,7 +435,7 @@ def test_patch_line_other_workspace_plasmid_404(lines_client):
 def test_patch_line_alleles_success(lines_client):
     c = lines_client['client']
     response = c.patch(
-        f"/line/{lines_client['line_filter_id']}",
+        f"/lines/{lines_client['line_filter_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={'allele_ids': [lines_client['allele_w1_aux_id']]},
     )
@@ -451,7 +451,7 @@ def test_patch_line_alleles_success(lines_client):
 def test_patch_line_plasmids_success(lines_client):
     c = lines_client['client']
     response = c.patch(
-        f"/line/{lines_client['line_filter_id']}",
+        f"/lines/{lines_client['line_filter_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={'plasmid_ids': [lines_client['plasmid_w1_id']]},
     )
@@ -467,7 +467,7 @@ def test_patch_line_plasmids_success(lines_client):
 def test_patch_line_parent_ids_success(lines_client):
     c = lines_client['client']
     response = c.patch(
-        f"/line/{lines_client['line_with_parent_to_be_added']}",
+        f"/lines/{lines_client['line_with_parent_to_be_added']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={'parent_ids': [lines_client['line_w1_id']]},
     )
@@ -478,7 +478,7 @@ def test_patch_line_parent_ids_success(lines_client):
 def test_patch_line_uid_success(lines_client):
     c = lines_client['client']
     response = c.patch(
-        f"/line/{lines_client['line_w1_id']}",
+        f"/lines/{lines_client['line_w1_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={'uid': 'L-W1-RENAMED'},
     )
@@ -486,7 +486,7 @@ def test_patch_line_uid_success(lines_client):
     assert response.json()['uid'] == 'L-W1-RENAMED'
 
     response = c.get(
-        f"/line/{lines_client['line_w1_id']}",
+        f"/lines/{lines_client['line_w1_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 200
@@ -496,7 +496,7 @@ def test_patch_line_uid_success(lines_client):
 def test_patch_line_uid_duplicate_409(lines_client):
     c = lines_client['client']
     response = c.patch(
-        f"/line/{lines_client['line_w1_id']}",
+        f"/lines/{lines_client['line_w1_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={'uid': 'L-FILTER'},
     )
@@ -505,10 +505,10 @@ def test_patch_line_uid_duplicate_409(lines_client):
 
 
 def test_post_line_unauthenticated_401(lines_client):
-    """POST /line without Authorization is rejected."""
+    """POST /lines without Authorization is rejected."""
     assert_post_unauthenticated_401(
         lines_client['client'],
-        '/line',
+        '/lines',
         lines_client['w1'],
         json={
             'uid': 'L-NO-AUTH',
@@ -520,10 +520,10 @@ def test_post_line_unauthenticated_401(lines_client):
 
 
 def test_patch_line_unauthenticated_401(lines_client):
-    """PATCH /line without Authorization is rejected."""
+    """PATCH /lines without Authorization is rejected."""
     assert_patch_unauthenticated_401(
         lines_client['client'],
-        f"/line/{lines_client['line_w1_id']}",
+        f"/lines/{lines_client['line_w1_id']}",
         lines_client['w1'],
         json={'parent_ids': []},
     )
@@ -535,7 +535,7 @@ def test_patch_line_self_parent_returns_400(lines_client):
     tok = lines_client['token_owner_w1']
     lid = lines_client['line_w1_id']
     response = c.patch(
-        f"/line/{lid}",
+        f"/lines/{lid}",
         headers=workspace_headers(tok, lines_client['w1']),
         json={'parent_ids': [lid]},
     )
@@ -546,7 +546,7 @@ def test_patch_line_self_parent_returns_400(lines_client):
 def test_delete_line_with_children_returns_409(lines_client):
     c = lines_client['client']
     response = c.delete(
-        f"/line/{lines_client['line_w1_id']}",
+        f"/lines/{lines_client['line_w1_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 409
@@ -557,14 +557,14 @@ def test_delete_line_without_children_deletes(lines_client):
     c = lines_client['client']
     line_id = lines_client['line_seeded_parented_id']
     response = c.delete(
-        f"/line/{line_id}",
+        f"/lines/{line_id}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 200
     assert response.json() == {'deleted': line_id, 'data': None}
 
     get_response = c.get(
-        f"/line/{line_id}",
+        f"/lines/{line_id}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert get_response.status_code == 404
@@ -573,7 +573,7 @@ def test_delete_line_without_children_deletes(lines_client):
 def test_delete_line_does_not_exist_returns_404(lines_client):
     c = lines_client['client']
     response = c.delete(
-        '/line/999999',
+        '/lines/999999',
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
     )
     assert response.status_code == 404

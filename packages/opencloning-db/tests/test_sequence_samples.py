@@ -115,11 +115,11 @@ def test_get_sequence_samples_forbidden_for_non_member(seq_samples_client):
 
 
 def test_get_sequence_sample(seq_samples_client):
-    """GET /sequence_sample/{uid} returns sample in selected workspace."""
+    """GET /sequence_samples/{uid} returns sample in selected workspace."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.get(
-        f"/sequence_sample/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 200
@@ -129,11 +129,11 @@ def test_get_sequence_sample(seq_samples_client):
 
 
 def test_get_sequence_sample_not_found_404(seq_samples_client):
-    """GET /sequence_sample/{uid} returns 404 if sample not found."""
+    """GET /sequence_samples/{uid} returns 404 if sample not found."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.get(
-        '/sequence_sample/MISSING-UID',
+        '/sequence_samples/MISSING-UID',
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 404
@@ -145,7 +145,7 @@ def test_post_sequence_sample_viewer_forbidden(seq_samples_client):
     c = seq_samples_client['client']
     tok = seq_samples_client['token_viewer_w1']
     response = c.post(
-        '/sequence_sample',
+        '/sequence_samples',
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={
             'uid': 'S-NEW',
@@ -161,7 +161,7 @@ def test_post_sequence_sample_owner_ok(seq_samples_client):
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.post(
-        '/sequence_sample',
+        '/sequence_samples',
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={
             'uid': 'S-NEW-OWNER',
@@ -179,7 +179,7 @@ def test_post_sequence_sample_wrong_workspace_sequence_rejected(
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_both']
     response = c.post(
-        '/sequence_sample',
+        '/sequence_samples',
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={
             'uid': 'S-CROSS',
@@ -195,7 +195,7 @@ def test_patch_sequence_sample_viewer_forbidden(seq_samples_client):
     c = seq_samples_client['client']
     tok = seq_samples_client['token_viewer_w1']
     response = c.patch(
-        f"/sequence_sample/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={'sequence_id': seq_samples_client['seq_w1_id']},
     )
@@ -209,7 +209,7 @@ def test_patch_sequence_sample_owner_ok(seq_samples_client):
     tok = seq_samples_client['token_owner_w1']
     # Move the sample to the same workspace sequence (idempotent-ish).
     response = c.patch(
-        f"/sequence_sample/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={'sequence_id': seq_samples_client['seq_w1_id']},
     )
@@ -225,7 +225,7 @@ def test_patch_sequence_sample_cross_workspace_sequence_rejected(
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.patch(
-        f"/sequence_sample/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={'sequence_id': seq_samples_client['seq_w2_id']},
     )
@@ -268,13 +268,13 @@ def test_post_sequence_sample_duplicate_uid_returns_409(seq_samples_client):
     tok = seq_samples_client['token_owner_w1']
     h = workspace_headers(tok, seq_samples_client['w1'])
     r1 = c.post(
-        '/sequence_sample',
+        '/sequence_samples',
         headers=h,
         json={'uid': 'S-DUP', 'sequence_id': seq_samples_client['seq_w1_id']},
     )
     assert r1.status_code == 200
     r2 = c.post(
-        '/sequence_sample',
+        '/sequence_samples',
         headers=h,
         json={'uid': 'S-DUP', 'sequence_id': seq_samples_client['seq_w1_id']},
     )
@@ -287,7 +287,7 @@ def test_post_sequence_sample_invalid_sequence_id_404(seq_samples_client):
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.post(
-        '/sequence_sample',
+        '/sequence_samples',
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={'uid': 'S-BAD-SEQ', 'sequence_id': 9_999_999},
     )
@@ -300,7 +300,7 @@ def test_delete_sequence_sample_viewer_forbidden(seq_samples_client):
     c = seq_samples_client['client']
     tok = seq_samples_client['token_viewer_w1']
     response = c.delete(
-        f"/sequence_sample/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 403
@@ -314,8 +314,8 @@ def test_delete_sequence_sample_owner_ok(seq_samples_client):
     w1 = seq_samples_client['w1']
     uid = seq_samples_client['sample_w1_uid']
     h = workspace_headers(tok, w1)
-    sample_id = c.get(f'/sequence_sample/{uid}', headers=h).json()['id']
-    response = c.delete(f'/sequence_sample/{uid}', headers=h)
+    sample_id = c.get(f'/sequence_samples/{uid}', headers=h).json()['id']
+    response = c.delete(f'/sequence_samples/{uid}', headers=h)
     assert response.status_code == 200
     assert response.json() == {
         'deleted': sample_id,
@@ -324,17 +324,17 @@ def test_delete_sequence_sample_owner_ok(seq_samples_client):
             'uid': uid,
         },
     }
-    get_after = c.get(f'/sequence_sample/{uid}', headers=h)
+    get_after = c.get(f'/sequence_samples/{uid}', headers=h)
     assert get_after.status_code == 404
     assert get_after.json()['detail'] == 'Sequence sample not found'
 
 
 def test_delete_sequence_sample_not_found_404(seq_samples_client):
-    """DELETE /sequence_sample/{uid} returns 404 if sample not found."""
+    """DELETE /sequence_samples/{uid} returns 404 if sample not found."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.delete(
-        '/sequence_sample/MISSING-UID',
+        '/sequence_samples/MISSING-UID',
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 404
@@ -346,7 +346,7 @@ def test_delete_sequence_sample_forbidden_for_non_member(seq_samples_client):
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w2']
     response = c.delete(
-        f"/sequence_sample/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 403
@@ -358,7 +358,7 @@ def test_delete_sequence_sample_other_workspace_uid_returns_404(seq_samples_clie
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.delete(
-        '/sequence_sample/S-W2',
+        '/sequence_samples/S-W2',
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 404
@@ -366,11 +366,11 @@ def test_delete_sequence_sample_other_workspace_uid_returns_404(seq_samples_clie
 
 
 def test_delete_sequence_sample_unauthenticated_401(seq_samples_client):
-    """DELETE /sequence_sample/{uid} without Authorization is rejected."""
+    """DELETE /sequence_samples/{uid} without Authorization is rejected."""
     c = seq_samples_client['client']
     uid = seq_samples_client['sample_w1_uid']
     response = c.delete(
-        f'/sequence_sample/{uid}',
+        f'/sequence_samples/{uid}',
         headers={'X-Workspace-Id': str(seq_samples_client['w1'])},
     )
     assert response.status_code == 401

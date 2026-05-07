@@ -63,19 +63,19 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     )
     yield StubRequest(
         name='get_primer',
-        endpoint=f'/primer/{get_selected_primer_id(dirname, "get_primers")}',
+        endpoint=f'/primers/{get_selected_primer_id(dirname, "get_primers")}',
         method='GET',
     )
     yield StubRequest(
         name='post_primer',
-        endpoint='/primer',
+        endpoint='/primers',
         method='POST',
         body={'name': 'new', 'sequence': 'GGCC'},
         reset_db=True,
     )
     yield StubRequest(
         name='patch_primer',
-        endpoint=f'/primer/{get_selected_primer_id(dirname, "get_primers")}',
+        endpoint=f'/primers/{get_selected_primer_id(dirname, "get_primers")}',
         method='PATCH',
         body={'name': 'lacZ_renamed'},
         reset_db=True,
@@ -93,19 +93,19 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     )
     yield StubRequest(
         name='get_sequence',
-        endpoint=f'/sequence/{get_selected_sequence_id(dirname, "get_sequences")}',
+        endpoint=f'/sequences/{get_selected_sequence_id(dirname, "get_sequences")}',
         method='GET',
     )
     yield StubRequest(
         name='patch_sequence',
-        endpoint=f'/sequence/{get_selected_sequence_id(dirname, "get_sequences")}',
+        endpoint=f'/sequences/{get_selected_sequence_id(dirname, "get_sequences")}',
         method='PATCH',
         body={'name': 'ase1_renamed'},
         reset_db=True,
     )
     yield StubRequest(
         name='get_sequence_by_uid',
-        endpoint='/sequence/by-uid/example_sequencing-sample',
+        endpoint='/sequences/by-uid/example_sequencing-sample',
         method='GET',
     )
     yield StubRequest(
@@ -115,35 +115,35 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     )
     yield StubRequest(
         name='get_text_file_sequence',
-        endpoint=f'/sequence/{get_selected_sequence_id(dirname, "get_sequences")}/text_file_sequence',
+        endpoint=f'/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/text_file_sequence',
         method='GET',
     )
     yield StubRequest(
         name='get_cloning_strategy',
-        endpoint=f'/sequence/{get_selected_sequence_id(dirname, "get_sequences")}/cloning_strategy',
+        endpoint=f'/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/cloning_strategy',
         method='GET',
     )
     yield StubRequest(
         name='get_sequence_primers',
-        endpoint=f'/sequence/{get_selected_sequence_id(dirname, "get_sequences")}/primers',
+        endpoint=f'/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/primers',
         method='GET',
     )
     yield StubRequest(
         name='post_sequence',
-        endpoint='/sequence',
+        endpoint='/sequences',
         method='POST',
         body_from_example='cs_pcr',
         reset_db=True,
     )
     # StubRequest(
     #     name='post_sequence_search',
-    #     endpoint='/sequence/search',
+    #     endpoint='/sequences/search',
     #     method='POST',
     #     body_from_stub='get_text_file_sequence',
     # )
     # StubRequest(
     #     name='post_sequence_sequencing_files',
-    #     endpoint='/sequence/10/sequencing_files',
+    #     endpoint='/sequences/10/sequencing_files',
     #     method='POST',
     #     multipart_files=[
     #         {
@@ -155,7 +155,7 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     # )
     # StubRequest(
     #     name='get_sequence_sequencing_files',
-    #     endpoint='/sequence/10/sequencing_files',
+    #     endpoint='/sequences/10/sequencing_files',
     #     method='GET',
     # )
     # StubRequest(

@@ -50,7 +50,7 @@ def get_sequence_samples(
     ]
 
 
-@router.post('/sequence_sample', response_model=SequenceSampleCreated)
+@router.post('/sequence_samples', response_model=SequenceSampleCreated)
 def post_sequence_sample(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     body: SequenceSampleCreate,
@@ -75,7 +75,7 @@ def post_sequence_sample(
     return SequenceSampleCreated(id=ps.id, uid=ps.uid)
 
 
-@router.get('/sequence_sample/{uid}', response_model=SequenceSampleRead)
+@router.get('/sequence_samples/{uid}', response_model=SequenceSampleRead)
 def get_sequence_sample(
     uid: str,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -86,7 +86,7 @@ def get_sequence_sample(
     return SequenceSampleRead(id=ps.id, uid=ps.uid, sequence_id=ps.sequence_id)
 
 
-@router.patch('/sequence_sample/{uid}', response_model=SequenceSampleRead)
+@router.patch('/sequence_samples/{uid}', response_model=SequenceSampleRead)
 def patch_sequence_sample(
     uid: str,
     body: SequenceSampleUpdate,
@@ -102,7 +102,7 @@ def patch_sequence_sample(
     return SequenceSampleRead(id=ps.id, uid=ps.uid, sequence_id=ps.sequence_id)
 
 
-@router.delete('/sequence_sample/{uid}', response_model=DeletedResponse)
+@router.delete('/sequence_samples/{uid}', response_model=DeletedResponse)
 def delete_sequence_sample(
     uid: str,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],

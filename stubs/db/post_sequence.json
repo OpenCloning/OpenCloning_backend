@@ -80,7 +80,7 @@
       }
     ]
   },
-  "endpoint": "/sequence",
+  "endpoint": "/sequences",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

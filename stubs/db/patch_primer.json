@@ -2,7 +2,7 @@
   "body": {
     "name": "lacZ_renamed"
   },
-  "endpoint": "/primer/37",
+  "endpoint": "/primers/37",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

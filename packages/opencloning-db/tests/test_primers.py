@@ -260,7 +260,7 @@ def test_get_primer_forbidden_cross_workspace(primers_client):
     c = primers_client['client']
     pid = primers_client['primer_id']
     r = c.get(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(
             primers_client['token_owner_w2'],
             primers_client['w1'],
@@ -275,7 +275,7 @@ def test_get_primer_ok(primers_client):
     c = primers_client['client']
     pid = primers_client['primer_id']
     r = c.get(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(
             primers_client['token_owner_w1'],
             primers_client['w1'],
@@ -288,7 +288,7 @@ def test_get_primer_ok(primers_client):
 def test_get_primer_sequences_ok(primers_client):
     c = primers_client['client']
     r = c.get(
-        f"/primer/{primers_client['primer_id']}/sequences",
+        f"/primers/{primers_client['primer_id']}/sequences",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
     )
     assert r.status_code == 200
@@ -304,7 +304,7 @@ def test_get_primer_selected_workspace_mismatch_returns_404(primers_client):
     c = primers_client['client']
     pid = primers_client['primer_id']
     r = c.get(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(
             primers_client['token_owner_both'],
             primers_client['w2'],
@@ -319,7 +319,7 @@ def test_post_primer_viewer_forbidden(primers_client):
     c = primers_client['client']
     wid = primers_client['w1']
     r = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(primers_client['token_viewer_w1'], wid),
         json=_VALID_PRIMER_JSON,
     )
@@ -332,7 +332,7 @@ def test_post_primer_editor_ok(primers_client):
     c = primers_client['client']
     wid = primers_client['w1']
     r = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(primers_client['token_owner_w1'], wid),
         json=_VALID_PRIMER_JSON,
     )
@@ -347,7 +347,7 @@ def test_patch_primer_updates_name_only(primers_client):
     c = primers_client['client']
     pid = primers_client['primer_uid_id']
     r = c.patch(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
         json={'name': 'primer_renamed'},
     )
@@ -356,7 +356,7 @@ def test_patch_primer_updates_name_only(primers_client):
     assert r.json()['name'] == 'primer_renamed'
     assert r.json()['uid'] == 'UID-PRIMER-1'
     get_r = c.get(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
     )
     assert get_r.status_code == 200
@@ -369,7 +369,7 @@ def test_patch_primer_updates_uid_only(primers_client):
     c = primers_client['client']
     pid = primers_client['primer_id']
     r = c.patch(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
         json={'uid': 'PATCHED-UID-ONLY'},
     )
@@ -378,7 +378,7 @@ def test_patch_primer_updates_uid_only(primers_client):
     assert body['uid'] == 'PATCHED-UID-ONLY'
     assert body['name'] == 'seed_primer'
     get_r = c.get(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
     )
     assert get_r.status_code == 200
@@ -390,14 +390,14 @@ def test_patch_primer_uid_conflict_returns_409(primers_client):
     c = primers_client['client']
     pid = primers_client['primer_id']
     r = c.patch(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
         json={'uid': 'UID-PRIMER-1'},
     )
     assert r.status_code == 409
     assert 'already exists' in r.json()['detail']
     get_r = c.get(
-        f"/primer/{pid}",
+        f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
     )
     assert get_r.status_code == 200
@@ -410,10 +410,10 @@ def test_patch_primer_clears_uid(primers_client, clear_payload):
     c = primers_client['client']
     pid = primers_client['primer_uid_id']
     headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
-    r = c.patch(f"/primer/{pid}", headers=headers, json=clear_payload)
+    r = c.patch(f"/primers/{pid}", headers=headers, json=clear_payload)
     assert r.status_code == 200
     assert r.json()['uid'] is None
-    get_r = c.get(f"/primer/{pid}", headers=headers)
+    get_r = c.get(f"/primers/{pid}", headers=headers)
     assert get_r.status_code == 200
     assert get_r.json().get('uid') is None
 
@@ -448,10 +448,10 @@ def test_get_primers_non_member_workspace_w3_forbidden_403(primers_client):
 
 
 def test_post_primer_unauthenticated_401(primers_client):
-    """POST /primer without Authorization is rejected."""
+    """POST /primers without Authorization is rejected."""
     assert_post_unauthenticated_401(
         primers_client['client'],
-        '/primer',
+        '/primers',
         primers_client['w1'],
         json=_VALID_PRIMER_JSON,
     )
@@ -461,7 +461,7 @@ def test_post_primer_invalid_json_422(primers_client):
     """Malformed JSON body yields 422."""
     c = primers_client['client']
     r = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(
             primers_client['token_owner_w1'],
             primers_client['w1'],
@@ -478,7 +478,7 @@ def test_post_primer_empty_sequence_rejected_422(primers_client):
     c = primers_client['client']
     body = {**_VALID_PRIMER_JSON, 'name': 'empty-seq', 'sequence': ''}
     r = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(
             primers_client['token_owner_w1'],
             primers_client['w1'],
@@ -495,7 +495,7 @@ def test_post_primer_wrong_sequence_rejected(primers_client):
     body = {'name': 'one-base', 'sequence': 'A'}
 
     resp = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(
             primers_client['token_owner_w1'],
             primers_client['w1'],
@@ -507,7 +507,7 @@ def test_post_primer_wrong_sequence_rejected(primers_client):
 
     body = {'name': 'one-base', 'sequence': 'ANAAAAAAAG'}
     resp = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(
             primers_client['token_owner_w1'],
             primers_client['w1'],
@@ -522,7 +522,7 @@ def test_post_primer_repeated_uid_returns_409(primers_client):
     c = primers_client['client']
     body = {**_VALID_PRIMER_JSON, 'uid': 'UID-PRIMER-1'}
     r = c.post(
-        '/primer',
+        '/primers',
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
         json=body,
     )

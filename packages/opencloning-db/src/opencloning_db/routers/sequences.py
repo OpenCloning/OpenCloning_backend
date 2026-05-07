@@ -115,7 +115,7 @@ def get_sequences(
     return paginate(session, query)
 
 
-@router.get('/sequence/{sequence_id}', response_model=SequenceRef)
+@router.get('/sequences/{sequence_id}', response_model=SequenceRef)
 def get_sequence(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -127,7 +127,7 @@ def get_sequence(
     return sequence_ref(db_sequence)
 
 
-@router.patch('/sequence/{sequence_id}', response_model=SequenceRef)
+@router.patch('/sequences/{sequence_id}', response_model=SequenceRef)
 def patch_sequence(
     sequence_id: int,
     body: SequenceUpdate,
@@ -159,7 +159,7 @@ def patch_sequence(
     return sequence_ref(db_sequence)
 
 
-@router.get('/sequence/by-uid/{uid}', response_model=SequenceRef)
+@router.get('/sequences/by-uid/{uid}', response_model=SequenceRef)
 def get_sequence_by_uid(
     uid: str,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -216,7 +216,7 @@ def get_sequences_by_seguid(
     return [sequence_ref(seq) for seq in session.scalars(stmt).all()]
 
 
-@router.get('/sequence/{sequence_id}/text_file_sequence', response_model=opencloning_models.TextFileSequence)
+@router.get('/sequences/{sequence_id}/text_file_sequence', response_model=opencloning_models.TextFileSequence)
 def get_text_file_sequence(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -228,7 +228,7 @@ def get_text_file_sequence(
     return db_sequence.to_pydantic_sequence()
 
 
-@router.get('/sequence/{sequence_id}/cloning_strategy', response_model=opencloning_models.CloningStrategy)
+@router.get('/sequences/{sequence_id}/cloning_strategy', response_model=opencloning_models.CloningStrategy)
 def get_cloning_strategy(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -270,7 +270,7 @@ def get_cloning_strategy(
     )
 
 
-@router.get('/sequence/{sequence_id}/children', response_model=list[SequenceRef])
+@router.get('/sequences/{sequence_id}/children', response_model=list[SequenceRef])
 def get_sequence_children(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -283,7 +283,7 @@ def get_sequence_children(
 
 
 @router.get(
-    '/sequence/{sequence_id}/primers',
+    '/sequences/{sequence_id}/primers',
     response_model=create_model(
         'SequencePrimers',
         templates=list[PrimerRef],
@@ -336,7 +336,7 @@ def get_sequence_primers(
     }
 
 
-@router.get('/sequence/{sequence_id}/sequencing_files', response_model=List[SequencingFileRef])
+@router.get('/sequences/{sequence_id}/sequencing_files', response_model=List[SequencingFileRef])
 def get_sequence_sequencing_files(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -349,7 +349,7 @@ def get_sequence_sequencing_files(
     return [SequencingFileRef(id=f.id, original_name=f.original_name) for f in db_sequence.sequencing_files]
 
 
-@router.post('/sequence/{sequence_id}/sequencing_files', response_model=List[SequencingFileRef])
+@router.post('/sequences/{sequence_id}/sequencing_files', response_model=List[SequencingFileRef])
 async def post_sequence_sequencing_files(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
@@ -377,7 +377,7 @@ async def post_sequence_sequencing_files(
     return created
 
 
-@router.delete('/sequence/{sequence_id}/sequencing_files/{file_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/sequences/{sequence_id}/sequencing_files/{file_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_sequence_sequencing_file(
     sequence_id: int,
     file_id: int,
@@ -421,7 +421,7 @@ def download_sequencing_file(
     )
 
 
-@router.post('/sequence', response_model=CloningStrategyResponse)
+@router.post('/sequences', response_model=CloningStrategyResponse)
 def post_cloning_strategy(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     cloning_strategy: opencloning_models.CloningStrategy,
@@ -453,7 +453,7 @@ def _search_rotation(seqr: Dseq, query_seqr: Dseq) -> tuple[int, bool]:
     raise ValueError('Query sequence not found in reference sequence')
 
 
-@router.post('/sequence/search', response_model=list[SequenceSearchResult])
+@router.post('/sequences/search', response_model=list[SequenceSearchResult])
 def search_sequences(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
     query: opencloning_models.TextFileSequence,

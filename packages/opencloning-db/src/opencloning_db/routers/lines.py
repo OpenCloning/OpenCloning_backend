@@ -103,7 +103,7 @@ def get_lines(
     return paginate(session, query, transformer=lambda items: [_line_ref(line) for line in items])
 
 
-@router.get('/line/{line_id}', response_model=LineRef)
+@router.get('/lines/{line_id}', response_model=LineRef)
 def get_line(
     line_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -114,7 +114,7 @@ def get_line(
     return _line_ref(line)
 
 
-@router.get('/line/{line_id}/children', response_model=list[LineRef])
+@router.get('/lines/{line_id}/children', response_model=list[LineRef])
 def get_line_children(
     line_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
@@ -125,7 +125,7 @@ def get_line_children(
     return [_line_ref(child) for child in line.children]
 
 
-@router.post('/line', response_model=LineRef)
+@router.post('/lines', response_model=LineRef)
 def post_line(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     body: LineCreate,
@@ -184,7 +184,7 @@ def post_line(
     return _line_ref(line)
 
 
-@router.patch('/line/{line_id}', response_model=LineRef)
+@router.patch('/lines/{line_id}', response_model=LineRef)
 def patch_line_links(
     line_id: int,
     body: LineUpdate,
@@ -252,7 +252,7 @@ def patch_line_links(
     return _line_ref(line)
 
 
-@router.delete('/line/{line_id}', response_model=DeletedResponse)
+@router.delete('/lines/{line_id}', response_model=DeletedResponse)
 def delete_line(
     line_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],

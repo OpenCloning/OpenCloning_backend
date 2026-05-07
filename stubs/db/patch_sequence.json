@@ -2,7 +2,7 @@
   "body": {
     "name": "ase1_renamed"
   },
-  "endpoint": "/sequence/10",
+  "endpoint": "/sequences/10",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

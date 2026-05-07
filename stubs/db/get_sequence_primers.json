@@ -1,6 +1,6 @@
 {
   "body": null,
-  "endpoint": "/sequence/10/primers",
+  "endpoint": "/sequences/10/primers",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

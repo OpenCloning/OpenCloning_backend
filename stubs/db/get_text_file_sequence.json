@@ -1,6 +1,6 @@
 {
   "body": null,
-  "endpoint": "/sequence/10/text_file_sequence",
+  "endpoint": "/sequences/10/text_file_sequence",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"
