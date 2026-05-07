@@ -63,24 +63,28 @@ def primers_client(engine_client_config):
             name='template-seq',
             file_path='template_seq.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-TEMPLATE-SEQ',
         )
         product_seq = Sequence(
             workspace_id=ctx['w1'],
             name='product-seq',
             file_path='product_seq.gb',
             sequence_type=SequenceType.pcr_product,
+            seguid='SEGUID-PRODUCT-SEQ',
         )
         template_seq_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='template-seq-w2',
             file_path='template_seq_w2.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-TEMPLATE-SEQ-W2',
         )
         product_seq_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='product-seq-w2',
             file_path='product_seq_w2.gb',
             sequence_type=SequenceType.pcr_product,
+            seguid='SEGUID-PRODUCT-SEQ-W2',
         )
         session.add_all(
             [

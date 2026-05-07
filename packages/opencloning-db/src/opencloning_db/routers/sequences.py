@@ -264,7 +264,6 @@ async def validate_upload_sequences(
 
     duplicate_names = _frequency_duplicates(parsed_names)
     duplicate_seguids = _frequency_duplicates(parsed_seguids)
-    circularized_candidates = set(linear_circularized_seguids)
 
     db_name_matches = set(
         session.scalars(
@@ -274,14 +273,11 @@ async def validate_upload_sequences(
             )
         ).all()
     )
-    db_seguid_matches = set(
-        session.scalars(
-            select(Sequence.seguid).where(
-                Sequence.workspace_id == workspace_id,
-                Sequence.seguid.in_(set(parsed_seguids) | circularized_candidates),
-            )
-        ).all()
-    )
+    query_seguids = set(parsed_seguids) | set(linear_circularized_seguids)
+    db_seguid_matches = set()
+    for seguid in query_seguids:
+        if session.scalar(_seguid_query(seguid, workspace_id)) is not None:
+            db_seguid_matches.add(seguid)
 
     for row in rows:
         if row.reading_error:
