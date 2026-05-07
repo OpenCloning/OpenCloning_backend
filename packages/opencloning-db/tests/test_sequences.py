@@ -136,8 +136,10 @@ def test_get_sequences_scoped_to_workspace(sequences_client):
     tok = sequences_client['token_owner_w1']
     response = c.get('/sequences', headers=workspace_headers(tok, sequences_client['w1']))
     assert response.status_code == 200
-    ids = {item['id'] for item in response.json()['items']}
-    assert ids == sequences_client['w1_sequence_ids']
+    items = response.json()['items']
+    ids = [item['id'] for item in items]
+    assert set(ids) == sequences_client['w1_sequence_ids']
+    assert ids == sorted(ids, reverse=True)
 
 
 def test_get_sequences_filter_by_tag(sequences_client):

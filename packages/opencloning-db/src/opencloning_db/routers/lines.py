@@ -100,6 +100,7 @@ def get_lines(
             query = query.where(exists(subq))
     if uid is not None:
         query = query.where(Line.uid.ilike(f"%{uid}%"))
+    query = query.order_by(Line.id.desc())
     return paginate(session, query, transformer=lambda items: [_line_ref(line) for line in items])
 
 

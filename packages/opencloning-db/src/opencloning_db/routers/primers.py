@@ -153,6 +153,7 @@ def get_primers(
         query = query.where(Primer.uid.ilike(f"%{uid}%"))
     if has_uid is True:
         query = query.where(Primer.uid.isnot(None))
+    query = query.order_by(Primer.id.desc())
     return paginate(session, query)
 
 

@@ -31,30 +31,35 @@ def lines_client(engine_client_config):
             name='allele-w1',
             file_path='allele_w1.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-ALLELE-W1',
         )
         plasmid_w1 = Sequence(
             workspace_id=ctx['w1'],
             name='plasmid-w1',
             file_path='plasmid_w1.gb',
             sequence_type=SequenceType.plasmid,
+            seguid='SEGUID-PLASMID-W1',
         )
         allele_w1_aux = Sequence(
             workspace_id=ctx['w1'],
             name='allele-aux',
             file_path='allele_aux.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-ALLELE-AUX',
         )
         allele_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='allele-w2',
             file_path='allele_w2.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-ALLELE-W2',
         )
         plasmid_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='plasmid-w2',
             file_path='plasmid_w2.gb',
             sequence_type=SequenceType.plasmid,
+            seguid='SEGUID-PLASMID-W2',
         )
         # Sequences for filter coverage (multi-token genotype/plasmid paths).
         allele_filter = Sequence(
@@ -62,12 +67,14 @@ def lines_client(engine_client_config):
             name='alpha beta',
             file_path='allele_filter.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-ALLELE-FILTER',
         )
         plasmid_filter = Sequence(
             workspace_id=ctx['w1'],
             name='gamma delta',
             file_path='plasmid_filter.gb',
             sequence_type=SequenceType.plasmid,
+            seguid='SEGUID-PLASMID-FILTER',
         )
         session.add_all(
             [
@@ -140,14 +147,15 @@ def test_get_lines_scoped_to_workspace(lines_client):
     response = c.get('/lines', headers=workspace_headers(token, w1))
     assert response.status_code == 200
     items = response.json()['items']
-    ids = {item['id'] for item in items}
-    assert ids == {
+    ids = [item['id'] for item in items]
+    assert set(ids) == {
         lines_client['line_w1_id'],
         lines_client['line_filter_id'],
         lines_client['line_with_parent_to_be_added'],
         lines_client['line_seeded_parented_id'],
         lines_client['line_tagged_id'],
     }
+    assert ids == sorted(ids, reverse=True)
 
 
 def test_get_lines_filter_by_tag(lines_client):

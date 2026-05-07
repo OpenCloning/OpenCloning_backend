@@ -199,12 +199,13 @@ def test_get_primers_lists_scoped_primers(primers_client):
     r = c.get('/primers', headers=workspace_headers(primers_client['token_owner_w1'], wid))
     assert r.status_code == 200
     data = r.json()
-    ids = {it['id'] for it in data['items']}
-    assert ids == {
+    ids = [it['id'] for it in data['items']]
+    assert set(ids) == {
         primers_client['primer_id'],
         primers_client['primer_uid_id'],
         primers_client['primer_tagged_id'],
     }
+    assert ids == sorted(ids, reverse=True)
 
 
 def test_get_primers_filter_by_tag(primers_client):

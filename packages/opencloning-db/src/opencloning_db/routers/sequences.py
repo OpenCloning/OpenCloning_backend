@@ -117,6 +117,7 @@ def get_sequences(
             )
         )
         query = query.where(exists(subq))
+    query = query.order_by(Sequence.id.desc())
     return paginate(session, query)
 
 
