@@ -261,7 +261,6 @@ class SequenceValidationRow(ApiModel):
     file_name: str
     reading_error: bool
 
-    sequence: opencloning_models.TextFileSequence | None = None
     name: str | None = None
     length: int | None = None
     circular: bool | None = None

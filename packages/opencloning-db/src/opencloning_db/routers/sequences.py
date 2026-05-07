@@ -8,9 +8,11 @@ import opencloning_linkml.datamodel.models as opencloning_models
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
 from fastapi import status
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload
 from sqlalchemy import and_, exists, select, Select
+from sqlalchemy.exc import IntegrityError
 from pathlib import Path
 
 from pydantic import create_model
@@ -209,53 +211,68 @@ def _frequency_duplicates(values: list[str]) -> set[str]:
     return {value for value, count in Counter(values).items() if count > 1}
 
 
-@router.post('/sequences/validate-upload', response_model=list[SequenceValidationRow])
-async def validate_upload_sequences(
-    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
-    files: List[UploadFile] = File(...),
-):
-    _, session, workspace_id = ctx
-    if len(files) > 100:
-        raise HTTPException(status_code=400, detail='A maximum of 100 sequence files can be submitted')
+def _has_any_sequence_warning(rows: list[SequenceValidationRow], strict: bool) -> bool:
+    if not strict:
+        return any(row.reading_error for row in rows)
+    return any(
+        row.reading_error
+        or row.sequence_exists
+        or row.sequence_circularised_exists
+        or row.name_exists
+        or row.duplicated_seguid
+        or row.duplicated_name
+        for row in rows
+    )
 
-    rows: list[SequenceValidationRow] = []
-    parsed_indices: list[int] = []
-    parsed_names: list[str] = []
-    parsed_seguids: list[str] = []
-    linear_circularized_seguids: list[str] = []
 
+async def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str]]:
+    loaded_files: list[tuple[str, str]] = []
     for file in files:
         file_name = file.filename or 'unnamed'
         file_bytes = await file.read()
-        file_content = file_bytes.decode('utf-8', errors='replace')
+        loaded_files.append((file_name, file_bytes.decode('utf-8', errors='replace')))
+    return loaded_files
+
+
+def _sequence_validation_rows_with_flags(
+    submitted_files: list[tuple[str, str]],
+    session,
+    workspace_id: int,
+) -> list[SequenceValidationRow]:
+    if len(submitted_files) > 100:
+        raise HTTPException(status_code=400, detail='A maximum of 100 sequence files can be submitted')
+
+    rows: list[SequenceValidationRow] = []
+    parsed_names: list[str] = []
+    parsed_seguids: list[str] = []
+    linear_circularized_seguids: list[str] = []
+    records = list()
+
+    for file_name, file_content in submitted_files:
         try:
             parsed_records = list(pydna_parse(file_content))
             if len(parsed_records) != 1:
-                raise ValueError('More than one sequence found in file')
+                raise ValueError('Expected exactly one sequence in file')
             dseqr = parsed_records[0]
-            seguid = dseqr.seq.seguid()
-            name = dseqr.name
-            is_circular = dseqr.circular
-            text_file_sequence = opencloning_models.TextFileSequence(
-                id=0,
-                file_content=dseqr.format('genbank'),
-                overhang_crick_3prime=dseqr.seq.ovhg,
-                overhang_watson_3prime=dseqr.seq.watson_ovhg,
+            dseqr.source = pydna_opencloning_models.UploadedFileSource(
+                file_name=file_name,
                 sequence_file_format='genbank',
+                index_in_file=0,
             )
+            records.append(dseqr)
+            seguid = dseqr.seq.seguid()
+            is_circular = dseqr.circular
             row = SequenceValidationRow(
                 file_name=file_name,
                 reading_error=False,
-                sequence=text_file_sequence,
-                name=name,
+                name=dseqr.name,
                 length=len(dseqr),
                 circular=is_circular,
                 seguid=seguid,
                 circularised_seguid=None if is_circular else dseqr.looped().seq.seguid(),
             )
             rows.append(row)
-            parsed_indices.append(len(rows) - 1)
-            parsed_names.append(name)
+            parsed_names.append(row.name or '')
             parsed_seguids.append(seguid)
             if row.circularised_seguid is not None:
                 linear_circularized_seguids.append(row.circularised_seguid)
@@ -288,7 +305,51 @@ async def validate_upload_sequences(
         row.duplicated_name = row.name is not None and row.name in duplicate_names
         row.duplicated_seguid = row.seguid in duplicate_seguids
 
+    return rows, records
+
+
+@router.post('/sequences/validate-upload', response_model=list[SequenceValidationRow])
+async def validate_upload_sequences(
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    files: List[UploadFile] = File(...),
+):
+    _, session, workspace_id = ctx
+    loaded_files = await _load_uploaded_files(files)
+    rows, _records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     return rows
+
+
+@router.post('/sequences/bulk', response_model=list[SequenceRef])
+async def post_sequences_bulk(
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+    files: List[UploadFile] = File(...),
+    strict: bool = Query(description='Fail on any validation warning', default=True),
+):
+    _, session, workspace_id = ctx
+    loaded_files = await _load_uploaded_files(files)
+    validation_rows, records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
+    if _has_any_sequence_warning(validation_rows, strict):
+        return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in validation_rows])
+
+    db_sequences = list()
+    for record in records:
+        db_sequences.extend(
+            cloning_strategy_to_db(
+                pydna_opencloning_models.CloningStrategy.from_dseqrecords([record]), session, workspace_id
+            )[0]
+        )
+
+    session.add_all(db_sequences)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        conflict_rows = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
+        return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in conflict_rows])
+
+    for db_sequence in db_sequences:
+        session.refresh(db_sequence)
+    return [sequence_ref(s) for s in db_sequences]
 
 
 @router.get('/sequences/by-seguid/{seguid}', response_model=list[SequenceRef])

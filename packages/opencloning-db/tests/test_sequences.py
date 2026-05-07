@@ -395,6 +395,21 @@ def _post_validate_upload_sequences(client, token: str, workspace_id: int, files
     )
 
 
+def _post_sequences_bulk(
+    client,
+    token: str,
+    workspace_id: int,
+    files: list[tuple[str, bytes]],
+    strict: bool = True,
+):
+    return client.post(
+        '/sequences/bulk',
+        headers=workspace_headers(token, workspace_id),
+        params={'strict': str(strict).lower()},
+        files=[('files', (filename, body, 'application/octet-stream')) for filename, body in files],
+    )
+
+
 def test_validate_upload_sequences_returns_flags(sequences_client):
     c = sequences_client['client']
     h_token = sequences_client['token_owner_w1']
@@ -442,7 +457,6 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
 
     assert rows[3]['file_name'] == 'bad.gb'
     assert rows[3]['reading_error'] is True
-    assert rows[3]['sequence'] is None
     assert rows[3]['name'] is None
     assert rows[3]['length'] is None
     assert rows[3]['circular'] is None
@@ -500,6 +514,121 @@ def test_validate_upload_sequences_missing_workspace_header_422(sequences_client
         '/sequences/validate-upload',
         headers=bearer_headers(sequences_client['token_owner_w1']),
         files={'files': ('missing.gb', rec.format('genbank').encode('utf-8'), 'application/octet-stream')},
+    )
+    assert r.status_code == 422
+
+
+def test_post_sequences_bulk_success_strict_true(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        ('bulk_ok_1.gb', Dseqrecord('ATGCATGCAAA', name='bulk_ok_1').format('genbank').encode('utf-8')),
+        ('bulk_ok_2.gb', Dseqrecord('GGGATGCATTT', name='bulk_ok_2').format('genbank').encode('utf-8')),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=True)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 2
+    assert rows[0]['id'] > 0
+    assert rows[1]['id'] > 0
+    assert rows[0]['name'] == 'bulk_ok_1'
+    assert rows[1]['name'] == 'bulk_ok_2'
+
+    list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'bulk_ok'})
+    assert list_r.status_code == 200
+    assert len(list_r.json()['items']) == 2
+
+
+def test_post_sequences_bulk_strict_true_conflict_on_warning_and_is_atomic(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        ('dup_a.gb', Dseqrecord('ATGCATGC', name='dup_name').format('genbank').encode('utf-8')),
+        ('dup_b.gb', Dseqrecord('ATGCATGC', name='dup_name').format('genbank').encode('utf-8')),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=True)
+    assert r.status_code == 409
+    rows = r.json()
+    assert len(rows) == 2
+    assert rows[0]['duplicated_name'] is True
+    assert rows[0]['duplicated_seguid'] is True
+    assert rows[1]['duplicated_name'] is True
+    assert rows[1]['duplicated_seguid'] is True
+
+    list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'dup_name'})
+    assert list_r.status_code == 200
+    assert len([item for item in list_r.json()['items'] if item['name'] == 'dup_name']) == 0
+
+
+def test_post_sequences_bulk_non_strict_allows_warnings(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        ('dup_a.gb', Dseqrecord('ATGCATGC', name='dup_non_strict').format('genbank').encode('utf-8')),
+        ('dup_b.gb', Dseqrecord('ATGCATGC', name='dup_non_strict').format('genbank').encode('utf-8')),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=False)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 2
+    assert rows[0]['name'] == 'dup_non_strict'
+    assert rows[1]['name'] == 'dup_non_strict'
+
+
+def test_post_sequences_bulk_non_strict_still_rejects_reading_errors_and_is_atomic(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        ('ok.gb', Dseqrecord('ATGCATGCGG', name='ok_should_not_persist').format('genbank').encode('utf-8')),
+        ('bad.gb', b'not a parseable sequence file'),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=False)
+    assert r.status_code == 409
+    rows = r.json()
+    assert len(rows) == 2
+    assert rows[0]['reading_error'] is False
+    assert rows[1]['reading_error'] is True
+
+    list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'ok_should_not_persist'})
+    assert list_r.status_code == 200
+    assert len([item for item in list_r.json()['items'] if item['name'] == 'ok_should_not_persist']) == 0
+
+
+def test_post_sequences_bulk_viewer_forbidden(sequences_client):
+    c = sequences_client['client']
+    r = _post_sequences_bulk(
+        c,
+        sequences_client['token_viewer_w1'],
+        sequences_client['w1'],
+        [('viewer_forbidden.gb', Dseqrecord('ATGCATGC', name='viewer_forbidden').format('genbank').encode('utf-8'))],
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_post_sequences_bulk_non_member_forbidden(sequences_client):
+    c = sequences_client['client']
+    r = _post_sequences_bulk(
+        c,
+        sequences_client['token_owner_w2'],
+        sequences_client['w1'],
+        [('non_member_forbidden.gb', Dseqrecord('ATGCATGC', name='non_member').format('genbank').encode('utf-8'))],
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_post_sequences_bulk_missing_workspace_header_422(sequences_client):
+    c = sequences_client['client']
+    rec = Dseqrecord('ATGCATGC', name='missing_ws')
+    r = c.post(
+        '/sequences/bulk',
+        headers=bearer_headers(sequences_client['token_owner_w1']),
+        files={'files': ('missing_ws.gb', rec.format('genbank').encode('utf-8'), 'application/octet-stream')},
     )
     assert r.status_code == 422
 
