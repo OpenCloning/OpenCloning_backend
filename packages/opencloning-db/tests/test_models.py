@@ -734,11 +734,13 @@ class TestLine(_MemoryDbTestCase):
                 workspace_id=ws.id,
                 file_path='a.gb',
                 sequence_type=SequenceType.allele,
+                seguid='SEGUID-ALLELE',
             )
             plasmid_seq = Sequence(
                 workspace_id=ws.id,
                 file_path='p.gb',
                 sequence_type=SequenceType.plasmid,
+                seguid='SEGUID-PLASMID',
             )
             session.add_all([allele_seq, plasmid_seq])
             session.flush()

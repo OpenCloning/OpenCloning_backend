@@ -32,6 +32,7 @@ def deps_session(engine_client_config):
             name='deps-seq',
             file_path='deps.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-DEPS-SEQ',
         )
         session.add_all([line, seq])
         session.commit()

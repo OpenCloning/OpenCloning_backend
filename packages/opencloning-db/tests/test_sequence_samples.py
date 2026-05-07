@@ -29,12 +29,14 @@ def seq_samples_client(engine_client_config):
             name='seq-w1',
             file_path='seq_w1.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-SEQ-W1',
         )
         seq_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='seq-w2',
             file_path='seq_w2.gb',
             sequence_type=SequenceType.allele,
+            seguid='SEGUID-SEQ-W2',
         )
         session.add_all([seq_w1, seq_w2])
         session.flush()
