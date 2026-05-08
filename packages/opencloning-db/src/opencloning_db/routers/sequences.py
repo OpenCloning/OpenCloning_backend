@@ -175,12 +175,13 @@ def delete_sequence(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
-    """Delete a sequence with no parents, no children, and not present in any strain.
+    """Delete a sequence with no children and not present in any strain.
 
     Linked sequence samples and sequencing files are removed via ORM cascade;
     the underlying sequence file and any sequencing file blobs are unlinked
     from disk after the database commit succeeds.
     """
+
     current_user, session, workspace_id = ctx
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
@@ -189,8 +190,6 @@ def delete_sequence(
     if db_sequence.source_inputs:
         raise HTTPException(status_code=409, detail='Cannot delete sequence: it has child sequences.')
     parent_source = db_sequence.output_of_source
-    if parent_source.input:
-        raise HTTPException(status_code=409, detail='Cannot delete sequence: it has parent sequences.')
     if any(isinstance(instance, SequenceInLine) for instance in db_sequence.instances):
         raise HTTPException(status_code=409, detail='Cannot delete sequence: it is present in a line.')
 
@@ -199,6 +198,8 @@ def delete_sequence(
     sequence_file_path = seq_files_dir / db_sequence.file_path
     sequencing_file_paths = [sequencing_files_dir / sf.storage_path for sf in db_sequence.sequencing_files]
 
+    for source_input in list(parent_source.input):
+        session.delete(source_input)
     session.delete(parent_source)
     session.delete(db_sequence)
     session.commit()

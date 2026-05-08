@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from opencloning_db.config import get_config
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag
+from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag, Primer
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
 from .helpers import (
     assert_get_invalid_workspace_id_422,
@@ -34,6 +34,13 @@ def _sequence_in_workspace(session: Session, workspace_id: int, name: str) -> Se
     """Load a sequence by workspace id and record name (fixture / strategy lookups)."""
     row = session.scalar(select(Sequence).where(Sequence.workspace_id == workspace_id, Sequence.name == name))
     assert row is not None, f"No Sequence in workspace {workspace_id} with name {name!r}"
+    return row
+
+
+def _primer_in_workspace(session: Session, workspace_id: int, name: str) -> Primer:
+    """Load a primer by workspace id and record name (fixture / strategy lookups)."""
+    row = session.scalar(select(Primer).where(Primer.workspace_id == workspace_id, Primer.name == name))
+    assert row is not None, f"No Primer in workspace {workspace_id} with name {name!r}"
     return row
 
 
@@ -62,6 +69,8 @@ def sequences_client(engine_client_config):
 
         pcr_template = _sequence_in_workspace(session, w1, 'template')
         pcr_product = _sequence_in_workspace(session, w1, 'pcr_product')
+        primer1 = _primer_in_workspace(session, w1, 'primer1')
+        primer2 = _primer_in_workspace(session, w1, 'primer2')
         gw_product = _sequence_in_workspace(session, w1, 'product_gateway_BP')
         attb = _sequence_in_workspace(session, w1, 'attB_input')
         attp = _sequence_in_workspace(session, w1, 'attP_input')
@@ -138,6 +147,8 @@ def sequences_client(engine_client_config):
                 'pcr_template_id': pcr_template.id,
                 'pcr_product_id': pcr_product.id,
                 'pcr_product_seguid': pcr_product.seguid,
+                'primer1_id': primer1.id,
+                'primer2_id': primer2.id,
                 'gateway_product_id': gw_product.id,
                 'attb_input_id': attb.id,
                 'attp_input_id': attp.id,
@@ -414,15 +425,38 @@ def test_delete_sequence_rejects_when_has_children(sequences_client):
     assert 'child sequences' in r.json()['detail']
 
 
-def test_delete_sequence_rejects_when_has_parents(sequences_client):
-    """Sequences produced by a source with inputs cannot be deleted (409)."""
+def test_delete_sequence_allows_when_has_parents(sequences_client):
+    """Sequences produced by a source with inputs can still be deleted."""
     c = sequences_client['client']
+    sid = sequences_client['pcr_product_id']
     r = c.delete(
-        f"/sequences/{sequences_client['pcr_product_id']}",
+        f"/sequences/{sid}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
-    assert r.status_code == 409
-    assert 'parent sequences' in r.json()['detail']
+    assert r.status_code == 200
+    assert r.json()['deleted'] == sequences_client['pcr_product_id']
+
+    r = c.get(
+        f"/sequences/{sid}", headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    )
+    assert r.status_code == 404
+
+    # Primers and template still exist though
+    r = c.get(
+        f"/primers/{sequences_client['primer1_id']}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    r = c.get(
+        f"/primers/{sequences_client['primer2_id']}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    r = c.get(
+        f"/sequences/{sequences_client['pcr_template_id']}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
 
 
 def test_delete_sequence_rejects_when_in_strain(sequences_client):
