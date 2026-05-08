@@ -397,6 +397,10 @@ def test_change_circularity_isolated_linear_to_circular(sequences_client):
     assert r1.status_code == 200
     assert _parse_dseqr(r1.json()).seq == Dseq('atgcag'.upper(), circular=True)
 
+    r1_db = c.get(f'/sequences/{sid}', headers=headers)
+    assert r1_db.status_code == 200
+    assert r1_db.json()['sequence_type'] == 'plasmid'
+
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
         assert seq.file_path != old_relative
@@ -424,6 +428,10 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
 
     r1 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
     assert _parse_dseqr(r1.json()).seq == Dseq('atgcgatcgatac'.upper())
+
+    r1_db = c.get(f'/sequences/{sid}', headers=headers)
+    assert r1_db.status_code == 200
+    assert r1_db.json()['sequence_type'] == 'linear_dna'
 
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)

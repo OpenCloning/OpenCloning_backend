@@ -239,6 +239,7 @@ def change_sequence_circularity(
 
     toggled = dseqr[:] if dseqr.circular else dseqr.looped()
     db_sequence.seguid = toggled.seq.seguid()
+    db_sequence.sequence_type = SequenceType.plasmid if toggled.circular else SequenceType.linear_dna
 
     _replace_sequence_file(session, db_sequence, toggled.format('genbank'))
 
