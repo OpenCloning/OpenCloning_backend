@@ -211,7 +211,7 @@ def _feature_spans_origin(feature) -> bool:
     return x >= y
 
 
-@router.post('/sequences/{sequence_id}/change_circularity', response_model=SequenceRef)
+@router.patch('/sequences/{sequence_id}/change_circularity', response_model=SequenceRef)
 def change_sequence_circularity(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],

@@ -20,7 +20,7 @@ from .helpers import (
     assert_get_missing_workspace_header_422,
     assert_get_non_member_workspace_403,
     assert_get_unauthenticated_401,
-    assert_post_unauthenticated_401,
+    assert_patch_unauthenticated_401,
     attach_standard_tokens,
     bearer_headers,
     post_sequencing_file_upload,
@@ -389,7 +389,7 @@ def test_change_circularity_isolated_linear_to_circular(sequences_client):
     assert r0.status_code == 200
     assert _parse_dseqr(r0.json()).seq == Dseq('atgcag'.upper())
 
-    r = c.post(f'/sequences/{sid}/change_circularity', headers=headers)
+    r = c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
     assert r.status_code == 200
     assert r.json()['id'] == sid
 
@@ -423,7 +423,7 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
     r0 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
     assert _parse_dseqr(r0.json()).seq == Dseq('atgcgatcgatac'.upper(), circular=True)
 
-    r = c.post(f'/sequences/{sid}/change_circularity', headers=headers)
+    r = c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
     assert r.status_code == 200
 
     r1 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
@@ -443,7 +443,7 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
 def test_change_circularity_rejects_when_sequence_has_children(sequences_client):
     c = sequences_client['client']
     tid = sequences_client['pcr_template_id']
-    r = c.post(
+    r = c.patch(
         f'/sequences/{tid}/change_circularity',
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
@@ -454,7 +454,7 @@ def test_change_circularity_rejects_when_sequence_has_children(sequences_client)
 def test_change_circularity_rejects_when_sequence_has_parents(sequences_client):
     c = sequences_client['client']
     pid = sequences_client['pcr_product_id']
-    r = c.post(
+    r = c.patch(
         f'/sequences/{pid}/change_circularity',
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
@@ -465,7 +465,7 @@ def test_change_circularity_rejects_when_sequence_has_parents(sequences_client):
 def test_change_circularity_rejects_when_sequence_has_overhangs(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_with_overhangs_id']
-    r = c.post(
+    r = c.patch(
         f'/sequences/{sid}/change_circularity',
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
@@ -483,7 +483,7 @@ def test_change_circularity_rejects_when_sequence_has_overhangs(sequences_client
 def test_change_circularity_rejects_when_sequence_has_features_spanning_origin(sequences_client, sid):
     c = sequences_client['client']
     sid = sequences_client[sid]
-    r = c.post(
+    r = c.patch(
         f'/sequences/{sid}/change_circularity',
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
@@ -494,7 +494,7 @@ def test_change_circularity_rejects_when_sequence_has_features_spanning_origin(s
 def test_change_circularity_viewer_forbidden(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_viewer_w1']
-    r = c.post(
+    r = c.patch(
         f"/sequences/{sequences_client['seq_w1_id']}/change_circularity",
         headers=workspace_headers(tok, sequences_client['w1']),
     )
@@ -504,7 +504,7 @@ def test_change_circularity_viewer_forbidden(sequences_client):
 
 def test_change_circularity_workspace_mismatch_404(sequences_client):
     c = sequences_client['client']
-    r = c.post(
+    r = c.patch(
         f"/sequences/{sequences_client['seq_w2_id']}/change_circularity",
         headers=workspace_headers(
             sequences_client['token_owner_both'],
@@ -517,7 +517,7 @@ def test_change_circularity_workspace_mismatch_404(sequences_client):
 
 def test_change_circularity_unauthenticated_401(sequences_client):
     c = sequences_client['client']
-    assert_post_unauthenticated_401(
+    assert_patch_unauthenticated_401(
         c,
         f"/sequences/{sequences_client['seq_w1_id']}/change_circularity",
         sequences_client['w1'],
