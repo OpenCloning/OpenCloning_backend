@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from opencloning_db.apimodels import (
+    DeletedResponse,
     IdResponse,
     PrimerBulkSubmission,
     PrimerBulkRow,
@@ -347,3 +348,20 @@ def patch_primer(
         uid=primer.uid,
         tags=[TagRead(id=t.id, name=t.name) for t in primer.tags],
     )
+
+
+@router.delete('/primers/{primer_id}', response_model=DeletedResponse)
+def delete_primer(
+    primer_id: int,
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+):
+    """Delete a primer that is not used as input to any source."""
+    current_user, session, workspace_id = ctx
+    primer = get_primer_in_workspace_for_user(session, current_user, workspace_id, primer_id, WorkspaceRole.editor)
+
+    if primer.source_inputs:
+        raise HTTPException(status_code=409, detail='Cannot delete primer in use.')
+
+    session.delete(primer)
+    session.commit()
+    return DeletedResponse(deleted=primer_id)

@@ -368,6 +368,104 @@ def test_patch_sequence_viewer_forbidden(sequences_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
+    """Owner can delete an isolated sequence; sample row and on-disk files are removed."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_w1_id']
+    headers = workspace_headers(tok, wid)
+
+    up = post_sequencing_file_upload(c, sid, tok, wid, 'attached.ab1', b'ABIF')
+    assert up.status_code == 200
+    sequencing_file_id = up.json()[0]['id']
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        sequence_file_path = Path(get_config().sequence_files_dir) / seq.file_path
+        sequencing_file_path = (
+            Path(sequences_client['sequencing_files_dir'])
+            / session.get(SequencingFile, sequencing_file_id).storage_path
+        )
+    assert sequence_file_path.exists()
+    assert sequencing_file_path.exists()
+
+    r = c.delete(f"/sequences/{sid}", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json() == {'deleted': sid, 'data': None}
+
+    assert c.get(f"/sequences/{sid}", headers=headers).status_code == 404
+    assert c.get(f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=headers).status_code == 404
+    assert not sequence_file_path.exists()
+    assert not sequencing_file_path.exists()
+    with Session(sequences_client['engine']) as session:
+        assert session.scalar(select(SequenceSample).where(SequenceSample.sequence_id == sid)) is None
+        assert session.get(SequencingFile, sequencing_file_id) is None
+
+
+def test_delete_sequence_rejects_when_has_children(sequences_client):
+    """Sequences used as input to another source cannot be deleted (409)."""
+    c = sequences_client['client']
+    r = c.delete(
+        f"/sequences/{sequences_client['pcr_template_id']}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 409
+    assert 'child sequences' in r.json()['detail']
+
+
+def test_delete_sequence_rejects_when_has_parents(sequences_client):
+    """Sequences produced by a source with inputs cannot be deleted (409)."""
+    c = sequences_client['client']
+    r = c.delete(
+        f"/sequences/{sequences_client['pcr_product_id']}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 409
+    assert 'parent sequences' in r.json()['detail']
+
+
+def test_delete_sequence_rejects_when_in_strain(sequences_client):
+    """Sequences linked to a strain via SequenceInLine cannot be deleted (409)."""
+    c = sequences_client['client']
+    sid = sequences_client['seq_patch_linear_id']
+    with Session(sequences_client['engine']) as session:
+        line = Line(workspace_id=sequences_client['w1'], uid='line-blocking-delete')
+        session.add(line)
+        session.flush()
+        session.add(SequenceInLine(sequence_id=sid, line_id=line.id))
+        session.commit()
+
+    r = c.delete(
+        f"/sequences/{sid}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 409
+    assert 'present in a line' in r.json()['detail']
+
+
+def test_delete_sequence_viewer_forbidden(sequences_client):
+    """Viewers cannot delete sequences."""
+    c = sequences_client['client']
+    r = c.delete(
+        f"/sequences/{sequences_client['seq_patch_linear_id']}",
+        headers=workspace_headers(sequences_client['token_viewer_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_delete_sequence_workspace_mismatch_404(sequences_client):
+    """W2 sequence id with W1 header returns 404."""
+    c = sequences_client['client']
+    r = c.delete(
+        f"/sequences/{sequences_client['seq_w2_id']}",
+        headers=workspace_headers(sequences_client['token_owner_both'], sequences_client['w1']),
+    )
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Sequence not found'
+
+
 def _parse_dseqr(payload: dict) -> Dseqrecord:
     return read_dsrecord_from_json(TextFileSequence.model_validate(payload))
 

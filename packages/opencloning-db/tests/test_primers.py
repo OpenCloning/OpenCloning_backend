@@ -690,6 +690,52 @@ def test_post_primers_bulk_non_strict_allows_name_and_sequence_conflicts(primers
     assert len(list_r.json()['items']) == 4
 
 
+def test_delete_primer_owner_ok(primers_client):
+    """Owner can delete a primer that is not used as input to any source."""
+    c = primers_client['client']
+    pid = primers_client['primer_tagged_id']
+    headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
+
+    r = c.delete(f"/primers/{pid}", headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json() == {'deleted': pid, 'data': None}
+
+    assert c.get(f"/primers/{pid}", headers=headers).status_code == 404
+
+
+def test_delete_primer_rejects_when_used_as_input(primers_client):
+    """Primers used as inputs to a source cannot be deleted (409)."""
+    c = primers_client['client']
+    r = c.delete(
+        f"/primers/{primers_client['primer_id']}",
+        headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
+    )
+    assert r.status_code == 409
+    assert 'Cannot delete primer in use.' in r.json()['detail']
+
+
+def test_delete_primer_viewer_forbidden(primers_client):
+    """Viewers cannot delete primers."""
+    c = primers_client['client']
+    r = c.delete(
+        f"/primers/{primers_client['primer_tagged_id']}",
+        headers=workspace_headers(primers_client['token_viewer_w1'], primers_client['w1']),
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_delete_primer_workspace_mismatch_404(primers_client):
+    """W2 primer id with W1 header returns 404."""
+    c = primers_client['client']
+    r = c.delete(
+        f"/primers/{primers_client['primer_w2_id']}",
+        headers=workspace_headers(primers_client['token_owner_both'], primers_client['w1']),
+    )
+    assert r.status_code == 404
+    assert 'not found' in r.json()['detail'].lower()
+
+
 def test_post_primers_bulk_non_strict_still_rejects_uid_and_invalid_sequence(primers_client):
     c = primers_client['client']
     headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
