@@ -525,6 +525,89 @@ def test_change_circularity_unauthenticated_401(sequences_client):
     )
 
 
+existing_sequence_annotated = Dseqrecord('aTgCag')
+existing_sequence_annotated.add_feature(0, 4, type_='CDS')
+existing_sequence_annotated = TextFileSequence.from_dseqrecord(existing_sequence_annotated).model_dump(mode='json')
+
+
+def test_change_annotation_success_replaces_file(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_patch_linear_id']
+    token = sequences_client['token_owner_w1']
+    workspace_id = sequences_client['w1']
+    headers = workspace_headers(token, workspace_id)
+    base = Path(get_config().sequence_files_dir)
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        old_relative = seq.file_path
+    old_path = base / old_relative
+    assert old_path.exists()
+
+    r = c.patch(f'/sequences/{sid}/change_annotation', headers=headers, json=existing_sequence_annotated)
+    assert r.status_code == 200
+
+    r1 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
+    assert r1.status_code == 200
+    assert len(_parse_dseqr(r1.json()).features) == 1
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        assert seq.file_path != old_relative
+        new_path = base / seq.file_path
+
+    assert not old_path.exists()
+    assert new_path.exists()
+
+
+def test_change_annotation_rejects_when_dseq_differs(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_patch_linear_id']
+    payload = TextFileSequence.from_dseqrecord(Dseqrecord('TTTTTT', name='different')).model_dump(mode='json')
+    r = c.patch(
+        f'/sequences/{sid}/change_annotation',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        json=payload,
+    )
+    assert r.status_code == 400
+    assert 'does not match the existing sequence' in r.json()['detail']
+
+
+def test_change_annotation_viewer_forbidden(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_patch_linear_id']
+    r = c.patch(
+        f'/sequences/{sid}/change_annotation',
+        headers=workspace_headers(sequences_client['token_viewer_w1'], sequences_client['w1']),
+        json=existing_sequence_annotated,
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_change_annotation_workspace_mismatch_404(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_w2_id']
+    r = c.patch(
+        f'/sequences/{sid}/change_annotation',
+        headers=workspace_headers(sequences_client['token_owner_both'], sequences_client['w1']),
+        json=existing_sequence_annotated,
+    )
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Sequence not found'
+
+
+def test_change_annotation_unauthenticated_401(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['seq_patch_linear_id']
+    assert_patch_unauthenticated_401(
+        c,
+        f'/sequences/{sid}/change_annotation',
+        sequences_client['w1'],
+        json=existing_sequence_annotated,
+    )
+
+
 def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):
     """Resolve sequence by lab sample UID within the selected workspace."""
     c = sequences_client['client']

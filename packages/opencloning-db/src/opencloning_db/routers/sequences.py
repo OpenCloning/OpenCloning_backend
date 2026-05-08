@@ -246,6 +246,27 @@ def change_sequence_circularity(
     return sequence_ref(db_sequence)
 
 
+@router.patch('/sequences/{sequence_id}/change_annotation', response_model=SequenceRef)
+def change_sequence_annotation(
+    sequence_id: int,
+    body: opencloning_models.TextFileSequence,
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+):
+    current_user, session, workspace_id = ctx
+    db_sequence = get_sequence_in_workspace_for_user(
+        session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
+    )
+
+    submitted_dseqr = read_dsrecord_from_json(body)
+    existing_dseqr = read_dsrecord_from_json(db_sequence.to_pydantic_sequence())
+    if submitted_dseqr.seq != existing_dseqr.seq:
+        raise HTTPException(status_code=400, detail='Submitted sequence does not match the existing sequence.')
+
+    db_sequence.seguid = submitted_dseqr.seq.seguid()
+    _replace_sequence_file(session, db_sequence, body.file_content)
+    return sequence_ref(db_sequence)
+
+
 @router.get('/sequences/by-uid/{uid}', response_model=SequenceRef)
 def get_sequence_by_uid(
     uid: str,
