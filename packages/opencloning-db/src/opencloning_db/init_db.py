@@ -100,14 +100,21 @@ def init_db(config: Config):
             )
         )
 
-        parent_strain = Line(uid='parent_strain', workspace_id=workspace.id)
+        parent_strain = Line(uid='parent_strain', workspace_id=workspace.id, created_by_id=bootstrap_user.id)
         session.add(parent_strain)
         for cloning_strategy, file_name in zip(cloning_strategies, file_names):
             tag_name = os.path.basename(file_name).split('.')[0]
             tag = Tag(name=tag_name, workspace_id=workspace.id)
             session.add(tag)
-            sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, workspace.id)
-            new_line = Line(uid=f"{tag_name}-line", workspace_id=workspace.id, parents=[parent_strain])
+            sequences, id_mappings = cloning_strategy_to_db(
+                cloning_strategy, session, workspace.id, created_by_id=bootstrap_user.id
+            )
+            new_line = Line(
+                uid=f"{tag_name}-line",
+                workspace_id=workspace.id,
+                parents=[parent_strain],
+                created_by_id=bootstrap_user.id,
+            )
             for seq in sequences:
                 if seq.name in ['entry_clone_lacZ']:
                     continue
@@ -145,7 +152,7 @@ def init_db(config: Config):
 
         # Add primer that is not linked to any source
         pydantic_primer = opencloning_models.Primer(id=0, name='no_source_primer', sequence='GGTTaaCCaaa')
-        no_source_primer = Primer.from_pydantic(pydantic_primer, workspace.id)
+        no_source_primer = Primer.from_pydantic(pydantic_primer, workspace.id, created_by_id=bootstrap_user.id)
         session.add(no_source_primer)
 
         # seq: Sequence = session.scalar(select(Sequence).where(Sequence.name == 'entry_clone_lacZ'))

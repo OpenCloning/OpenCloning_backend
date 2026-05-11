@@ -78,7 +78,12 @@ def _source_order(cloning_strategy: opencloning_models.CloningStrategy) -> List[
     return list(order)
 
 
-def dseqrecord_to_db(dseqrecord: Dseqrecord, session: Session, workspace_id: int) -> Sequence:
+def dseqrecord_to_db(
+    dseqrecord: Dseqrecord,
+    session: Session,
+    workspace_id: int,
+    created_by_id: int | None = None,
+) -> Sequence:
     """Persist *dseqrecord* via ``from_dseqrecords`` → ``cloning_strategy_to_db``.
 
     Intended for single-output strategies (one sequence row). Returns that ``Sequence``.
@@ -86,12 +91,15 @@ def dseqrecord_to_db(dseqrecord: Dseqrecord, session: Session, workspace_id: int
     cs = pydna_opencloning_models.CloningStrategy.from_dseqrecords([dseqrecord])
     if len(cs.sequences) != 1:
         raise ValueError(f"dseqrecord_to_db expects exactly one sequence in the strategy; got {len(cs.sequences)}")
-    sequences, _ = cloning_strategy_to_db(cs, session, workspace_id)
+    sequences, _ = cloning_strategy_to_db(cs, session, workspace_id, created_by_id=created_by_id)
     return sequences[0]
 
 
 def cloning_strategy_to_db(
-    cloning_strategy: opencloning_models.CloningStrategy, session: Session, workspace_id: int
+    cloning_strategy: opencloning_models.CloningStrategy,
+    session: Session,
+    workspace_id: int,
+    created_by_id: int | None = None,
 ) -> tuple[list[Sequence], dict[int, int]]:
     sequences = []
     entity_mapping = {}  # Combined mapping for sequences and primers (by id)
@@ -102,7 +110,7 @@ def cloning_strategy_to_db(
         if parent_source is None:
             raise ValueError(f"No source produces sequence {sequence.id}")
         db_sequence = (
-            Sequence.from_pydantic_sequence(sequence, workspace_id)
+            Sequence.from_pydantic_sequence(sequence, workspace_id, created_by_id=created_by_id)
             if parent_source.database_id is None
             else session.get(Sequence, parent_source.database_id)
         )
@@ -113,7 +121,7 @@ def cloning_strategy_to_db(
 
     for primer in cloning_strategy.primers or []:
         db_primer = (
-            Primer.from_pydantic(primer, workspace_id)
+            Primer.from_pydantic(primer, workspace_id, created_by_id=created_by_id)
             if primer.database_id is None
             else session.get(Primer, primer.database_id)
         )

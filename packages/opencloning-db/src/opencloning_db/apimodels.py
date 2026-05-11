@@ -1,5 +1,7 @@
 """Shared Pydantic request/response models for the API."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
@@ -23,6 +25,13 @@ class UserPublic(ApiModel):
     email: str
     display_name: str | None
     is_instance_admin: bool
+
+
+class UserRef(ApiModel):
+    """Minimal user reference for embedding in resource responses."""
+
+    id: int
+    display_name: str | None
 
 
 class WorkspaceRef(ApiModel):
@@ -133,6 +142,8 @@ class SequenceRef(ApiModel):
     tags: list[TagRead] = []
     sample_uids: list[str] = []
     seguid: str | None = None
+    created_at: datetime
+    created_by: UserRef | None = None
 
 
 class SequenceUpdate(ApiModel):
@@ -190,6 +201,8 @@ class PrimerRef(ApiModel):
     sequence: str
     uid: str | None = None
     tags: list[TagRead] = []
+    created_at: datetime
+    created_by: UserRef | None = None
 
 
 class SequenceSampleWithSequence(ApiModel):
@@ -213,6 +226,8 @@ class LineRef(ApiModel):
     sequences_in_line: list[SequenceInLineRef]
     parent_ids: list[int]
     tags: list[TagRead]
+    created_at: datetime
+    created_by: UserRef | None = None
 
 
 class LineCreate(ApiModel):
@@ -229,6 +244,12 @@ class LineUpdate(ApiModel):
     parent_ids: list[int] | None = None
 
 
+def _user_ref(user) -> UserRef | None:
+    if user is None:
+        return None
+    return UserRef(id=user.id, display_name=user.display_name)
+
+
 def sequence_ref(sequence: Sequence) -> SequenceRef:
     return SequenceRef(
         id=sequence.id,
@@ -237,6 +258,8 @@ def sequence_ref(sequence: Sequence) -> SequenceRef:
         tags=[TagRead(id=t.id, name=t.name) for t in sequence.tags],
         sample_uids=sequence.sample_uids,
         seguid=sequence.seguid,
+        created_at=sequence.created_at,
+        created_by=_user_ref(sequence.created_by),
     )
 
 
@@ -247,6 +270,8 @@ def primer_ref(primer: Primer) -> PrimerRef:
         sequence=primer.sequence,
         uid=primer.uid,
         tags=[TagRead(id=t.id, name=t.name) for t in primer.tags],
+        created_at=primer.created_at,
+        created_by=_user_ref(primer.created_by),
     )
 
 
@@ -266,6 +291,8 @@ def line_ref(line: Line) -> LineRef:
         sequences_in_line=[sequence_in_line_ref(sil) for sil in line.sequences_in_line],
         parent_ids=line.parent_ids,
         tags=[TagRead(id=tag.id, name=tag.name) for tag in line.tags],
+        created_at=line.created_at,
+        created_by=_user_ref(line.created_by),
     )
 
 

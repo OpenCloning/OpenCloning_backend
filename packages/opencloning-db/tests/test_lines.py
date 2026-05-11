@@ -586,3 +586,72 @@ def test_delete_line_does_not_exist_returns_404(lines_client):
     )
     assert response.status_code == 404
     assert response.json()['detail'] == 'Line not found'
+
+
+def test_post_line_sets_created_by(lines_client):
+    """POST /lines attributes creation to the requesting user."""
+    c = lines_client['client']
+    wid = lines_client['w1']
+    response = c.post(
+        '/lines',
+        headers=workspace_headers(lines_client['token_owner_w1'], wid),
+        json={'uid': 'L-CREATED-BY', 'allele_ids': [lines_client['allele_w1_aux_id']]},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body['created_by'] == {
+        'id': lines_client['owner_w1_id'],
+        'display_name': 'Owner W1',
+    }
+    assert body['created_at'] is not None
+
+
+def test_get_line_returns_created_at_for_seeded(lines_client):
+    """Seeded lines expose created_at and a null created_by."""
+    c = lines_client['client']
+    response = c.get(
+        f"/lines/{lines_client['line_w1_id']}",
+        headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body['created_at'] is not None
+    assert body['created_by'] is None
+
+
+def test_get_lines_filter_by_created_by(lines_client):
+    """GET /lines?created_by=... filters by creator display_name substring."""
+    c = lines_client['client']
+    wid = lines_client['w1']
+    headers_owner = workspace_headers(lines_client['token_owner_w1'], wid)
+    headers_both = workspace_headers(lines_client['token_owner_both'], wid)
+
+    r = c.post(
+        '/lines',
+        headers=headers_owner,
+        json={'uid': 'L-BY-OWNER-W1', 'allele_ids': [lines_client['allele_w1_aux_id']]},
+    )
+    assert r.status_code == 200, r.text
+    line_owner_id = r.json()['id']
+
+    r = c.post(
+        '/lines',
+        headers=headers_both,
+        json={'uid': 'L-BY-OWNER-BOTH'},
+    )
+    assert r.status_code == 200, r.text
+    line_both_id = r.json()['id']
+
+    r = c.get('/lines?created_by=Owner W1', headers=headers_owner)
+    assert r.status_code == 200
+    ids = {it['id'] for it in r.json()['items']}
+    assert ids == {line_owner_id}
+
+    r = c.get('/lines?created_by=owner', headers=headers_owner)
+    assert r.status_code == 200
+    ids = {it['id'] for it in r.json()['items']}
+    assert ids == {line_owner_id, line_both_id}
+
+    r = c.get('/lines?created_by=nobody', headers=headers_owner)
+    assert r.status_code == 200
+    assert r.json()['items'] == []

@@ -612,8 +612,9 @@ def test_post_primers_bulk_success_returns_primer_refs(primers_client):
     assert r.status_code == 200
     rows = r.json()
     assert len(rows) == 2
-    assert set(rows[0]) == {'id', 'name', 'sequence', 'uid', 'tags'}
-    assert set(rows[1]) == {'id', 'name', 'sequence', 'uid', 'tags'}
+    expected_keys = {'id', 'name', 'sequence', 'uid', 'tags', 'created_at', 'created_by'}
+    assert set(rows[0]) == expected_keys
+    assert set(rows[1]) == expected_keys
     assert rows[0]['id'] > 0
     assert rows[1]['id'] > 0
     assert rows[0]['name'] == 'bulk_new_1'
@@ -751,3 +752,91 @@ def test_post_primers_bulk_non_strict_still_rejects_uid_and_invalid_sequence(pri
         list_r = c.get('/primers?name=non_strict', headers=headers)
         assert list_r.status_code == 200
         assert len(list_r.json()['items']) == 0
+
+
+def test_post_primer_sets_created_by(primers_client):
+    """POST /primers attributes creation to the requesting user."""
+    c = primers_client['client']
+    wid = primers_client['w1']
+    r = c.post(
+        '/primers',
+        headers=workspace_headers(primers_client['token_owner_w1'], wid),
+        json={'name': 'creator_check_primer', 'sequence': 'GGCC'},
+    )
+    assert r.status_code == 200, r.text
+    primer_id = r.json()['id']
+
+    r2 = c.get(f"/primers/{primer_id}", headers=workspace_headers(primers_client['token_owner_w1'], wid))
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body['created_by'] == {
+        'id': primers_client['owner_w1_id'],
+        'display_name': 'Owner W1',
+    }
+    assert body['created_at'] is not None
+
+
+def test_post_primers_bulk_sets_created_by(primers_client):
+    """POST /primers/bulk attributes creation to the requesting user."""
+    c = primers_client['client']
+    wid = primers_client['w1']
+    r = c.post(
+        '/primers/bulk',
+        headers=workspace_headers(primers_client['token_owner_w1'], wid),
+        json=[
+            {'name': 'bulk_owner_a', 'sequence': 'AACC'},
+            {'name': 'bulk_owner_b', 'sequence': 'GGTT'},
+        ],
+    )
+    assert r.status_code == 200, r.text
+    for row in r.json():
+        assert row['created_by'] == {
+            'id': primers_client['owner_w1_id'],
+            'display_name': 'Owner W1',
+        }
+        assert row['created_at'] is not None
+
+
+def test_get_primer_returns_created_at_and_created_by(primers_client):
+    """Seeded primers (no creator) still expose the new fields."""
+    c = primers_client['client']
+    pid = primers_client['primer_id']
+    r = c.get(
+        f"/primers/{pid}",
+        headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert 'created_at' in body and body['created_at'] is not None
+    # Fixture primers are added directly via ORM with no creator → null
+    assert body['created_by'] is None
+
+
+def test_get_primers_filter_by_created_by(primers_client):
+    """GET /primers?created_by=... matches display_name substring case-insensitively."""
+    c = primers_client['client']
+    wid = primers_client['w1']
+    headers_owner = workspace_headers(primers_client['token_owner_w1'], wid)
+    headers_viewer = workspace_headers(primers_client['token_owner_both'], wid)
+
+    r = c.post('/primers', headers=headers_owner, json={'name': 'by_owner_w1', 'sequence': 'AAAA'})
+    assert r.status_code == 200
+    by_owner_id = r.json()['id']
+
+    r = c.post('/primers', headers=headers_viewer, json={'name': 'by_owner_both', 'sequence': 'TTTT'})
+    assert r.status_code == 200
+    by_both_id = r.json()['id']
+
+    r = c.get('/primers?created_by=Owner W1', headers=headers_owner)
+    assert r.status_code == 200
+    ids = {it['id'] for it in r.json()['items']}
+    assert ids == {by_owner_id}
+
+    r = c.get('/primers?created_by=owner', headers=headers_owner)
+    assert r.status_code == 200
+    ids = {it['id'] for it in r.json()['items']}
+    assert ids == {by_owner_id, by_both_id}
+
+    r = c.get('/primers?created_by=nobody', headers=headers_owner)
+    assert r.status_code == 200
+    assert r.json()['items'] == []

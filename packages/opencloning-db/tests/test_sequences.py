@@ -1529,3 +1529,105 @@ def test_search_rotation_errors():
         _search_rotation(Dseq('ATGCA', circular=True), Dseq('ATGC', circular=True))
     with pytest.raises(ValueError):
         _search_rotation(Dseq('ATGCT', circular=True), Dseq('ATGCA', circular=True))
+
+
+def test_post_cloning_strategy_sets_created_by(sequences_client):
+    """Sequences (and any primers) created from a cloning strategy carry the creator."""
+    c = sequences_client['client']
+    headers = workspace_headers(
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        extra={'Content-Type': 'application/json'},
+    )
+    body = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json')).model_dump(mode='json')
+    r = c.post('/sequences', headers=headers, json=body)
+    assert r.status_code == 200, r.text
+    root_id = r.json()['id']
+
+    list_headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    r2 = c.get(f"/sequences/{root_id}", headers=list_headers)
+    assert r2.status_code == 200
+    seq_body = r2.json()
+    assert seq_body['created_by'] == {
+        'id': sequences_client['owner_w1_id'],
+        'display_name': 'Owner W1',
+    }
+    assert seq_body['created_at'] is not None
+
+
+def test_get_sequence_returns_created_at_and_created_by_for_seeded(sequences_client):
+    """Seeded sequences (no creator) still expose created_at and a null created_by."""
+    c = sequences_client['client']
+    headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    r = c.get(f"/sequences/{sequences_client['seq_w1_id']}", headers=headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body['created_at'] is not None
+    assert body['created_by'] is None
+
+
+def test_get_sequences_filter_by_created_by(sequences_client):
+    """GET /sequences?created_by=... filters by creator display_name substring."""
+    c = sequences_client['client']
+    wid = sequences_client['w1']
+    headers_owner = workspace_headers(
+        sequences_client['token_owner_w1'],
+        wid,
+        extra={'Content-Type': 'application/json'},
+    )
+    headers_both = workspace_headers(
+        sequences_client['token_owner_both'],
+        wid,
+        extra={'Content-Type': 'application/json'},
+    )
+
+    body_owner = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json')).model_dump(
+        mode='json'
+    )
+    r = c.post('/sequences', headers=headers_owner, json=body_owner)
+    assert r.status_code == 200, r.text
+    owner_root_id = r.json()['id']
+
+    body_both = opencloning_models.CloningStrategy.model_validate(cs_gateway_BP.model_dump(mode='json')).model_dump(
+        mode='json'
+    )
+    r = c.post('/sequences', headers=headers_both, json=body_both)
+    assert r.status_code == 200, r.text
+    both_root_id = r.json()['id']
+
+    list_headers = workspace_headers(sequences_client['token_owner_w1'], wid)
+    r = c.get('/sequences?created_by=Owner W1', headers=list_headers)
+    assert r.status_code == 200
+    owner_w1_ids = {it['id'] for it in r.json()['items']}
+    assert owner_root_id in owner_w1_ids
+    assert both_root_id not in owner_w1_ids
+
+    r = c.get('/sequences?created_by=owner', headers=list_headers)
+    assert r.status_code == 200
+    owner_ids = {it['id'] for it in r.json()['items']}
+    assert owner_root_id in owner_ids
+    assert both_root_id in owner_ids
+
+    r = c.get('/sequences?created_by=nobody', headers=list_headers)
+    assert r.status_code == 200
+    assert r.json()['items'] == []
+
+
+def test_post_sequences_bulk_sets_created_by(sequences_client):
+    """Bulk-uploaded sequences are attributed to the requesting user."""
+    c = sequences_client['client']
+    wid = sequences_client['w1']
+    headers_owner = workspace_headers(sequences_client['token_owner_w1'], wid)
+
+    seq_record = Dseqrecord('atgcacgtagctagctagctagctgactgactg', name='bulk-attributed')
+    file_content = seq_record.format('genbank')
+    files = {'files': ('bulk_attr.gb', file_content, 'application/octet-stream')}
+    r = c.post('/sequences/bulk', headers=headers_owner, files=files)
+    assert r.status_code == 200, r.text
+    items = r.json()
+    assert len(items) == 1
+    assert items[0]['created_by'] == {
+        'id': sequences_client['owner_w1_id'],
+        'display_name': 'Owner W1',
+    }
+    assert items[0]['created_at'] is not None

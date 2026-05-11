@@ -16,7 +16,7 @@ from opencloning_db.apimodels import (
 
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag, WorkspaceRole
+from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag, User, WorkspaceRole
 from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
@@ -54,6 +54,10 @@ def get_lines(
         description='Filter lines by plasmid name (case-insensitive substring match), spaces are AND', default=None
     ),
     uid: str | None = Query(description='Filter lines by uid (case-insensitive substring match)', default=None),
+    created_by: str | None = Query(
+        description='Filter lines by creator display name (case-insensitive substring match)',
+        default=None,
+    ),
 ):
     current_user, session, workspace_id = ctx
 
@@ -65,6 +69,7 @@ def get_lines(
             .options(selectinload(Sequence.tags)),
             selectinload(Line.parents),
             selectinload(Line.tags),
+            selectinload(Line.created_by),
         )
         .where(Line.workspace_id == workspace_id)
     )
@@ -80,6 +85,8 @@ def get_lines(
             query = query.where(exists(subq))
     if uid is not None:
         query = query.where(Line.uid.ilike(f"%{uid}%"))
+    if created_by is not None:
+        query = query.join(User, User.id == Line.created_by_id).where(User.display_name.ilike(f"%{created_by}%"))
     query = query.order_by(Line.id.desc())
     return paginate(session, query, transformer=lambda items: [line_ref(line) for line in items])
 
@@ -153,7 +160,7 @@ def post_line(
             )
         )
 
-    line = Line(uid=body.uid, workspace_id=workspace_id)
+    line = Line(uid=body.uid, workspace_id=workspace_id, created_by_id=current_user.id)
     line.parents = parents
     line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in allele_seqs] + [
         SequenceInLine(sequence=seq) for seq in plasmid_seqs

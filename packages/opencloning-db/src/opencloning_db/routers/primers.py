@@ -17,14 +17,14 @@ from opencloning_db.apimodels import (
     PrimerBulkRow,
     PrimerRef,
     SequenceRef,
-    TagRead,
+    primer_ref,
     sequence_ref,
     PrimerUpdate,
     PrimerCreate,
 )
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from opencloning_db.models import InputEntity, Primer, Sequence, Source, SourceInput, Tag, WorkspaceRole
+from opencloning_db.models import InputEntity, Primer, Sequence, Source, SourceInput, Tag, User, WorkspaceRole
 from pydantic import create_model
 from opencloning_db.workspace_deps import (
     WorkspaceContext,
@@ -142,10 +142,18 @@ def get_primers(
         description='Filter primers by sample uid (case-insensitive substring match)', default=None
     ),
     has_uid: bool = Query(description='Filter primers by whether they have a uid', default=False),
+    created_by: str | None = Query(
+        description='Filter primers by creator display name (case-insensitive substring match)',
+        default=None,
+    ),
 ):
     current_user, session, workspace_id = ctx
 
-    query = select(Primer).where(Primer.workspace_id == workspace_id).options(selectinload(InputEntity.tags))
+    query = (
+        select(Primer)
+        .where(Primer.workspace_id == workspace_id)
+        .options(selectinload(InputEntity.tags), selectinload(InputEntity.created_by))
+    )
     if tags:
         query = query.where(InputEntity.tags.any(and_(Tag.id.in_(tags), Tag.workspace_id == workspace_id)))
     if name is not None:
@@ -154,6 +162,8 @@ def get_primers(
         query = query.where(Primer.uid.ilike(f"%{uid}%"))
     if has_uid is True:
         query = query.where(Primer.uid.isnot(None))
+    if created_by is not None:
+        query = query.join(User, User.id == Primer.created_by_id).where(User.display_name.ilike(f"%{created_by}%"))
     query = query.order_by(Primer.id.desc())
     return paginate(session, query)
 
@@ -179,6 +189,7 @@ def post_primer(
         workspace_id=workspace_id,
         uid_workspace_id=workspace_id,
         sequence=primer.sequence,
+        created_by_id=current_user.id,
     )
 
     session.add(db_primer)
@@ -219,6 +230,7 @@ def post_primers_bulk(
                 workspace_id=workspace_id,
                 uid_workspace_id=workspace_id,
                 sequence=primer.sequence,
+                created_by_id=current_user.id,
             )
         )
     session.add_all(db_primers)
@@ -236,16 +248,7 @@ def post_primers_bulk(
     for db_primer in db_primers:
         session.refresh(db_primer)
 
-    return [
-        PrimerRef(
-            id=db_primer.id,
-            name=db_primer.name,
-            sequence=db_primer.sequence,
-            uid=db_primer.uid,
-            tags=[TagRead(id=t.id, name=t.name) for t in db_primer.tags],
-        )
-        for db_primer in db_primers
-    ]
+    return [primer_ref(db_primer) for db_primer in db_primers]
 
 
 @router.get('/primers/{primer_id}', response_model=PrimerRef)
@@ -256,13 +259,7 @@ def get_primer(
     current_user, session, workspace_id = ctx
     primer = get_primer_in_workspace_for_user(session, current_user, workspace_id, primer_id, WorkspaceRole.viewer)
 
-    return PrimerRef(
-        id=primer.id,
-        name=primer.name,
-        sequence=primer.sequence,
-        uid=primer.uid,
-        tags=[TagRead(id=t.id, name=t.name) for t in primer.tags],
-    )
+    return primer_ref(primer)
 
 
 @router.get(
@@ -341,13 +338,7 @@ def patch_primer(
     session.commit()
     session.refresh(primer)
 
-    return PrimerRef(
-        id=primer.id,
-        name=primer.name,
-        sequence=primer.sequence,
-        uid=primer.uid,
-        tags=[TagRead(id=t.id, name=t.name) for t in primer.tags],
-    )
+    return primer_ref(primer)
 
 
 @router.delete('/primers/{primer_id}', response_model=DeletedResponse)

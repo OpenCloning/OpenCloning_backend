@@ -48,6 +48,7 @@ from opencloning_db.models import (
     Tag,
     SequenceSample,
     SourceInput,
+    User,
     WorkspaceRole,
     generate_unique_filename,
 )
@@ -82,6 +83,10 @@ def get_sequences(
         description='Filter sequences by sample uid (case-insensitive substring match)', default=None
     ),
     has_uid: bool = Query(description='Filter sequences by whether they have a uid', default=False),
+    created_by: str | None = Query(
+        description='Filter sequences by creator display name (case-insensitive substring match)',
+        default=None,
+    ),
 ):
     _, session, workspace_id = ctx
 
@@ -90,6 +95,7 @@ def get_sequences(
         .options(
             selectinload(InputEntity.tags),
             selectinload(Sequence.instances),
+            selectinload(InputEntity.created_by),
         )
         .where(Sequence.workspace_id == workspace_id)
     )
@@ -124,6 +130,8 @@ def get_sequences(
             )
         )
         query = query.where(exists(subq))
+    if created_by is not None:
+        query = query.join(User, User.id == Sequence.created_by_id).where(User.display_name.ilike(f"%{created_by}%"))
     query = query.order_by(Sequence.id.desc())
     return paginate(session, query)
 
@@ -488,7 +496,7 @@ async def post_sequences_bulk(
     files: List[UploadFile] = File(...),
     strict: bool = Query(description='Fail on any validation warning', default=True),
 ):
-    _, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx
     loaded_files = await _load_uploaded_files(files)
     validation_rows, records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     if _has_any_sequence_warning(validation_rows, strict):
@@ -498,7 +506,10 @@ async def post_sequences_bulk(
     for record in records:
         db_sequences.extend(
             cloning_strategy_to_db(
-                pydna_opencloning_models.CloningStrategy.from_dseqrecords([record]), session, workspace_id
+                pydna_opencloning_models.CloningStrategy.from_dseqrecords([record]),
+                session,
+                workspace_id,
+                created_by_id=current_user.id,
             )[0]
         )
 
@@ -739,8 +750,10 @@ def post_cloning_strategy(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     cloning_strategy: opencloning_models.CloningStrategy,
 ):
-    _, session, workspace_id = ctx
-    sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, workspace_id)
+    current_user, session, workspace_id = ctx
+    sequences, id_mappings = cloning_strategy_to_db(
+        cloning_strategy, session, workspace_id, created_by_id=current_user.id
+    )
     session.flush()
     root_sequence = next((s for s in sequences if len(s.source_inputs) == 0))
     session.refresh(root_sequence)

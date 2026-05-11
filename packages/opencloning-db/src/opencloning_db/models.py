@@ -5,12 +5,14 @@ SQLAlchemy ORM models for the OpenCloning database.
 import enum
 import os
 import uuid
+from datetime import datetime
 from typing import List, Optional, TypeVar, Union, get_args, Self
 
 from opencloning.dna_functions import read_dsrecord_from_json
 from sqlalchemy import (
     CheckConstraint,
     Column,
+    DateTime,
     Enum,
     ForeignKey,
     Integer,
@@ -19,6 +21,7 @@ from sqlalchemy import (
     UniqueConstraint,
     event,
 )
+from sqlalchemy.sql import func
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -194,8 +197,19 @@ class InputEntity(Base):
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)
     type: Mapped[str] = mapped_column()
     name: Mapped[Optional[str]] = mapped_column(default='name')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+        default=None,
+    )
     workspace: Mapped['Workspace'] = relationship(back_populates='input_entities')
     source_inputs: Mapped[List['SourceInput']] = relationship(back_populates='input_entity')
+    created_by: Mapped[Optional['User']] = relationship(foreign_keys=[created_by_id])
     tags: Mapped[List['Tag']] = relationship(
         'Tag',
         secondary=input_entity_tag,
@@ -254,7 +268,12 @@ class Sequence(InputEntity):
         )
 
     @classmethod
-    def from_pydantic_sequence(cls, pydantic_sequence: opencloning_models.TextFileSequence, workspace_id: int) -> Self:
+    def from_pydantic_sequence(
+        cls,
+        pydantic_sequence: opencloning_models.TextFileSequence,
+        workspace_id: int,
+        created_by_id: Optional[int] = None,
+    ) -> Self:
         """
         Create a database sequence from a pydantic sequence. It does not persist the sequence to the database.
         It writes the sequence to a file in the sequence files directory as the file_path is required.
@@ -271,6 +290,7 @@ class Sequence(InputEntity):
             workspace_id=workspace_id,
             file_path=sequence_file,
             seguid=seguid,
+            created_by_id=created_by_id,
             **pydantic_sequence.model_dump(include={'overhang_crick_3prime', 'overhang_watson_3prime'}),
         )
 
@@ -316,10 +336,16 @@ class Primer(InputEntity):
         return value
 
     @classmethod
-    def from_pydantic(cls, pydantic_primer: opencloning_models.Primer, workspace_id: int) -> 'Primer':
+    def from_pydantic(
+        cls,
+        pydantic_primer: opencloning_models.Primer,
+        workspace_id: int,
+        created_by_id: Optional[int] = None,
+    ) -> 'Primer':
         return cls(
             workspace_id=workspace_id,
             uid_workspace_id=workspace_id,
+            created_by_id=created_by_id,
             **pydantic_primer.model_dump(include={'sequence', 'name'}),
         )
 
@@ -556,8 +582,19 @@ class Line(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)
     uid: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+        default=None,
+    )
 
     workspace: Mapped['Workspace'] = relationship(back_populates='lines')
+    created_by: Mapped[Optional['User']] = relationship(foreign_keys=[created_by_id])
 
     # Self-referential many-to-many: a line can have many parents,
     # and each parent can have many children.
