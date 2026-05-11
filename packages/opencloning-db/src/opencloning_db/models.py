@@ -15,12 +15,16 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     JSON,
     Table,
     UniqueConstraint,
     event,
 )
+import sqlite3
+
+from sqlalchemy.engine import Engine
 from sqlalchemy.sql import func
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import (
@@ -431,15 +435,18 @@ class SourceInput(Base):
 class AssemblyFragment(SourceInput):
     __tablename__ = 'assembly_fragment'
     __table_args__ = (
+        ForeignKeyConstraint(
+            ['source_id', 'position'],
+            ['source_input.source_id', 'source_input.position'],
+        ),
         CheckConstraint(
             'left_location IS NOT NULL OR right_location IS NOT NULL',
             name='assembly_fragment_has_location',
         ),
     )
 
-    # PK matches parent: (source_id, position)
-    source_id: Mapped[int] = mapped_column(ForeignKey('source_input.source_id'), primary_key=True)
-    position: Mapped[int] = mapped_column(ForeignKey('source_input.position'), primary_key=True)
+    source_id: Mapped[int] = mapped_column(primary_key=True)
+    position: Mapped[int] = mapped_column(primary_key=True)
     left_location: Mapped[Optional[str]]
     right_location: Mapped[Optional[str]]
     reverse_complemented: Mapped[bool]
@@ -733,3 +740,11 @@ def _validate_cross_workspace_invariants(session, *_):
     _validate_sequence_in_line_workspace(session)
     _validate_source_input_workspace(session)
     _validate_tag_links_workspace(session)
+
+
+@event.listens_for(Engine, 'connect')
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute('PRAGMA foreign_keys=ON;')
+        cursor.close()

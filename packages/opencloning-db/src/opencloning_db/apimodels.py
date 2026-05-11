@@ -143,7 +143,7 @@ class SequenceRef(ApiModel):
     sample_uids: list[str] = []
     seguid: str | None = None
     created_at: datetime
-    created_by: UserRef | None = None
+    created_by: UserRef
 
 
 class SequenceUpdate(ApiModel):
@@ -202,7 +202,7 @@ class PrimerRef(ApiModel):
     uid: str | None = None
     tags: list[TagRead] = []
     created_at: datetime
-    created_by: UserRef | None = None
+    created_by: UserRef
 
 
 class SequenceSampleWithSequence(ApiModel):
@@ -227,7 +227,7 @@ class LineRef(ApiModel):
     parent_ids: list[int]
     tags: list[TagRead]
     created_at: datetime
-    created_by: UserRef | None = None
+    created_by: UserRef
 
 
 class LineCreate(ApiModel):
