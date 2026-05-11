@@ -24,12 +24,14 @@ from opencloning_db.apimodels import (
     CloningStrategyIdMapping,
     CloningStrategyResponse,
     DeletedResponse,
+    LineRef,
     SequenceRef,
     SequenceValidationRow,
     SequenceSearchResult,
     SequenceUpdate,
     SequencingFileRef,
     PrimerRef,
+    line_ref,
     primer_ref,
     sequence_ref,
 )
@@ -289,6 +291,19 @@ def change_sequence_circularity(
     _replace_sequence_file(session, db_sequence, toggled.format('genbank'))
 
     return sequence_ref(db_sequence)
+
+
+@router.get('/sequences/{sequence_id}/lines', response_model=list[LineRef])
+def get_sequence_lines(
+    sequence_id: int,
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+):
+    current_user, session, workspace_id = ctx
+    db_sequence = get_sequence_in_workspace_for_user(
+        session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
+    )
+    lines = [instance.line for instance in db_sequence.instances if isinstance(instance, SequenceInLine)]
+    return [line_ref(line) for line in lines]
 
 
 @router.patch('/sequences/{sequence_id}/change_annotation', response_model=SequenceRef)

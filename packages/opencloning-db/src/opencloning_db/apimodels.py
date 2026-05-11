@@ -3,7 +3,7 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
-from opencloning_db.models import SequenceType, Sequence, Primer
+from opencloning_db.models import SequenceType, Sequence, Primer, Line, SequenceInLine
 
 
 class ApiModel(BaseModel):
@@ -247,6 +247,25 @@ def primer_ref(primer: Primer) -> PrimerRef:
         sequence=primer.sequence,
         uid=primer.uid,
         tags=[TagRead(id=t.id, name=t.name) for t in primer.tags],
+    )
+
+
+def sequence_in_line_ref(sil: SequenceInLine) -> SequenceInLineRef:
+    """Build a SequenceInLineRef from a SequenceInLine ORM instance."""
+    seq = sil.sequence
+    return SequenceInLineRef(
+        id=sil.id,
+        sequence=sequence_ref(seq),
+    )
+
+
+def line_ref(line: Line) -> LineRef:
+    return LineRef(
+        id=line.id,
+        uid=line.uid,
+        sequences_in_line=[sequence_in_line_ref(sil) for sil in line.sequences_in_line],
+        parent_ids=line.parent_ids,
+        tags=[TagRead(id=tag.id, name=tag.name) for tag in line.tags],
     )
 
 

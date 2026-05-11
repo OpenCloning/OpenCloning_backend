@@ -11,10 +11,9 @@ from opencloning_db.apimodels import (
     LineCreate,
     LineRef,
     LineUpdate,
-    SequenceInLineRef,
-    TagRead,
-    sequence_ref,
+    line_ref,
 )
+
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag, WorkspaceRole
@@ -27,25 +26,6 @@ from opencloning_db.workspace_deps import (
 )
 
 router = APIRouter(tags=['lines'])
-
-
-def _sil_ref(sil: SequenceInLine) -> SequenceInLineRef:
-    """Build a SequenceInLineRef from a SequenceInLine ORM instance."""
-    seq = sil.sequence
-    return SequenceInLineRef(
-        id=sil.id,
-        sequence=sequence_ref(seq),
-    )
-
-
-def _line_ref(line: Line) -> LineRef:
-    return LineRef(
-        id=line.id,
-        uid=line.uid,
-        sequences_in_line=[_sil_ref(sil) for sil in line.sequences_in_line],
-        parent_ids=line.parent_ids,
-        tags=[TagRead(id=tag.id, name=tag.name) for tag in line.tags],
-    )
 
 
 def get_line_subquery(line_id_col: Column, sequence_type: SequenceType, name: str) -> Select:
@@ -101,7 +81,7 @@ def get_lines(
     if uid is not None:
         query = query.where(Line.uid.ilike(f"%{uid}%"))
     query = query.order_by(Line.id.desc())
-    return paginate(session, query, transformer=lambda items: [_line_ref(line) for line in items])
+    return paginate(session, query, transformer=lambda items: [line_ref(line) for line in items])
 
 
 @router.get('/lines/{line_id}', response_model=LineRef)
@@ -112,7 +92,7 @@ def get_line(
     """Get a single engineered strain / cell line by id."""
     current_user, session, workspace_id = ctx
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.viewer)
-    return _line_ref(line)
+    return line_ref(line)
 
 
 @router.get('/lines/{line_id}/children', response_model=list[LineRef])
@@ -123,7 +103,7 @@ def get_line_children(
     """List direct children of a line."""
     current_user, session, workspace_id = ctx
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.viewer)
-    return [_line_ref(child) for child in line.children]
+    return [line_ref(child) for child in line.children]
 
 
 @router.post('/lines', response_model=LineRef)
@@ -182,7 +162,7 @@ def post_line(
     session.add(line)
     session.commit()
     session.refresh(line)
-    return _line_ref(line)
+    return line_ref(line)
 
 
 @router.patch('/lines/{line_id}', response_model=LineRef)
@@ -250,7 +230,7 @@ def patch_line_links(
 
     session.commit()
     session.refresh(line)
-    return _line_ref(line)
+    return line_ref(line)
 
 
 @router.delete('/lines/{line_id}', response_model=DeletedResponse)

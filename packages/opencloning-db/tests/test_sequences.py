@@ -1104,6 +1104,38 @@ def test_get_sequence_children_template_to_product(sequences_client):
     assert ids == [sequences_client['pcr_product_id']]
 
 
+def test_get_sequence_lines_returns_lines_for_sequence(sequences_client):
+    c = sequences_client['client']
+    headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    r = c.get(f"/sequences/{sequences_client['pcr_template_id']}/lines", headers=headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body, list)
+    assert len(body) == 1
+    assert body[0]['uid'] == 'line-for-seq-filter'
+    assert {item['sequence']['id'] for item in body[0]['sequences_in_line']} == {sequences_client['pcr_template_id']}
+
+
+def test_get_sequence_lines_non_member_forbidden(sequences_client):
+    c = sequences_client['client']
+    r = c.get(
+        f"/sequences/{sequences_client['pcr_template_id']}/lines",
+        headers=workspace_headers(sequences_client['token_owner_w2'], sequences_client['w1']),
+    )
+    assert r.status_code == 403
+    assert 'Not allowed' in r.json()['detail']
+
+
+def test_get_sequence_lines_workspace_mismatch_404(sequences_client):
+    c = sequences_client['client']
+    r = c.get(
+        f"/sequences/{sequences_client['seq_w2_id']}/lines",
+        headers=workspace_headers(sequences_client['token_owner_both'], sequences_client['w1']),
+    )
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Sequence not found'
+
+
 def test_get_sequence_primers_pcr_template_and_product(sequences_client):
     """Template sequence is PCR input (template-side primers); product sequence lists output-side primers."""
     c = sequences_client['client']
