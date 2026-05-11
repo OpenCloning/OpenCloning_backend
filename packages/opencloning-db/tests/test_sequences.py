@@ -12,8 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opencloning_db.config import get_config
+from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag, Primer
+from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag, Primer, User
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
 from .helpers import (
     assert_get_invalid_workspace_id_422,
@@ -28,6 +29,11 @@ from .helpers import (
     workspace_headers,
 )
 from opencloning_db.routers.sequences import _search_rotation
+
+
+def _write_ctx(workspace_id: int, user_id: int) -> WriteContext:
+    """Build a WriteContext from raw id values used by the standard test fixtures."""
+    return WriteContext(user=User(id=user_id, email='unused@test'), workspace_id=workspace_id)
 
 
 def _sequence_in_workspace(session: Session, workspace_id: int, name: str) -> Sequence:
@@ -53,8 +59,11 @@ def sequences_client(engine_client_config):
         ctx = seed_standard_users(session)
         w1, w2 = ctx['w1'], ctx['w2']
 
-        seq_w1 = dseqrecord_to_db(Dseqrecord('atgcag', name='seq-w1'), session, w1, created_by_id=ctx['owner_w1_id'])
-        seq_w2 = dseqrecord_to_db(Dseqrecord('atgcagc', name='seq-w2'), session, w2, created_by_id=ctx['owner_w2_id'])
+        w1_ctx = _write_ctx(w1, ctx['owner_w1_id'])
+        w2_ctx = _write_ctx(w2, ctx['owner_w2_id'])
+
+        seq_w1 = dseqrecord_to_db(Dseqrecord('atgcag', name='seq-w1'), session, ctx=w1_ctx)
+        seq_w2 = dseqrecord_to_db(Dseqrecord('atgcagc', name='seq-w2'), session, ctx=w2_ctx)
 
         sample_w1 = SequenceSample(
             uid='UID-W1',
@@ -63,8 +72,8 @@ def sequences_client(engine_client_config):
         )
         session.add(sample_w1)
 
-        cloning_strategy_to_db(cs_pcr, session, w1, created_by_id=ctx['owner_w1_id'])
-        cloning_strategy_to_db(cs_gateway_BP, session, w1, created_by_id=ctx['owner_w1_id'])
+        cloning_strategy_to_db(cs_pcr, session, ctx=w1_ctx)
+        cloning_strategy_to_db(cs_gateway_BP, session, ctx=w1_ctx)
         session.flush()
 
         pcr_template = _sequence_in_workspace(session, w1, 'template')
@@ -80,7 +89,7 @@ def sequences_client(engine_client_config):
         session.flush()
         pcr_product.tags.append(tag)
 
-        line = Line(workspace_id=w1, uid='line-for-seq-filter', created_by_id=ctx['owner_w1_id'])
+        line = Line.from_create(uid='line-for-seq-filter', ctx=w1_ctx)
         session.add(line)
         session.flush()
         session.add(SequenceInLine(sequence_id=pcr_template.id, line_id=line.id))
@@ -95,27 +104,24 @@ def sequences_client(engine_client_config):
 
         dseqr = Dseqrecord('atgcgatcgatac', circular=True, name='circ_plasmid')
         dseqr.add_feature(0, 4, type_='CDS')
-        seq_circ = dseqrecord_to_db(dseqr, session, w1, created_by_id=ctx['owner_w1_id'])
-        seq_patch_linear = dseqrecord_to_db(
-            Dseqrecord('atgcag', name='patch-linear-target'), session, w1, created_by_id=ctx['owner_w1_id']
-        )
+        seq_circ = dseqrecord_to_db(dseqr, session, ctx=w1_ctx)
+        seq_patch_linear = dseqrecord_to_db(Dseqrecord('atgcag', name='patch-linear-target'), session, ctx=w1_ctx)
 
         seq_with_overhangs = dseqrecord_to_db(
             Dseqrecord(Dseq.from_full_sequence_and_overhangs('atgcag', 1, 1), name='with-overhangs'),
             session,
-            w1,
-            created_by_id=ctx['owner_w1_id'],
+            ctx=w1_ctx,
         )
 
         dseqr = Dseqrecord('ACGT', circular=True, name='with-origin-spanning-feature')
         dseqr.add_feature(0, 4, type_='CDS')
         dseqr = dseqr.shifted(2)
         dseqr.id = '0'
-        seq_with_origin_spanning_feature = dseqrecord_to_db(dseqr, session, w1, created_by_id=ctx['owner_w1_id'])
+        seq_with_origin_spanning_feature = dseqrecord_to_db(dseqr, session, ctx=w1_ctx)
 
         dseqr_rc = dseqr.reverse_complement()
         dseqr_rc.source = None
-        seq_with_origin_spanning_feature_rc = dseqrecord_to_db(dseqr_rc, session, w1, created_by_id=ctx['owner_w1_id'])
+        seq_with_origin_spanning_feature_rc = dseqrecord_to_db(dseqr_rc, session, ctx=w1_ctx)
 
         session.commit()
 
@@ -451,10 +457,9 @@ def test_delete_sequence_rejects_when_in_strain(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
     with Session(sequences_client['engine']) as session:
-        line = Line(
-            workspace_id=sequences_client['w1'],
+        line = Line.from_create(
             uid='line-blocking-delete',
-            created_by_id=sequences_client['owner_w1_id'],
+            ctx=_write_ctx(sequences_client['w1'], sequences_client['owner_w1_id']),
         )
         session.add(line)
         session.flush()

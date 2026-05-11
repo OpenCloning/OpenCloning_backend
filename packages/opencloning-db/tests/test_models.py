@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 import opencloning_db.config as app_config
 from opencloning_db.config import Config
+from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import (
     AnySourceParser,
@@ -41,6 +42,11 @@ from opencloning_db.models import (
     generate_unique_filename,
 )
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
+
+
+def _ctx(workspace_id: int, user_id: int = 1) -> WriteContext:
+    """Build a WriteContext with a lightweight (unsaved) User stub for tests."""
+    return WriteContext(user=User(id=user_id, email='unused@test'), workspace_id=workspace_id)
 
 
 class _MemoryDbTestCase(unittest.TestCase):
@@ -247,7 +253,7 @@ class TestPrimer(_MemoryDbTestCase):
                 sequence='ATGC',
                 database_id=None,
             )
-            primer = Primer.from_pydantic(pp, workspace_id=ws.id, created_by_id=1)
+            primer = Primer.from_pydantic(pp, ctx=_ctx(ws.id))
             session.add(primer)
             session.flush()
             session.refresh(primer)
@@ -299,7 +305,7 @@ class TestPrimer(_MemoryDbTestCase):
                 database_id=None,
             )
             with self.assertRaisesRegex(ValueError, 'at least 2 characters'):
-                Primer.from_pydantic(pp, workspace_id=ws.id, created_by_id=1)
+                Primer.from_pydantic(pp, ctx=_ctx(ws.id))
 
 
 class TestSource(_MemoryDbTestCase):
@@ -448,7 +454,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
     def test_dseqrecord_to_db_raises_when_strategy_has_multiple_sequences(self):
         """``dseqrecord_to_db`` rejects strategies that produce more than one sequence."""
         with self.assertRaisesRegex(ValueError, 'expects exactly one sequence'):
-            dseqrecord_to_db(pcr_product, None, 1, created_by_id=1)
+            dseqrecord_to_db(pcr_product, None, ctx=_ctx(1))
 
     def test_cloning_strategy_to_db_raises_when_sequence_has_no_source(self):
         """Every strategy sequence must have a source with the same id."""
@@ -457,7 +463,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
         strategy.sources = [s for s in strategy.sources if s.id != missing_source_id]
 
         with self.assertRaisesRegex(ValueError, f"No source produces sequence {missing_source_id}"):
-            cloning_strategy_to_db(strategy, None, 1, created_by_id=1)
+            cloning_strategy_to_db(strategy, None, ctx=_ctx(1))
 
     def test_id_mappings_all_new_entities(self):
         """Mappings include all strategy ids and point to persisted rows."""
@@ -468,7 +474,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            output_rows, id_mappings = cloning_strategy_to_db(strategy, session, ws.id, created_by_id=1)
+            output_rows, id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
 
             self.assertEqual(set(id_mappings.keys()), expected_ids)
             self.assertEqual(len(output_rows), len(strategy.sequences))
@@ -490,7 +496,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
             session.add(ws)
             session.flush()
             # First, commit some sequences
-            _, id_mappings = cloning_strategy_to_db(strategy, session, ws.id, created_by_id=1)
+            _, id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
             num_sequences_before = session.query(Sequence).count()
             num_primers_before = session.query(Primer).count()
             self.assertEqual(num_sequences_before, 2)
@@ -506,7 +512,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
             pcr_product = next(s for s in strategy.sequences if s.id == pcr_source.id)
             pcr_product.id = 999
             pcr_source.id = 999
-            new_output_rows, new_id_mappings = cloning_strategy_to_db(strategy, session, ws.id, created_by_id=1)
+            new_output_rows, new_id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
             num_sequences_after = session.query(Sequence).count()
             num_primers_after = session.query(Primer).count()
             self.assertEqual(num_sequences_after, 3)

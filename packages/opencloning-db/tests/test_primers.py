@@ -3,7 +3,8 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from opencloning_db.models import AssemblyFragment, Primer, Sequence, SequenceType, Source, SourceType, Tag
+from opencloning_db.context import WriteContext
+from opencloning_db.models import AssemblyFragment, Primer, Sequence, SequenceType, Source, SourceType, Tag, User
 
 from .helpers import (
     assert_get_invalid_workspace_id_422,
@@ -25,75 +26,43 @@ def primers_client(engine_client_config):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
 
-        primer = Primer(
-            workspace_id=ctx['w1'],
-            uid_workspace_id=ctx['w1'],
-            name='seed_primer',
-            sequence='ATGC',
-            created_by_id=ctx['owner_w1_id'],
-        )
-        primer_uid = Primer(
-            workspace_id=ctx['w1'],
-            uid_workspace_id=ctx['w1'],
-            uid='UID-PRIMER-1',
-            name='uid_primer',
-            sequence='CCGG',
-            created_by_id=ctx['owner_w1_id'],
-        )
-        primer_tagged = Primer(
-            workspace_id=ctx['w1'],
-            uid_workspace_id=ctx['w1'],
-            name='tagged_primer',
-            sequence='TTAA',
-            created_by_id=ctx['owner_w1_id'],
-        )
-        primer_w2 = Primer(
-            workspace_id=ctx['w2'],
-            uid_workspace_id=ctx['w2'],
-            name='w2_primer',
-            sequence='GCGC',
-            created_by_id=ctx['owner_w2_id'],
-        )
-        primer_w2_b = Primer(
-            workspace_id=ctx['w2'],
-            uid_workspace_id=ctx['w2'],
-            name='w2_primer_b',
-            sequence='ATAT',
-            created_by_id=ctx['owner_w2_id'],
-        )
+        w1_ctx = WriteContext(user=User(id=ctx['owner_w1_id'], email='unused@test'), workspace_id=ctx['w1'])
+        w2_ctx = WriteContext(user=User(id=ctx['owner_w2_id'], email='unused@test'), workspace_id=ctx['w2'])
+
+        primer = Primer.from_create(name='seed_primer', sequence='ATGC', ctx=w1_ctx)
+        primer_uid = Primer.from_create(name='uid_primer', sequence='CCGG', uid='UID-PRIMER-1', ctx=w1_ctx)
+        primer_tagged = Primer.from_create(name='tagged_primer', sequence='TTAA', ctx=w1_ctx)
+        primer_w2 = Primer.from_create(name='w2_primer', sequence='GCGC', ctx=w2_ctx)
+        primer_w2_b = Primer.from_create(name='w2_primer_b', sequence='ATAT', ctx=w2_ctx)
         tag_w1 = Tag(name='primer-tag-w1', workspace_id=ctx['w1'])
         primer_tagged.tags.append(tag_w1)
-        template_seq = Sequence(
-            workspace_id=ctx['w1'],
+        template_seq = Sequence.from_create(
             name='template-seq',
             file_path='template_seq.gb',
-            sequence_type=SequenceType.allele,
             seguid='SEGUID-TEMPLATE-SEQ',
-            created_by_id=ctx['owner_w1_id'],
+            sequence_type=SequenceType.allele,
+            ctx=w1_ctx,
         )
-        product_seq = Sequence(
-            workspace_id=ctx['w1'],
+        product_seq = Sequence.from_create(
             name='product-seq',
             file_path='product_seq.gb',
-            sequence_type=SequenceType.pcr_product,
             seguid='SEGUID-PRODUCT-SEQ',
-            created_by_id=ctx['owner_w1_id'],
+            sequence_type=SequenceType.pcr_product,
+            ctx=w1_ctx,
         )
-        template_seq_w2 = Sequence(
-            workspace_id=ctx['w2'],
+        template_seq_w2 = Sequence.from_create(
             name='template-seq-w2',
             file_path='template_seq_w2.gb',
-            sequence_type=SequenceType.allele,
             seguid='SEGUID-TEMPLATE-SEQ-W2',
-            created_by_id=ctx['owner_w2_id'],
+            sequence_type=SequenceType.allele,
+            ctx=w2_ctx,
         )
-        product_seq_w2 = Sequence(
-            workspace_id=ctx['w2'],
+        product_seq_w2 = Sequence.from_create(
             name='product-seq-w2',
             file_path='product_seq_w2.gb',
-            sequence_type=SequenceType.pcr_product,
             seguid='SEGUID-PRODUCT-SEQ-W2',
-            created_by_id=ctx['owner_w2_id'],
+            sequence_type=SequenceType.pcr_product,
+            ctx=w2_ctx,
         )
         session.add_all(
             [

@@ -88,7 +88,7 @@ def get_sequences(
         default=None,
     ),
 ):
-    _, session, workspace_id = ctx
+    _, session, workspace_id = ctx.destructure()
 
     query = (
         select(Sequence)
@@ -141,7 +141,7 @@ def get_sequence(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -155,7 +155,7 @@ def patch_sequence(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Update the sequence name and/or sequence_type."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
@@ -192,7 +192,7 @@ def delete_sequence(
     from disk after the database commit succeeds.
     """
 
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
@@ -272,7 +272,7 @@ def change_sequence_circularity(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Toggle sequence circularity; only allowed when the sequence has no parents nor children."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
@@ -306,7 +306,7 @@ def get_sequence_lines(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -320,7 +320,7 @@ def change_sequence_annotation(
     body: opencloning_models.TextFileSequence,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
@@ -344,7 +344,7 @@ def get_sequence_by_uid(
     Look up the unique sequence associated with a given sample UID.
     Returns 404 if no sample/sequence exists for that UID.
     """
-    _, session, workspace_id = ctx
+    _, session, workspace_id = ctx.destructure()
     stmt = (
         select(Sequence)
         .where(Sequence.workspace_id == workspace_id)
@@ -484,7 +484,7 @@ async def validate_upload_sequences(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
     files: List[UploadFile] = File(...),
 ):
-    _, session, workspace_id = ctx
+    _, session, workspace_id = ctx.destructure()
     loaded_files = await _load_uploaded_files(files)
     rows, _records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     return rows
@@ -496,7 +496,7 @@ async def post_sequences_bulk(
     files: List[UploadFile] = File(...),
     strict: bool = Query(description='Fail on any validation warning', default=True),
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     loaded_files = await _load_uploaded_files(files)
     validation_rows, records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     if _has_any_sequence_warning(validation_rows, strict):
@@ -508,8 +508,7 @@ async def post_sequences_bulk(
             cloning_strategy_to_db(
                 pydna_opencloning_models.CloningStrategy.from_dseqrecords([record]),
                 session,
-                workspace_id,
-                created_by_id=current_user.id,
+                ctx=ctx,
             )[0]
         )
 
@@ -535,7 +534,7 @@ def get_sequences_by_seguid(
     Look up all sequences with the given SEGUID.
     Returns an empty list if none are found.
     """
-    _, session, workspace_id = ctx
+    _, session, workspace_id = ctx.destructure()
     stmt = _seguid_query(seguid, workspace_id)
     return [sequence_ref(seq) for seq in session.scalars(stmt).all()]
 
@@ -545,7 +544,7 @@ def get_text_file_sequence(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -557,7 +556,7 @@ def get_cloning_strategy(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -599,7 +598,7 @@ def get_sequence_children(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -619,7 +618,7 @@ def get_sequence_primers(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get primers linked to a sequence (as template input or product output)."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -666,7 +665,7 @@ def get_sequence_sequencing_files(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """List all sequencing files linked to a sequence."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
@@ -680,7 +679,7 @@ async def post_sequence_sequencing_files(
     files: List[UploadFile] = File(...),
 ):
     """Upload one or more sequencing files and link them to a sequence."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
@@ -707,7 +706,7 @@ def delete_sequence_sequencing_file(
     file_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     get_sequence_in_workspace_for_user(session, current_user, workspace_id, sequence_id, WorkspaceRole.editor)
     db_file = session.scalar(
         select(SequencingFile).where(SequencingFile.id == file_id, SequencingFile.sequence_id == sequence_id)
@@ -726,7 +725,7 @@ def download_sequencing_file(
     config: Annotated[Config, Depends(get_config)],
 ):
     """Download a sequencing file by ID."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     db_file = session.get(SequencingFile, file_id)
     if db_file is None:
         raise HTTPException(status_code=404, detail='Sequencing file not found')
@@ -750,10 +749,8 @@ def post_cloning_strategy(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     cloning_strategy: opencloning_models.CloningStrategy,
 ):
-    current_user, session, workspace_id = ctx
-    sequences, id_mappings = cloning_strategy_to_db(
-        cloning_strategy, session, workspace_id, created_by_id=current_user.id
-    )
+    current_user, session, workspace_id = ctx.destructure()
+    sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, ctx=ctx)
     session.flush()
     root_sequence = next((s for s in sequences if len(s.source_inputs) == 0))
     session.refresh(root_sequence)
@@ -786,7 +783,7 @@ def search_sequences(
 ):
     query_dseq = read_dsrecord_from_json(query).seq
     seguid = query_dseq.seguid()
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     output = []
     results = session.scalars(_seguid_query(seguid, workspace_id))
     for db_seq in results:

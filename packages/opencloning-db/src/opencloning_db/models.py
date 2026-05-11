@@ -42,6 +42,7 @@ from pydna.readers import read
 import re
 
 from opencloning_db.config import get_config
+from opencloning_db.context import WriteContext
 
 # Source type union from CloningStrategy.sources (list[Union[Source, ...]])
 AnySource = get_args(opencloning_models.CloningStrategy.model_fields['sources'].annotation)[0]
@@ -268,11 +269,35 @@ class Sequence(InputEntity):
         )
 
     @classmethod
+    def from_create(
+        cls,
+        *,
+        name: str,
+        file_path: str,
+        seguid: str,
+        ctx: WriteContext,
+        overhang_crick_3prime: int = 0,
+        overhang_watson_3prime: int = 0,
+        sequence_type: Optional[SequenceType] = None,
+    ) -> Self:
+        """Build a Sequence from explicit fields and a write context."""
+        return cls(
+            name=name,
+            workspace_id=ctx.workspace_id,
+            file_path=file_path,
+            seguid=seguid,
+            created_by_id=ctx.user.id,
+            overhang_crick_3prime=overhang_crick_3prime,
+            overhang_watson_3prime=overhang_watson_3prime,
+            sequence_type=sequence_type,
+        )
+
+    @classmethod
     def from_pydantic_sequence(
         cls,
         pydantic_sequence: opencloning_models.TextFileSequence,
-        workspace_id: int,
-        created_by_id: int,
+        *,
+        ctx: WriteContext,
     ) -> Self:
         """
         Create a database sequence from a pydantic sequence. It does not persist the sequence to the database.
@@ -285,12 +310,11 @@ class Sequence(InputEntity):
         path = os.path.join(seq_files, sequence_file)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(pydantic_sequence.file_content)
-        return cls(
+        return cls.from_create(
             name=seqrecord.name,
-            workspace_id=workspace_id,
             file_path=sequence_file,
             seguid=seguid,
-            created_by_id=created_by_id,
+            ctx=ctx,
             **pydantic_sequence.model_dump(include={'overhang_crick_3prime', 'overhang_watson_3prime'}),
         )
 
@@ -339,14 +363,33 @@ class Primer(InputEntity):
     def from_pydantic(
         cls,
         pydantic_primer: opencloning_models.Primer,
-        workspace_id: int,
-        created_by_id: int,
+        *,
+        ctx: WriteContext,
     ) -> 'Primer':
         return cls(
-            workspace_id=workspace_id,
-            uid_workspace_id=workspace_id,
-            created_by_id=created_by_id,
+            workspace_id=ctx.workspace_id,
+            uid_workspace_id=ctx.workspace_id,
+            created_by_id=ctx.user.id,
             **pydantic_primer.model_dump(include={'sequence', 'name'}),
+        )
+
+    @classmethod
+    def from_create(
+        cls,
+        *,
+        name: str,
+        sequence: str,
+        uid: Optional[str] = None,
+        ctx: WriteContext,
+    ) -> 'Primer':
+        """Build a Primer from request-body fields and a write context."""
+        return cls(
+            name=name,
+            sequence=sequence,
+            uid=uid,
+            workspace_id=ctx.workspace_id,
+            uid_workspace_id=ctx.workspace_id,
+            created_by_id=ctx.user.id,
         )
 
     def to_pydantic_primer(self) -> opencloning_models.Primer:
@@ -624,6 +667,11 @@ class Line(Base):
         secondary=line_tag,
         back_populates='lines',
     )
+
+    @classmethod
+    def from_create(cls, *, uid: str, ctx: WriteContext) -> 'Line':
+        """Build a Line from request-body fields and a write context."""
+        return cls(uid=uid, workspace_id=ctx.workspace_id, created_by_id=ctx.user.id)
 
     @property
     def parent_ids(self) -> List[int]:

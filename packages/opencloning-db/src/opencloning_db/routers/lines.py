@@ -59,7 +59,7 @@ def get_lines(
         default=None,
     ),
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     query = (
         select(Line)
@@ -97,7 +97,7 @@ def get_line(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get a single engineered strain / cell line by id."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.viewer)
     return line_ref(line)
 
@@ -108,7 +108,7 @@ def get_line_children(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """List direct children of a line."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.viewer)
     return [line_ref(child) for child in line.children]
 
@@ -119,7 +119,7 @@ def post_line(
     body: LineCreate,
 ):
     """Create a new engineered strain / cell line."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     existing = session.query(Line).filter_by(uid=body.uid, workspace_id=workspace_id).first()
     if existing:
@@ -160,7 +160,7 @@ def post_line(
             )
         )
 
-    line = Line(uid=body.uid, workspace_id=workspace_id, created_by_id=current_user.id)
+    line = Line.from_create(uid=body.uid, ctx=ctx)
     line.parents = parents
     line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in allele_seqs] + [
         SequenceInLine(sequence=seq) for seq in plasmid_seqs
@@ -179,7 +179,7 @@ def patch_line_links(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Update a line uid, parents, and/or linked alleles/plasmids."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.editor)
     workspace_id = line.workspace_id
 
@@ -246,7 +246,7 @@ def delete_line(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Delete a line when it has no children."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.editor)
     if line.children:
         raise HTTPException(

@@ -81,7 +81,7 @@ def _remove_tag_from_resource(
 @router.get('/tags', response_model=list[TagRead])
 def get_tags(ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)]):
     """List tags in a workspace."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     tags = session.query(Tag).filter_by(workspace_id=workspace_id).all()
     return [TagRead(id=t.id, name=t.name) for t in tags]
 
@@ -92,7 +92,7 @@ def post_tag(
     body: TagCreate,
 ):
     """Create a user-defined tag."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     existing = session.query(Tag).filter_by(name=body.name, workspace_id=workspace_id).first()
     if existing:
         raise HTTPException(status_code=409, detail=f"Tag '{body.name}' already exists")
@@ -109,7 +109,7 @@ def get_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get a tag by id."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     tag = get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.viewer)
     return TagRead(id=tag.id, name=tag.name)
 
@@ -120,7 +120,7 @@ def get_tag_entities(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """List all sequences and primers with this tag."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     tag = get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.viewer)
     return [InputEntityRef(id=e.id, type=e.type, name=e.name) for e in tag.input_entities]
 
@@ -131,7 +131,7 @@ def delete_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Delete a tag (removes it from all entities)."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     tag = get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
     session.delete(tag)
     session.commit()
@@ -144,7 +144,7 @@ def get_entity_tags(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get tags for a sequence or primer (id is input_entity id = sequence.id or primer.id)."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _get_resource_tags(
         session,
         current_user,
@@ -161,7 +161,7 @@ def post_entity_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Attach an existing tag to a sequence or primer."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _attach_tag_to_resource(
         session,
         current_user,
@@ -180,7 +180,7 @@ def delete_entity_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Remove a tag from a sequence or primer."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _remove_tag_from_resource(
         session,
         current_user,
@@ -198,7 +198,7 @@ def get_line_tags(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get tags for a line."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _get_resource_tags(
         session,
         current_user,
@@ -215,7 +215,7 @@ def post_line_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Attach an existing tag to a line."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _attach_tag_to_resource(
         session,
         current_user,
@@ -234,7 +234,7 @@ def delete_line_tag(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Remove a tag from a line."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _remove_tag_from_resource(
         session,
         current_user,

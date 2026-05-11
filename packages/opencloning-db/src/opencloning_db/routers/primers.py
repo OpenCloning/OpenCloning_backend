@@ -147,7 +147,7 @@ def get_primers(
         default=None,
     ),
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     query = (
         select(Primer)
@@ -174,7 +174,7 @@ def post_primer(
     primer: PrimerCreate,
 ):
     """Submit a standalone primer (unlinked to any cloning strategy)."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     if primer.uid is not None:
         existing_uid = session.scalar(
@@ -183,13 +183,11 @@ def post_primer(
         if existing_uid is not None:
             raise HTTPException(status_code=409, detail=f"Primer UID '{primer.uid}' already exists")
 
-    db_primer = Primer(
+    db_primer = Primer.from_create(
         name=primer.name,
-        uid=primer.uid,
-        workspace_id=workspace_id,
-        uid_workspace_id=workspace_id,
         sequence=primer.sequence,
-        created_by_id=current_user.id,
+        uid=primer.uid,
+        ctx=ctx,
     )
 
     session.add(db_primer)
@@ -203,7 +201,7 @@ def validate_upload_primers(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
     primers: list[PrimerBulkSubmission],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     return _primer_bulk_rows_with_flags(primers, session, workspace_id)
 
 
@@ -213,7 +211,7 @@ def post_primers_bulk(
     primers: list[PrimerBulkSubmission],
     strict: bool = Query(description='Fail if duplicate name or sequence exists', default=True),
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     validation_rows = _primer_bulk_rows_with_flags(primers, session, workspace_id)
     if _has_any_conflict(validation_rows, strict):
         return JSONResponse(
@@ -221,18 +219,9 @@ def post_primers_bulk(
             content=[row.model_dump(mode='json') for row in validation_rows],
         )
 
-    db_primers: list[Primer] = []
-    for primer in primers:
-        db_primers.append(
-            Primer(
-                name=primer.name,
-                uid=primer.uid,
-                workspace_id=workspace_id,
-                uid_workspace_id=workspace_id,
-                sequence=primer.sequence,
-                created_by_id=current_user.id,
-            )
-        )
+    db_primers: list[Primer] = [
+        Primer.from_create(name=primer.name, sequence=primer.sequence, uid=primer.uid, ctx=ctx) for primer in primers
+    ]
     session.add_all(db_primers)
     try:
         session.commit()
@@ -256,7 +245,7 @@ def get_primer(
     primer_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     primer = get_primer_in_workspace_for_user(session, current_user, workspace_id, primer_id, WorkspaceRole.viewer)
 
     return primer_ref(primer)
@@ -271,7 +260,7 @@ def get_primer_sequences(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get sequences linked to a primer."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     # Check that the user has access to the primer and the primer exists
     get_primer_in_workspace_for_user(session, current_user, workspace_id, primer_id, WorkspaceRole.viewer)
 
@@ -320,7 +309,7 @@ def patch_primer(
     Note: the primer "type" is fixed by polymorphic identity and cannot be changed.
     """
 
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     primer = get_primer_in_workspace_for_user(session, current_user, workspace_id, primer_id, WorkspaceRole.editor)
     if body.name is not None:
         primer.name = body.name
@@ -347,7 +336,7 @@ def delete_primer(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Delete a primer that is not used as input to any source."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     primer = get_primer_in_workspace_for_user(session, current_user, workspace_id, primer_id, WorkspaceRole.editor)
 
     if primer.source_inputs:

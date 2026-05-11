@@ -1,10 +1,12 @@
 """Shared workspace-scoped dependencies and helpers."""
 
-from typing import Annotated, Tuple
+from dataclasses import dataclass
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 
+from opencloning_db.context import WriteContext
 from opencloning_db.deps import get_current_user, get_db
 from opencloning_db.models import (
     InputEntity,
@@ -19,7 +21,15 @@ from opencloning_db.models import (
 )
 from opencloning_db.workspace_auth import assert_workspace_access
 
-WorkspaceContext = Tuple[User, Session, int]
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceContext(WriteContext):
+    """Per-request write context plus the bound DB session."""
+
+    session: Session
+
+    def destructure(self) -> tuple[User, Session, int]:
+        return self.user, self.session, self.workspace_id
 
 
 def get_viewer_workspace_ctx(
@@ -29,7 +39,7 @@ def get_viewer_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for read-only endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.viewer)
-    return user, session, workspace_id
+    return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
 def get_editor_workspace_ctx(
@@ -39,7 +49,7 @@ def get_editor_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for write endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.editor)
-    return user, session, workspace_id
+    return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
 def get_resource_for_user(
