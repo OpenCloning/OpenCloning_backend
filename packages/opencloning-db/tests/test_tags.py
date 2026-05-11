@@ -29,15 +29,17 @@ def tags_client(engine_client_config):
             uid_workspace_id=ctx['w1'],
             name='primer-w1',
             sequence='ATGC',
+            created_by_id=ctx['owner_w1_id'],
         )
         primer_w2 = Primer(
             workspace_id=ctx['w2'],
             uid_workspace_id=ctx['w2'],
             name='primer-w2',
             sequence='ATGC',
+            created_by_id=ctx['owner_w2_id'],
         )
-        line_w1 = Line(workspace_id=ctx['w1'], uid='line-w1')
-        line_w2 = Line(workspace_id=ctx['w2'], uid='line-w2')
+        line_w1 = Line(workspace_id=ctx['w1'], uid='line-w1', created_by_id=ctx['owner_w1_id'])
+        line_w2 = Line(workspace_id=ctx['w2'], uid='line-w2', created_by_id=ctx['owner_w2_id'])
         tag_w1 = Tag(name='tag-w1', workspace_id=ctx['w1'])
         tag_w1_free = Tag(name='tag-w1-free', workspace_id=ctx['w1'])
         tag_w2 = Tag(name='tag-w2', workspace_id=ctx['w2'])

@@ -82,7 +82,7 @@ def dseqrecord_to_db(
     dseqrecord: Dseqrecord,
     session: Session,
     workspace_id: int,
-    created_by_id: int | None = None,
+    created_by_id: int,
 ) -> Sequence:
     """Persist *dseqrecord* via ``from_dseqrecords`` → ``cloning_strategy_to_db``.
 
@@ -99,7 +99,7 @@ def cloning_strategy_to_db(
     cloning_strategy: opencloning_models.CloningStrategy,
     session: Session,
     workspace_id: int,
-    created_by_id: int | None = None,
+    created_by_id: int,
 ) -> tuple[list[Sequence], dict[int, int]]:
     sequences = []
     entity_mapping = {}  # Combined mapping for sequences and primers (by id)

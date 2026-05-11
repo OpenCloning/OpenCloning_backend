@@ -26,13 +26,14 @@ def deps_session(engine_client_config):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
 
-        line = Line(workspace_id=ctx['w1'], uid='DEPS-LINE')
+        line = Line(workspace_id=ctx['w1'], uid='DEPS-LINE', created_by_id=ctx['owner_w1_id'])
         seq = Sequence(
             workspace_id=ctx['w1'],
             name='deps-seq',
             file_path='deps.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-DEPS-SEQ',
+            created_by_id=ctx['owner_w1_id'],
         )
         session.add_all([line, seq])
         session.commit()

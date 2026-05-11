@@ -30,6 +30,7 @@ def primers_client(engine_client_config):
             uid_workspace_id=ctx['w1'],
             name='seed_primer',
             sequence='ATGC',
+            created_by_id=ctx['owner_w1_id'],
         )
         primer_uid = Primer(
             workspace_id=ctx['w1'],
@@ -37,24 +38,28 @@ def primers_client(engine_client_config):
             uid='UID-PRIMER-1',
             name='uid_primer',
             sequence='CCGG',
+            created_by_id=ctx['owner_w1_id'],
         )
         primer_tagged = Primer(
             workspace_id=ctx['w1'],
             uid_workspace_id=ctx['w1'],
             name='tagged_primer',
             sequence='TTAA',
+            created_by_id=ctx['owner_w1_id'],
         )
         primer_w2 = Primer(
             workspace_id=ctx['w2'],
             uid_workspace_id=ctx['w2'],
             name='w2_primer',
             sequence='GCGC',
+            created_by_id=ctx['owner_w2_id'],
         )
         primer_w2_b = Primer(
             workspace_id=ctx['w2'],
             uid_workspace_id=ctx['w2'],
             name='w2_primer_b',
             sequence='ATAT',
+            created_by_id=ctx['owner_w2_id'],
         )
         tag_w1 = Tag(name='primer-tag-w1', workspace_id=ctx['w1'])
         primer_tagged.tags.append(tag_w1)
@@ -64,6 +69,7 @@ def primers_client(engine_client_config):
             file_path='template_seq.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-TEMPLATE-SEQ',
+            created_by_id=ctx['owner_w1_id'],
         )
         product_seq = Sequence(
             workspace_id=ctx['w1'],
@@ -71,6 +77,7 @@ def primers_client(engine_client_config):
             file_path='product_seq.gb',
             sequence_type=SequenceType.pcr_product,
             seguid='SEGUID-PRODUCT-SEQ',
+            created_by_id=ctx['owner_w1_id'],
         )
         template_seq_w2 = Sequence(
             workspace_id=ctx['w2'],
@@ -78,6 +85,7 @@ def primers_client(engine_client_config):
             file_path='template_seq_w2.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-TEMPLATE-SEQ-W2',
+            created_by_id=ctx['owner_w2_id'],
         )
         product_seq_w2 = Sequence(
             workspace_id=ctx['w2'],
@@ -85,6 +93,7 @@ def primers_client(engine_client_config):
             file_path='product_seq_w2.gb',
             sequence_type=SequenceType.pcr_product,
             seguid='SEGUID-PRODUCT-SEQ-W2',
+            created_by_id=ctx['owner_w2_id'],
         )
         session.add_all(
             [
@@ -808,8 +817,7 @@ def test_get_primer_returns_created_at_and_created_by(primers_client):
     assert r.status_code == 200
     body = r.json()
     assert 'created_at' in body and body['created_at'] is not None
-    # Fixture primers are added directly via ORM with no creator → null
-    assert body['created_by'] is None
+    assert body['created_by'] == {'display_name': 'Owner W1', 'id': 1}
 
 
 def test_get_primers_filter_by_created_by(primers_client):
@@ -817,25 +825,31 @@ def test_get_primers_filter_by_created_by(primers_client):
     c = primers_client['client']
     wid = primers_client['w1']
     headers_owner = workspace_headers(primers_client['token_owner_w1'], wid)
-    headers_viewer = workspace_headers(primers_client['token_owner_both'], wid)
+    headers_owner2 = workspace_headers(primers_client['token_owner_both'], wid)
 
     r = c.post('/primers', headers=headers_owner, json={'name': 'by_owner_w1', 'sequence': 'AAAA'})
     assert r.status_code == 200
     by_owner_id = r.json()['id']
 
-    r = c.post('/primers', headers=headers_viewer, json={'name': 'by_owner_both', 'sequence': 'TTTT'})
+    r = c.post('/primers', headers=headers_owner2, json={'name': 'by_owner_both', 'sequence': 'TTTT'})
     assert r.status_code == 200
     by_both_id = r.json()['id']
 
     r = c.get('/primers?created_by=Owner W1', headers=headers_owner)
     assert r.status_code == 200
     ids = {it['id'] for it in r.json()['items']}
-    assert ids == {by_owner_id}
+    all_owner1_ids = {
+        by_owner_id,
+        primers_client['primer_tagged_id'],
+        primers_client['primer_uid_id'],
+        primers_client['primer_id'],
+    }
+    assert ids == all_owner1_ids
 
     r = c.get('/primers?created_by=owner', headers=headers_owner)
     assert r.status_code == 200
     ids = {it['id'] for it in r.json()['items']}
-    assert ids == {by_owner_id, by_both_id}
+    assert ids == all_owner1_ids | {by_both_id}
 
     r = c.get('/primers?created_by=nobody', headers=headers_owner)
     assert r.status_code == 200

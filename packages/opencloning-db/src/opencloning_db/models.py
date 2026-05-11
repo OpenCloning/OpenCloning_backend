@@ -202,14 +202,10 @@ class InputEntity(Base):
         server_default=func.now(),
         nullable=False,
     )
-    created_by_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey('user.id', ondelete='SET NULL'),
-        nullable=True,
-        default=None,
-    )
+    created_by_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
     workspace: Mapped['Workspace'] = relationship(back_populates='input_entities')
     source_inputs: Mapped[List['SourceInput']] = relationship(back_populates='input_entity')
-    created_by: Mapped[Optional['User']] = relationship(foreign_keys=[created_by_id])
+    created_by: Mapped['User'] = relationship(foreign_keys=[created_by_id])
     tags: Mapped[List['Tag']] = relationship(
         'Tag',
         secondary=input_entity_tag,
@@ -272,7 +268,7 @@ class Sequence(InputEntity):
         cls,
         pydantic_sequence: opencloning_models.TextFileSequence,
         workspace_id: int,
-        created_by_id: Optional[int] = None,
+        created_by_id: int,
     ) -> Self:
         """
         Create a database sequence from a pydantic sequence. It does not persist the sequence to the database.
@@ -340,7 +336,7 @@ class Primer(InputEntity):
         cls,
         pydantic_primer: opencloning_models.Primer,
         workspace_id: int,
-        created_by_id: Optional[int] = None,
+        created_by_id: int,
     ) -> 'Primer':
         return cls(
             workspace_id=workspace_id,
@@ -587,10 +583,9 @@ class Line(Base):
         server_default=func.now(),
         nullable=False,
     )
-    created_by_id: Mapped[Optional[int]] = mapped_column(
+    created_by_id: Mapped[int] = mapped_column(
         ForeignKey('user.id', ondelete='SET NULL'),
-        nullable=True,
-        default=None,
+        nullable=False,
     )
 
     workspace: Mapped['Workspace'] = relationship(back_populates='lines')

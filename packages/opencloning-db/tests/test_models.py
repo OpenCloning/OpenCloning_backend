@@ -551,8 +551,8 @@ class TestSequenceSample(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            seq_w1 = Sequence(workspace_id=w1.id, file_path='q1.gb', seguid='SEGUID-Q1')
-            seq_w2 = Sequence(workspace_id=w2.id, file_path='q2.gb', seguid='SEGUID-Q2')
+            seq_w1 = Sequence(workspace_id=w1.id, file_path='q1.gb', seguid='SEGUID-Q1', created_by_id=1)
+            seq_w2 = Sequence(workspace_id=w2.id, file_path='q2.gb', seguid='SEGUID-Q2', created_by_id=1)
             session.add_all([seq_w1, seq_w2])
             session.flush()
             samp = SequenceSample(

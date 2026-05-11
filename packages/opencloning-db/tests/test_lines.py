@@ -32,6 +32,7 @@ def lines_client(engine_client_config):
             file_path='allele_w1.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-W1',
+            created_by_id=ctx['owner_w1_id'],
         )
         plasmid_w1 = Sequence(
             workspace_id=ctx['w1'],
@@ -39,6 +40,7 @@ def lines_client(engine_client_config):
             file_path='plasmid_w1.gb',
             sequence_type=SequenceType.plasmid,
             seguid='SEGUID-PLASMID-W1',
+            created_by_id=ctx['owner_w1_id'],
         )
         allele_w1_aux = Sequence(
             workspace_id=ctx['w1'],
@@ -46,6 +48,7 @@ def lines_client(engine_client_config):
             file_path='allele_aux.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-AUX',
+            created_by_id=ctx['owner_w1_id'],
         )
         allele_w2 = Sequence(
             workspace_id=ctx['w2'],
@@ -53,6 +56,7 @@ def lines_client(engine_client_config):
             file_path='allele_w2.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-W2',
+            created_by_id=ctx['owner_w2_id'],
         )
         plasmid_w2 = Sequence(
             workspace_id=ctx['w2'],
@@ -60,6 +64,7 @@ def lines_client(engine_client_config):
             file_path='plasmid_w2.gb',
             sequence_type=SequenceType.plasmid,
             seguid='SEGUID-PLASMID-W2',
+            created_by_id=ctx['owner_w2_id'],
         )
         # Sequences for filter coverage (multi-token genotype/plasmid paths).
         allele_filter = Sequence(
@@ -68,6 +73,7 @@ def lines_client(engine_client_config):
             file_path='allele_filter.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-FILTER',
+            created_by_id=ctx['owner_w1_id'],
         )
         plasmid_filter = Sequence(
             workspace_id=ctx['w1'],
@@ -75,6 +81,7 @@ def lines_client(engine_client_config):
             file_path='plasmid_filter.gb',
             sequence_type=SequenceType.plasmid,
             seguid='SEGUID-PLASMID-FILTER',
+            created_by_id=ctx['owner_w1_id'],
         )
         session.add_all(
             [
@@ -89,21 +96,23 @@ def lines_client(engine_client_config):
         )
         session.flush()
 
-        line_w1 = Line(workspace_id=ctx['w1'], uid='L-W1')
-        line_w2 = Line(workspace_id=ctx['w2'], uid='L-W2')
-        line_filter = Line(workspace_id=ctx['w1'], uid='L-FILTER')
+        line_w1 = Line(workspace_id=ctx['w1'], uid='L-W1', created_by_id=ctx['owner_w1_id'])
+        line_w2 = Line(workspace_id=ctx['w2'], uid='L-W2', created_by_id=ctx['owner_w2_id'])
+        line_filter = Line(workspace_id=ctx['w1'], uid='L-FILTER', created_by_id=ctx['owner_w1_id'])
         line_filter.sequences_in_line = [
             SequenceInLine(sequence=allele_filter),
             SequenceInLine(sequence=plasmid_filter),
         ]
-        line_parent_to_be_added = Line(workspace_id=ctx['w1'], uid='L-PARENT-TO-BE-ADDED')
-        line_seeded_parented = Line(workspace_id=ctx['w1'], uid='L-SEEDED-PARENTED')
+        line_parent_to_be_added = Line(
+            workspace_id=ctx['w1'], uid='L-PARENT-TO-BE-ADDED', created_by_id=ctx['owner_w1_id']
+        )
+        line_seeded_parented = Line(workspace_id=ctx['w1'], uid='L-SEEDED-PARENTED', created_by_id=ctx['owner_w1_id'])
         line_seeded_parented.parents = [line_w1]
         line_seeded_parented.sequences_in_line = [
             SequenceInLine(sequence=allele_w1),
             SequenceInLine(sequence=plasmid_w1),
         ]
-        line_tagged = Line(workspace_id=ctx['w1'], uid='L-TAGGED')
+        line_tagged = Line(workspace_id=ctx['w1'], uid='L-TAGGED', created_by_id=ctx['owner_w1_id'])
         tag_filter = Tag(name='line-filter-tag', workspace_id=ctx['w1'])
         line_tagged.tags.append(tag_filter)
         session.add_all(
@@ -616,7 +625,7 @@ def test_get_line_returns_created_at_for_seeded(lines_client):
     assert response.status_code == 200
     body = response.json()
     assert body['created_at'] is not None
-    assert body['created_by'] is None
+    assert body['created_by'] == {'id': lines_client['owner_w1_id'], 'display_name': 'Owner W1'}
 
 
 def test_get_lines_filter_by_created_by(lines_client):
@@ -645,12 +654,20 @@ def test_get_lines_filter_by_created_by(lines_client):
     r = c.get('/lines?created_by=Owner W1', headers=headers_owner)
     assert r.status_code == 200
     ids = {it['id'] for it in r.json()['items']}
-    assert ids == {line_owner_id}
+    all_owner1_ids = {
+        line_owner_id,
+        lines_client['line_w1_id'],
+        lines_client['line_with_parent_to_be_added'],
+        lines_client['line_filter_id'],
+        lines_client['line_seeded_parented_id'],
+        lines_client['line_tagged_id'],
+    }
+    assert ids == all_owner1_ids
 
     r = c.get('/lines?created_by=owner', headers=headers_owner)
     assert r.status_code == 200
     ids = {it['id'] for it in r.json()['items']}
-    assert ids == {line_owner_id, line_both_id}
+    assert ids == all_owner1_ids | {line_both_id}
 
     r = c.get('/lines?created_by=nobody', headers=headers_owner)
     assert r.status_code == 200
