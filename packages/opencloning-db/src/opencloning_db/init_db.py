@@ -143,6 +143,11 @@ def init_db(config: Config):
             file_name = os.path.basename(file)
             session.add(create_sequencing_file(sequencing_sequence, content, file_name))
 
+        # Add primer that is not linked to any source
+        pydantic_primer = opencloning_models.Primer(id=0, name='no_source_primer', sequence='GGTTaaCCaaa')
+        no_source_primer = Primer.from_pydantic(pydantic_primer, workspace.id)
+        session.add(no_source_primer)
+
         # seq: Sequence = session.scalar(select(Sequence).where(Sequence.name == 'entry_clone_lacZ'))
         # pydantic_seq = seq.to_pydantic_sequence()
         # # Add itself as sequencing data twice, and sample id to the sequence
