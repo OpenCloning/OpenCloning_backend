@@ -14,11 +14,11 @@
     "body": {
       "items": [
         {
-          "id": 10,
-          "name": "ase1_CDS_PCR",
+          "id": 12,
+          "name": "ase1_CDS_PCR_SalI_AscI",
           "sample_uids": [],
-          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
-          "sequence_type": "pcr_product",
+          "seguid": "ldseguid=84qdfT36jnkUuRt0NlRI9y0Wp2k",
+          "sequence_type": "restriction_fragment",
           "tags": [
             {
               "id": 3,
@@ -27,11 +27,11 @@
           ]
         },
         {
-          "id": 12,
-          "name": "ase1_CDS_PCR_SalI_AscI",
+          "id": 10,
+          "name": "ase1_CDS_PCR",
           "sample_uids": [],
-          "seguid": "ldseguid=84qdfT36jnkUuRt0NlRI9y0Wp2k",
-          "sequence_type": "restriction_fragment",
+          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
+          "sequence_type": "pcr_product",
           "tags": [
             {
               "id": 3,

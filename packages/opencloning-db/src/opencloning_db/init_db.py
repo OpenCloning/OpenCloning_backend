@@ -109,6 +109,8 @@ def init_db(config: Config):
             sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, workspace.id)
             new_line = Line(uid=f"{tag_name}-line", workspace_id=workspace.id, parents=[parent_strain])
             for seq in sequences:
+                if seq.name in ['entry_clone_lacZ']:
+                    continue
                 if seq.sequence_type == SequenceType.allele or seq.sequence_type == SequenceType.plasmid:
                     new_line.sequences_in_line.append(SequenceInLine(sequence=seq))
             new_line.tags.append(tag)

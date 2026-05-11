@@ -12,384 +12,215 @@
     "body": {
       "items": [
         {
-          "id": 1,
-          "name": "pREX0008",
+          "id": 69,
+          "name": "polymerase_extended",
           "sample_uids": [
-            "example_sequencing-sample"
+            "templateless_PCR-sample"
           ],
-          "seguid": "cdseguid=B1Hf10-i7VRt7sgFiDRwUj6K8xQ",
+          "seguid": "ldseguid=QI3G6XbkYI_wSr6SJ9CNZfafrz0",
+          "sequence_type": "linear_dna",
+          "tags": [
+            {
+              "id": 10,
+              "name": "templateless_PCR"
+            }
+          ]
+        },
+        {
+          "id": 68,
+          "name": "templateless_PCR",
+          "sample_uids": [],
+          "seguid": "ldseguid=viDBlEx8gZUC8hlic_0dQ7Dxeew",
+          "sequence_type": "linear_dna",
+          "tags": [
+            {
+              "id": 10,
+              "name": "templateless_PCR"
+            }
+          ]
+        },
+        {
+          "id": 65,
+          "name": "name",
+          "sample_uids": [
+            "restriction_ligation_assembly-sample"
+          ],
+          "seguid": "cdseguid=p6ZFRTcOFOKjiC74CdhQRUMPb_w",
           "sequence_type": "plasmid",
           "tags": [
             {
-              "id": 1,
-              "name": "example_sequencing"
+              "id": 9,
+              "name": "restriction_ligation_assembly"
             }
           ]
         },
         {
-          "id": 2,
-          "name": "initial_locus",
-          "sample_uids": [],
-          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ]
-        },
-        {
-          "id": 3,
-          "name": "initial_locus",
-          "sample_uids": [],
-          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ]
-        },
-        {
-          "id": 4,
-          "name": "excised_plasmid",
-          "sample_uids": [],
-          "seguid": "cdseguid=V-u6HU4ESjpj9VtuN-D7KkcPs4g",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ]
-        },
-        {
-          "id": 5,
-          "name": "excised_locus",
-          "sample_uids": [],
-          "seguid": "ldseguid=BNFaZgDMyb81kUvZmyYN6h8ZzRg",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ]
-        },
-        {
-          "id": 6,
-          "name": "reconstituted_locus",
-          "sample_uids": [
-            "cre_lox_recombination-sample"
-          ],
-          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ]
-        },
-        {
-          "id": 9,
-          "name": "CU329670",
-          "sample_uids": [],
-          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
-          "sequence_type": "locus",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ]
-        },
-        {
-          "id": 10,
-          "name": "ase1_CDS_PCR",
-          "sample_uids": [],
-          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
-          "sequence_type": "pcr_product",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ]
-        },
-        {
-          "id": 11,
+          "id": 64,
           "name": "pFA6a-kanMX6",
           "sample_uids": [],
           "seguid": "cdseguid=zLgYTVEhETF5TIn6fKnWn37OTL4",
           "sequence_type": "plasmid",
           "tags": [
             {
-              "id": 3,
-              "name": "restriction_then_ligation"
+              "id": 9,
+              "name": "restriction_ligation_assembly"
             }
           ]
         },
         {
-          "id": 12,
-          "name": "ase1_CDS_PCR_SalI_AscI",
+          "id": 63,
+          "name": "name",
           "sample_uids": [],
-          "seguid": "ldseguid=84qdfT36jnkUuRt0NlRI9y0Wp2k",
-          "sequence_type": "restriction_fragment",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ]
-        },
-        {
-          "id": 13,
-          "name": "pFA6a-kanMX6_SalI_AscI",
-          "sample_uids": [],
-          "seguid": "ldseguid=Z89cNYWGZkfjFaGa9aBPBYrpsCE",
-          "sequence_type": "restriction_fragment",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ]
-        },
-        {
-          "id": 14,
-          "name": "final_product",
-          "sample_uids": [
-            "restriction_then_ligation-sample"
-          ],
-          "seguid": "cdseguid=p6ZFRTcOFOKjiC74CdhQRUMPb_w",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ]
-        },
-        {
-          "id": 18,
-          "name": "NC_003424",
-          "sample_uids": [],
-          "seguid": "ldseguid=yGDpNcn1WIHwPiaCDFN3LbOaUcQ",
-          "sequence_type": "locus",
-          "tags": [
-            {
-              "id": 4,
-              "name": "crispr_hdr"
-            }
-          ]
-        },
-        {
-          "id": 19,
-          "name": "pFA6a-3HA-kanMX6",
-          "sample_uids": [],
-          "seguid": "cdseguid=7cLjtkbXOkZH5FSmMANj2PZl6QE",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 4,
-              "name": "crispr_hdr"
-            }
-          ]
-        },
-        {
-          "id": 20,
-          "name": "pcr_product",
-          "sample_uids": [],
-          "seguid": "ldseguid=h10T-QsjHos0J7faWsTXHZU614k",
+          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
           "sequence_type": "pcr_product",
           "tags": [
             {
-              "id": 4,
-              "name": "crispr_hdr"
+              "id": 9,
+              "name": "restriction_ligation_assembly"
             }
           ]
         },
         {
-          "id": 21,
-          "name": "3xHA-ase1",
+          "id": 62,
+          "name": "CU329670",
+          "sample_uids": [],
+          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
+          "sequence_type": "locus",
+          "tags": [
+            {
+              "id": 9,
+              "name": "restriction_ligation_assembly"
+            }
+          ]
+        },
+        {
+          "id": 59,
+          "name": "ase1delta::hphMX6",
           "sample_uids": [
-            "crispr_hdr-sample"
+            "homologous_recombination-sample"
           ],
-          "seguid": "ldseguid=3LN-NLtnubkWGEtAvOqu_pdcebQ",
+          "seguid": "ldseguid=5icvyD5nmkpy5aN_zpBx_rmmkNw",
           "sequence_type": "allele",
           "tags": [
             {
-              "id": 4,
-              "name": "crispr_hdr"
+              "id": 8,
+              "name": "homologous_recombination"
             }
           ]
         },
         {
-          "id": 24,
-          "name": "pYTK002",
-          "sample_uids": [],
-          "seguid": "cdseguid=qtB5HWzsbXGBt7PXkom6SY49NSM",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 25,
-          "name": "pYTK009",
-          "sample_uids": [],
-          "seguid": "cdseguid=R-VWJHr0xmv_2qJFj9u2BbKDpzY",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 26,
-          "name": "pYTK038",
-          "sample_uids": [],
-          "seguid": "cdseguid=3CkY8DNdxuEtVJ-MZdiKqfFrFug",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 27,
-          "name": "pYTK051",
-          "sample_uids": [],
-          "seguid": "cdseguid=wYgwnXvFBuBSnPgZPiR7gLXLGcA",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 28,
-          "name": "pYTK067",
-          "sample_uids": [],
-          "seguid": "cdseguid=GZ7s0rc1XAM_Kywxl_wmPCVMbXk",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 29,
-          "name": "pYTK074",
-          "sample_uids": [],
-          "seguid": "cdseguid=u1zemqASRpHJQhRrGnUc1OmAL3E",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 30,
-          "name": "pYTK081",
-          "sample_uids": [],
-          "seguid": "cdseguid=XpVM0LTs1wWdbbXPy9JKu43-c3w",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 31,
-          "name": "pYTK083",
-          "sample_uids": [],
-          "seguid": "cdseguid=1dqDOlLuTA7HbO0D2dXpE7vArgI",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 5,
-              "name": "golden_gate"
-            }
-          ]
-        },
-        {
-          "id": 32,
+          "id": 58,
           "name": "CU329670",
           "sample_uids": [],
-          "seguid": "ldseguid=Ggf4izi9PrVjm0oR6TUmpOLxMeY",
+          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
           "sequence_type": "locus",
           "tags": [
             {
-              "id": 5,
-              "name": "golden_gate"
+              "id": 8,
+              "name": "homologous_recombination"
             }
           ]
         },
         {
-          "id": 33,
+          "id": 57,
           "name": "pcr_product",
           "sample_uids": [],
-          "seguid": "ldseguid=tcRysmQaGdgJv2AWiIaxS2xLAng",
+          "seguid": "ldseguid=PVxj8O0Ul_FzG7qr4qxqFfZ8EU0",
           "sequence_type": "pcr_product",
           "tags": [
             {
-              "id": 5,
-              "name": "golden_gate"
+              "id": 8,
+              "name": "homologous_recombination"
             }
           ]
         },
         {
-          "id": 34,
-          "name": "final_product",
-          "sample_uids": [
-            "golden_gate-sample"
-          ],
-          "seguid": "cdseguid=nXIrIUkUJNMDuQNMX9urTILmyuY",
+          "id": 56,
+          "name": "pFA6a-5FLAG-hphMX6",
+          "sample_uids": [],
+          "seguid": "cdseguid=cifdJJ4UGw2hS6jied0pGte8nf4",
           "sequence_type": "plasmid",
           "tags": [
             {
-              "id": 5,
-              "name": "golden_gate"
+              "id": 8,
+              "name": "homologous_recombination"
             }
           ]
         },
         {
-          "id": 39,
-          "name": "NC_000913",
+          "id": 53,
+          "name": "pREP42-ase1",
+          "sample_uids": [
+            "gibson_assembly-sample"
+          ],
+          "seguid": "cdseguid=qdd6VBGDxAo1WzsHKf_FT_hMpnU",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 7,
+              "name": "gibson_assembly"
+            }
+          ]
+        },
+        {
+          "id": 52,
+          "name": "digested_vector",
           "sample_uids": [],
-          "seguid": "ldseguid=dZybNlCfzY6Eg0hg0Ymc5Y6aoTI",
+          "seguid": "ldseguid=Ptf72Sz4aZAE7j49KlqEJetuGeU",
+          "sequence_type": "pcr_product",
+          "tags": [
+            {
+              "id": 7,
+              "name": "gibson_assembly"
+            }
+          ]
+        },
+        {
+          "id": 51,
+          "name": "ase1_CDS",
+          "sample_uids": [],
+          "seguid": "ldseguid=YBDwZj0rcRWUMsmehQzAUyOayCM",
+          "sequence_type": "pcr_product",
+          "tags": [
+            {
+              "id": 7,
+              "name": "gibson_assembly"
+            }
+          ]
+        },
+        {
+          "id": 50,
+          "name": "NC_003424",
+          "sample_uids": [],
+          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
           "sequence_type": "locus",
           "tags": [
             {
-              "id": 6,
-              "name": "gateway"
+              "id": 7,
+              "name": "gibson_assembly"
             }
           ]
         },
         {
-          "id": 40,
-          "name": "pDONR221",
+          "id": 49,
+          "name": "pREP42-MCS+",
           "sample_uids": [],
-          "seguid": "cdseguid=NHJEzJ3E7cnPasODRhCfZ_3OlGU",
+          "seguid": "cdseguid=3LQ-tKp2yAkKPXAjSWM8FiD_9YQ",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 7,
+              "name": "gibson_assembly"
+            }
+          ]
+        },
+        {
+          "id": 44,
+          "name": "expression_clone_lacZ",
+          "sample_uids": [
+            "gateway-sample"
+          ],
+          "seguid": "cdseguid=iO38f2YivBO-6TqDiVoC4UF0bnU",
           "sequence_type": "plasmid",
           "tags": [
             {
@@ -399,10 +230,10 @@
           ]
         },
         {
-          "id": 41,
-          "name": "pcDNA6.2_C-YFP-DEST",
+          "id": 43,
+          "name": "entry_clone_lacZ",
           "sample_uids": [],
-          "seguid": "cdseguid=deBUtglinRcbMhjD7EvBjXUKhGg",
+          "seguid": "cdseguid=MqPXLeF7MXM63b4EsQU3vI3DBXI",
           "sequence_type": "plasmid",
           "tags": [
             {
@@ -425,10 +256,10 @@
           ]
         },
         {
-          "id": 43,
-          "name": "entry_clone_lacZ",
+          "id": 41,
+          "name": "pcDNA6.2_C-YFP-DEST",
           "sample_uids": [],
-          "seguid": "cdseguid=MqPXLeF7MXM63b4EsQU3vI3DBXI",
+          "seguid": "cdseguid=deBUtglinRcbMhjD7EvBjXUKhGg",
           "sequence_type": "plasmid",
           "tags": [
             {
@@ -438,12 +269,10 @@
           ]
         },
         {
-          "id": 44,
-          "name": "expression_clone_lacZ",
-          "sample_uids": [
-            "gateway-sample"
-          ],
-          "seguid": "cdseguid=iO38f2YivBO-6TqDiVoC4UF0bnU",
+          "id": 40,
+          "name": "pDONR221",
+          "sample_uids": [],
+          "seguid": "cdseguid=NHJEzJ3E7cnPasODRhCfZ_3OlGU",
           "sequence_type": "plasmid",
           "tags": [
             {
@@ -453,205 +282,376 @@
           ]
         },
         {
-          "id": 49,
-          "name": "pREP42-MCS+",
+          "id": 39,
+          "name": "NC_000913",
           "sample_uids": [],
-          "seguid": "cdseguid=3LQ-tKp2yAkKPXAjSWM8FiD_9YQ",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 7,
-              "name": "gibson_assembly"
-            }
-          ]
-        },
-        {
-          "id": 50,
-          "name": "NC_003424",
-          "sample_uids": [],
-          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
+          "seguid": "ldseguid=dZybNlCfzY6Eg0hg0Ymc5Y6aoTI",
           "sequence_type": "locus",
           "tags": [
             {
-              "id": 7,
-              "name": "gibson_assembly"
+              "id": 6,
+              "name": "gateway"
             }
           ]
         },
         {
-          "id": 51,
-          "name": "ase1_CDS",
-          "sample_uids": [],
-          "seguid": "ldseguid=YBDwZj0rcRWUMsmehQzAUyOayCM",
-          "sequence_type": "pcr_product",
-          "tags": [
-            {
-              "id": 7,
-              "name": "gibson_assembly"
-            }
-          ]
-        },
-        {
-          "id": 52,
-          "name": "digested_vector",
-          "sample_uids": [],
-          "seguid": "ldseguid=Ptf72Sz4aZAE7j49KlqEJetuGeU",
-          "sequence_type": "pcr_product",
-          "tags": [
-            {
-              "id": 7,
-              "name": "gibson_assembly"
-            }
-          ]
-        },
-        {
-          "id": 53,
-          "name": "pREP42-ase1",
+          "id": 34,
+          "name": "final_product",
           "sample_uids": [
-            "gibson_assembly-sample"
+            "golden_gate-sample"
           ],
-          "seguid": "cdseguid=qdd6VBGDxAo1WzsHKf_FT_hMpnU",
+          "seguid": "cdseguid=nXIrIUkUJNMDuQNMX9urTILmyuY",
           "sequence_type": "plasmid",
           "tags": [
             {
-              "id": 7,
-              "name": "gibson_assembly"
+              "id": 5,
+              "name": "golden_gate"
             }
           ]
         },
         {
-          "id": 56,
-          "name": "pFA6a-5FLAG-hphMX6",
-          "sample_uids": [],
-          "seguid": "cdseguid=cifdJJ4UGw2hS6jied0pGte8nf4",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 8,
-              "name": "homologous_recombination"
-            }
-          ]
-        },
-        {
-          "id": 57,
+          "id": 33,
           "name": "pcr_product",
           "sample_uids": [],
-          "seguid": "ldseguid=PVxj8O0Ul_FzG7qr4qxqFfZ8EU0",
+          "seguid": "ldseguid=tcRysmQaGdgJv2AWiIaxS2xLAng",
           "sequence_type": "pcr_product",
           "tags": [
             {
-              "id": 8,
-              "name": "homologous_recombination"
+              "id": 5,
+              "name": "golden_gate"
             }
           ]
         },
         {
-          "id": 58,
+          "id": 32,
           "name": "CU329670",
           "sample_uids": [],
-          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
+          "seguid": "ldseguid=Ggf4izi9PrVjm0oR6TUmpOLxMeY",
           "sequence_type": "locus",
           "tags": [
             {
-              "id": 8,
-              "name": "homologous_recombination"
+              "id": 5,
+              "name": "golden_gate"
             }
           ]
         },
         {
-          "id": 59,
-          "name": "ase1delta::hphMX6",
+          "id": 31,
+          "name": "pYTK083",
+          "sample_uids": [],
+          "seguid": "cdseguid=1dqDOlLuTA7HbO0D2dXpE7vArgI",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "name": "pYTK081",
+          "sample_uids": [],
+          "seguid": "cdseguid=XpVM0LTs1wWdbbXPy9JKu43-c3w",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "name": "pYTK074",
+          "sample_uids": [],
+          "seguid": "cdseguid=u1zemqASRpHJQhRrGnUc1OmAL3E",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "name": "pYTK067",
+          "sample_uids": [],
+          "seguid": "cdseguid=GZ7s0rc1XAM_Kywxl_wmPCVMbXk",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "name": "pYTK051",
+          "sample_uids": [],
+          "seguid": "cdseguid=wYgwnXvFBuBSnPgZPiR7gLXLGcA",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "name": "pYTK038",
+          "sample_uids": [],
+          "seguid": "cdseguid=3CkY8DNdxuEtVJ-MZdiKqfFrFug",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "name": "pYTK009",
+          "sample_uids": [],
+          "seguid": "cdseguid=R-VWJHr0xmv_2qJFj9u2BbKDpzY",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "name": "pYTK002",
+          "sample_uids": [],
+          "seguid": "cdseguid=qtB5HWzsbXGBt7PXkom6SY49NSM",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 5,
+              "name": "golden_gate"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "name": "3xHA-ase1",
           "sample_uids": [
-            "homologous_recombination-sample"
+            "crispr_hdr-sample"
           ],
-          "seguid": "ldseguid=5icvyD5nmkpy5aN_zpBx_rmmkNw",
+          "seguid": "ldseguid=3LN-NLtnubkWGEtAvOqu_pdcebQ",
           "sequence_type": "allele",
           "tags": [
             {
-              "id": 8,
-              "name": "homologous_recombination"
+              "id": 4,
+              "name": "crispr_hdr"
             }
           ]
         },
         {
-          "id": 62,
-          "name": "CU329670",
+          "id": 20,
+          "name": "pcr_product",
           "sample_uids": [],
-          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
-          "sequence_type": "locus",
-          "tags": [
-            {
-              "id": 9,
-              "name": "restriction_ligation_assembly"
-            }
-          ]
-        },
-        {
-          "id": 63,
-          "name": "name",
-          "sample_uids": [],
-          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
+          "seguid": "ldseguid=h10T-QsjHos0J7faWsTXHZU614k",
           "sequence_type": "pcr_product",
           "tags": [
             {
-              "id": 9,
-              "name": "restriction_ligation_assembly"
+              "id": 4,
+              "name": "crispr_hdr"
             }
           ]
         },
         {
-          "id": 64,
+          "id": 19,
+          "name": "pFA6a-3HA-kanMX6",
+          "sample_uids": [],
+          "seguid": "cdseguid=7cLjtkbXOkZH5FSmMANj2PZl6QE",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 4,
+              "name": "crispr_hdr"
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "name": "NC_003424",
+          "sample_uids": [],
+          "seguid": "ldseguid=yGDpNcn1WIHwPiaCDFN3LbOaUcQ",
+          "sequence_type": "locus",
+          "tags": [
+            {
+              "id": 4,
+              "name": "crispr_hdr"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "name": "final_product",
+          "sample_uids": [
+            "restriction_then_ligation-sample"
+          ],
+          "seguid": "cdseguid=p6ZFRTcOFOKjiC74CdhQRUMPb_w",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 3,
+              "name": "restriction_then_ligation"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "name": "pFA6a-kanMX6_SalI_AscI",
+          "sample_uids": [],
+          "seguid": "ldseguid=Z89cNYWGZkfjFaGa9aBPBYrpsCE",
+          "sequence_type": "restriction_fragment",
+          "tags": [
+            {
+              "id": 3,
+              "name": "restriction_then_ligation"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "name": "ase1_CDS_PCR_SalI_AscI",
+          "sample_uids": [],
+          "seguid": "ldseguid=84qdfT36jnkUuRt0NlRI9y0Wp2k",
+          "sequence_type": "restriction_fragment",
+          "tags": [
+            {
+              "id": 3,
+              "name": "restriction_then_ligation"
+            }
+          ]
+        },
+        {
+          "id": 11,
           "name": "pFA6a-kanMX6",
           "sample_uids": [],
           "seguid": "cdseguid=zLgYTVEhETF5TIn6fKnWn37OTL4",
           "sequence_type": "plasmid",
           "tags": [
             {
-              "id": 9,
-              "name": "restriction_ligation_assembly"
+              "id": 3,
+              "name": "restriction_then_ligation"
             }
           ]
         },
         {
-          "id": 65,
-          "name": "name",
+          "id": 10,
+          "name": "ase1_CDS_PCR",
+          "sample_uids": [],
+          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
+          "sequence_type": "pcr_product",
+          "tags": [
+            {
+              "id": 3,
+              "name": "restriction_then_ligation"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "name": "CU329670",
+          "sample_uids": [],
+          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
+          "sequence_type": "locus",
+          "tags": [
+            {
+              "id": 3,
+              "name": "restriction_then_ligation"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "name": "reconstituted_locus",
           "sample_uids": [
-            "restriction_ligation_assembly-sample"
+            "cre_lox_recombination-sample"
           ],
-          "seguid": "cdseguid=p6ZFRTcOFOKjiC74CdhQRUMPb_w",
+          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
+          "sequence_type": "linear_dna",
+          "tags": [
+            {
+              "id": 2,
+              "name": "cre_lox_recombination"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "name": "excised_locus",
+          "sample_uids": [],
+          "seguid": "ldseguid=BNFaZgDMyb81kUvZmyYN6h8ZzRg",
+          "sequence_type": "linear_dna",
+          "tags": [
+            {
+              "id": 2,
+              "name": "cre_lox_recombination"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "name": "excised_plasmid",
+          "sample_uids": [],
+          "seguid": "cdseguid=V-u6HU4ESjpj9VtuN-D7KkcPs4g",
           "sequence_type": "plasmid",
           "tags": [
             {
-              "id": 9,
-              "name": "restriction_ligation_assembly"
+              "id": 2,
+              "name": "cre_lox_recombination"
             }
           ]
         },
         {
-          "id": 68,
-          "name": "name",
+          "id": 3,
+          "name": "initial_locus",
           "sample_uids": [],
-          "seguid": "ldseguid=viDBlEx8gZUC8hlic_0dQ7Dxeew",
+          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
           "sequence_type": "linear_dna",
           "tags": [
             {
-              "id": 10,
-              "name": "templateless_PCR"
+              "id": 2,
+              "name": "cre_lox_recombination"
             }
           ]
         },
         {
-          "id": 69,
-          "name": "name",
-          "sample_uids": [
-            "templateless_PCR-sample"
-          ],
-          "seguid": "ldseguid=QI3G6XbkYI_wSr6SJ9CNZfafrz0",
+          "id": 2,
+          "name": "initial_locus",
+          "sample_uids": [],
+          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
           "sequence_type": "linear_dna",
           "tags": [
             {
-              "id": 10,
-              "name": "templateless_PCR"
+              "id": 2,
+              "name": "cre_lox_recombination"
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "name": "pREX0008",
+          "sample_uids": [
+            "example_sequencing-sample"
+          ],
+          "seguid": "cdseguid=B1Hf10-i7VRt7sgFiDRwUj6K8xQ",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 1,
+              "name": "example_sequencing"
             }
           ]
         }
