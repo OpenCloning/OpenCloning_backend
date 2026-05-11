@@ -12,6 +12,11 @@
     "body": {
       "products": [
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 7,
           "name": "fwd_restriction_then_ligation",
           "sequence": "TAAGCAGTCGACatgcaaacagtaatgatggatg",
@@ -24,6 +29,11 @@
           "uid": "ML7"
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 8,
           "name": "rvs_restriction_then_ligation",
           "sequence": "TAAGCAGGCGCGCCttaaaagccttcttctccccatt",

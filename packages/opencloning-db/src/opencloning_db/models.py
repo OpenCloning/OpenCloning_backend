@@ -633,10 +633,7 @@ class Line(Base):
         server_default=func.now(),
         nullable=False,
     )
-    created_by_id: Mapped[int] = mapped_column(
-        ForeignKey('user.id', ondelete='SET NULL'),
-        nullable=False,
-    )
+    created_by_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
 
     workspace: Mapped['Workspace'] = relationship(back_populates='lines')
     created_by: Mapped[Optional['User']] = relationship(foreign_keys=[created_by_id])

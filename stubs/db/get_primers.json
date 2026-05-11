@@ -12,6 +12,23 @@
     "body": {
       "items": [
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 70,
+          "name": "no_source_primer",
+          "sequence": "GGTTaaCCaaa",
+          "tags": [],
+          "uid": null
+        },
+        {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 67,
           "name": "rvs_hyb",
           "sequence": "ttacgagatatttgagttaaacttcatgcataccctccaaaaactcaatcatttcaccaagcccatcatcttggtaatcc",
@@ -19,6 +36,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 66,
           "name": "fwd_hyb",
           "sequence": "agaactcaaccattacgggtttgacgaatatagacgagattcgcaattacttgtctgatggattaccaagatgatgggct",
@@ -26,6 +48,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 61,
           "name": "rvs_restriction_ligation_assembly",
           "sequence": "TAAGCAGGCGCGCCttaaaagccttcttctccccatt",
@@ -33,6 +60,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 60,
           "name": "fwd_restriction_ligation_assembly",
           "sequence": "TAAGCAGTCGACatgcaaacagtaatgatggatg",
@@ -40,6 +72,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 55,
           "name": "rvs_homologous_recombination",
           "sequence": "CTTTTATGAATTATCTATATGCTGTATTCATATGCAAAAATATGTATATTTAAATTTGATCGATTAGGTAAATAAGAAGCGAATTCGAGCTCGTTTAAAC",
@@ -47,6 +84,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 54,
           "name": "fwd_homologous_recombination",
           "sequence": "AGTTTTCATATCTTCCTTTATATTCTATTAATTGAATTTCAAACATCGTTTTATTGAGCTCATTTACATCAACCGGTTCACGGATCCCCGGGTTAATTAA",
@@ -54,6 +96,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 48,
           "name": "ase1_rvs_gibson_assembly",
           "sequence": "ACAGATCTCTCGAGCATATTAAAAGCCTTCTTCTCCC",
@@ -61,6 +108,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 47,
           "name": "ase1_fwd_gibson_assembly",
           "sequence": "AGTCGCTTTGTTAAATCAATGCAAACAGTAATGATGGA",
@@ -68,6 +120,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 46,
           "name": "vector_rvs",
           "sequence": "CATCATTACTGTTTGCATTGATTTAACAAAGCGACTATAAG",
@@ -75,6 +132,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 45,
           "name": "vector_fwd",
           "sequence": "GGAGAAGAAGGCTTTTAATATGCTCGAGAGATCTGT",
@@ -82,6 +144,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 38,
           "name": "lacZ_attB2_rvs",
           "sequence": "GGGGACCACTTTGTACAAGAAAGCTGGGTTTTTTTGACACCAGACCAACT",
@@ -89,6 +156,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 37,
           "name": "lacZ_attB1_fwd",
           "sequence": "GGGGACAAGTTTGTACAAAAAAGCAGGCTTAATGACCATGATTACGGATTC",
@@ -96,6 +168,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 36,
           "name": "rvs_gateway",
           "sequence": "ttaacaaagcgactataagt",
@@ -103,6 +180,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 35,
           "name": "fwd_gateway",
           "sequence": "gatctcgccataaaagacag",
@@ -110,6 +192,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 23,
           "name": "rvs_golden_gate",
           "sequence": "aaGGTCTCAGGATttaacgtttataatgtttaata",
@@ -117,6 +204,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 22,
           "name": "fwd_golden_gate",
           "sequence": "aaGGTCTCATTCTatggtaattgaggtaagaggt",
@@ -124,6 +216,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 17,
           "name": "ase1_rvs_crispr_hdr",
           "sequence": "AAGTTAGATTCATTATTAGAGTGATTATCTTTTTCAGCAATAGAATCAGTGCTTTGAATGTCATCCATCATTACTGTTTGagcgtaatctggaacgtcat",
@@ -131,6 +228,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 16,
           "name": "ase1_fwd_crispr_hdr",
           "sequence": "TTTCATATCTTCCTTTATATTCTATTAATTGAATTTCAAACATCGTTTTATTGAGCTCATTTACATCAACCGGTTCAATGtacccatacgatgttcctga",
@@ -138,6 +240,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 15,
           "name": "ase1_sgRNA",
           "sequence": "CATTACTGTTTGCATTGAAC",
@@ -145,6 +252,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 8,
           "name": "rvs_restriction_then_ligation",
           "sequence": "TAAGCAGGCGCGCCttaaaagccttcttctccccatt",
@@ -152,6 +264,11 @@
           "uid": null
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 7,
           "name": "fwd_restriction_then_ligation",
           "sequence": "TAAGCAGTCGACatgcaaacagtaatgatggatg",
@@ -167,7 +284,7 @@
       "page": 1,
       "pages": 1,
       "size": 50,
-      "total": 21
+      "total": 22
     },
     "headers": {
       "content-type": "application/json"

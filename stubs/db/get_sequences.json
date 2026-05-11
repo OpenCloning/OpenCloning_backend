@@ -12,6 +12,11 @@
     "body": {
       "items": [
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 69,
           "name": "polymerase_extended",
           "sample_uids": [
@@ -27,6 +32,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 68,
           "name": "templateless_PCR",
           "sample_uids": [],
@@ -40,6 +50,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 65,
           "name": "name",
           "sample_uids": [
@@ -55,6 +70,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 64,
           "name": "pFA6a-kanMX6",
           "sample_uids": [],
@@ -68,6 +88,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 63,
           "name": "name",
           "sample_uids": [],
@@ -81,6 +106,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 62,
           "name": "CU329670",
           "sample_uids": [],
@@ -94,6 +124,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 59,
           "name": "ase1delta::hphMX6",
           "sample_uids": [
@@ -109,6 +144,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 58,
           "name": "CU329670",
           "sample_uids": [],
@@ -122,6 +162,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 57,
           "name": "pcr_product",
           "sample_uids": [],
@@ -135,6 +180,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 56,
           "name": "pFA6a-5FLAG-hphMX6",
           "sample_uids": [],
@@ -148,6 +198,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 53,
           "name": "pREP42-ase1",
           "sample_uids": [
@@ -163,6 +218,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 52,
           "name": "digested_vector",
           "sample_uids": [],
@@ -176,6 +236,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 51,
           "name": "ase1_CDS",
           "sample_uids": [],
@@ -189,6 +254,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 50,
           "name": "NC_003424",
           "sample_uids": [],
@@ -202,6 +272,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 49,
           "name": "pREP42-MCS+",
           "sample_uids": [],
@@ -215,6 +290,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 44,
           "name": "expression_clone_lacZ",
           "sample_uids": [
@@ -230,6 +310,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 43,
           "name": "entry_clone_lacZ",
           "sample_uids": [],
@@ -243,6 +328,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 42,
           "name": "lacZ_PCR_product",
           "sample_uids": [],
@@ -256,6 +346,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 41,
           "name": "pcDNA6.2_C-YFP-DEST",
           "sample_uids": [],
@@ -269,6 +364,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 40,
           "name": "pDONR221",
           "sample_uids": [],
@@ -282,6 +382,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 39,
           "name": "NC_000913",
           "sample_uids": [],
@@ -295,6 +400,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 34,
           "name": "final_product",
           "sample_uids": [
@@ -310,6 +420,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 33,
           "name": "pcr_product",
           "sample_uids": [],
@@ -323,6 +438,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 32,
           "name": "CU329670",
           "sample_uids": [],
@@ -336,6 +456,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 31,
           "name": "pYTK083",
           "sample_uids": [],
@@ -349,6 +474,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 30,
           "name": "pYTK081",
           "sample_uids": [],
@@ -362,6 +492,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 29,
           "name": "pYTK074",
           "sample_uids": [],
@@ -375,6 +510,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 28,
           "name": "pYTK067",
           "sample_uids": [],
@@ -388,6 +528,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 27,
           "name": "pYTK051",
           "sample_uids": [],
@@ -401,6 +546,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 26,
           "name": "pYTK038",
           "sample_uids": [],
@@ -414,6 +564,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 25,
           "name": "pYTK009",
           "sample_uids": [],
@@ -427,6 +582,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 24,
           "name": "pYTK002",
           "sample_uids": [],
@@ -440,6 +600,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 21,
           "name": "3xHA-ase1",
           "sample_uids": [
@@ -455,6 +620,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 20,
           "name": "pcr_product",
           "sample_uids": [],
@@ -468,6 +638,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 19,
           "name": "pFA6a-3HA-kanMX6",
           "sample_uids": [],
@@ -481,6 +656,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 18,
           "name": "NC_003424",
           "sample_uids": [],
@@ -494,6 +674,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 14,
           "name": "final_product",
           "sample_uids": [
@@ -509,6 +694,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 13,
           "name": "pFA6a-kanMX6_SalI_AscI",
           "sample_uids": [],
@@ -522,6 +712,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 12,
           "name": "ase1_CDS_PCR_SalI_AscI",
           "sample_uids": [],
@@ -535,6 +730,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 11,
           "name": "pFA6a-kanMX6",
           "sample_uids": [],
@@ -548,6 +748,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 10,
           "name": "ase1_CDS_PCR",
           "sample_uids": [],
@@ -561,6 +766,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 9,
           "name": "CU329670",
           "sample_uids": [],
@@ -574,6 +784,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 6,
           "name": "reconstituted_locus",
           "sample_uids": [
@@ -589,6 +804,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 5,
           "name": "excised_locus",
           "sample_uids": [],
@@ -602,6 +822,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 4,
           "name": "excised_plasmid",
           "sample_uids": [],
@@ -615,6 +840,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 3,
           "name": "initial_locus",
           "sample_uids": [],
@@ -628,6 +858,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 2,
           "name": "initial_locus",
           "sample_uids": [],
@@ -641,6 +876,11 @@
           ]
         },
         {
+          "created_at": "2026-05-11T17:40:20",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
           "id": 1,
           "name": "pREX0008",
           "sample_uids": [

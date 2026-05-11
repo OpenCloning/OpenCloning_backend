@@ -12,6 +12,11 @@
   "params": null,
   "response": {
     "body": {
+      "created_at": "2026-05-11T17:40:20",
+      "created_by": {
+        "display_name": "Bootstrap User",
+        "id": 1
+      },
       "id": 37,
       "name": "lacZ_renamed",
       "sequence": "GGGGACAAGTTTGTACAAAAAAGCAGGCTTAATGACCATGATTACGGATTC",

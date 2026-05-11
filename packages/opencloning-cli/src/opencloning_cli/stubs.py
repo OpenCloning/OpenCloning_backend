@@ -1,5 +1,16 @@
 from pydantic import BaseModel, Field
 from typing import Generator
+from Bio.Seq import reverse_complement
+from pydna import opencloning_models
+from pydna.assembly2 import pcr_assembly
+from pydna.dseqrecord import Dseqrecord
+from pydna.primer import Primer
+
+primer1 = Primer('ACGTACGT')
+primer2 = Primer(reverse_complement('GCGCGCGC'))
+pcr_template = Dseqrecord('ccccACGTACGTAAAAAAGCGCGCGCcccc', circular=True)
+pcr_product, *_ = pcr_assembly(pcr_template, primer1, primer2, limit=8)
+cs_pcr = opencloning_models.CloningStrategy.from_dseqrecords([pcr_product]).model_dump()
 
 
 class StubRequest(BaseModel):
@@ -10,7 +21,6 @@ class StubRequest(BaseModel):
     body: dict | list | None = None
     headers: dict | None = None
     body_from_stub: str | None = None
-    body_from_example: str | None = None
     multipart_files: list[dict[str, str]] | None = None
     binary_response: bool = False
     reset_db: bool = False
@@ -132,7 +142,7 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
         name='post_sequence',
         endpoint='/sequences',
         method='POST',
-        body_from_example='cs_pcr',
+        body=cs_pcr,
         reset_db=True,
     )
     # StubRequest(

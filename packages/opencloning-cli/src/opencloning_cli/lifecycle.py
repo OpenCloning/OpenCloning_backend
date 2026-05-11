@@ -293,30 +293,12 @@ def _default_auth_headers(test_client: Any) -> dict[str, str]:
     }
 
 
-def _example_body(name: str) -> dict[str, Any]:
-    if name == 'cs_pcr':
-        from Bio.Seq import reverse_complement
-        from pydna import opencloning_models
-        from pydna.assembly2 import pcr_assembly
-        from pydna.dseqrecord import Dseqrecord
-        from pydna.primer import Primer
-
-        primer1 = Primer('ACGTACGT')
-        primer2 = Primer(reverse_complement('GCGCGCGC'))
-        pcr_template = Dseqrecord('ccccACGTACGTAAAAAAGCGCGCGCcccc', circular=True)
-        pcr_product, *_ = pcr_assembly(pcr_template, primer1, primer2, limit=8)
-        cs_pcr = opencloning_models.CloningStrategy.from_dseqrecords([pcr_product])
-        return opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json')).model_dump(
-            mode='json'
-        )
-    raise ValueError(f'Unknown example body "{name}".')
-
-
 def write_stubs(output_dir: Path):
     """Generate and persist one predefined DB test stub JSON."""
 
     config = get_config()
-    reset(config, resolve_snapshot_dir(config, None))
+    seed(config)
+    snapshot_create(config, resolve_snapshot_dir(config, None))
 
     target_dir = Path(output_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -334,8 +316,6 @@ def write_stubs(output_dir: Path):
                 if source_payload is None:
                     raise ValueError(f'Unknown body source stub "{stub.body_from_stub}" for "{stub.name}".')
                 stub.body = source_payload['response']['body']
-            if stub.body_from_example:
-                stub.body = _example_body(stub.body_from_example)
 
             recorded_stub = create_stub(client, stub)
 
