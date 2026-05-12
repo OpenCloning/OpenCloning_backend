@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag
+from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag, TemplateSequence
 
 from .helpers import (
     assert_get_invalid_workspace_id_422,
@@ -50,6 +50,12 @@ def lines_client(engine_client_config):
             seguid='SEGUID-ALLELE-AUX',
             created_by_id=ctx['owner_w1_id'],
         )
+        template_allele_w1 = TemplateSequence(
+            workspace_id=ctx['w1'],
+            name='template-allele-w1',
+            sequence_type=SequenceType.allele,
+            created_by_id=ctx['owner_w1_id'],
+        )
         allele_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='allele-w2',
@@ -88,6 +94,7 @@ def lines_client(engine_client_config):
                 allele_w1,
                 plasmid_w1,
                 allele_w1_aux,
+                template_allele_w1,
                 allele_w2,
                 plasmid_w2,
                 allele_filter,
@@ -130,6 +137,7 @@ def lines_client(engine_client_config):
                 'tag_filter_id': tag_filter.id,
                 'allele_w1_id': allele_w1.id,
                 'allele_w1_aux_id': allele_w1_aux.id,
+                'template_allele_w1_id': template_allele_w1.id,
                 'plasmid_w1_id': plasmid_w1.id,
                 'allele_w2_id': allele_w2.id,
                 'plasmid_w2_id': plasmid_w2.id,
@@ -329,6 +337,27 @@ def test_post_line_owner_ok(lines_client):
     assert response.json()['uid'] == 'L-NEW-OWNER'
 
 
+def test_post_line_accepts_template_sequence_id(lines_client):
+    """Line creation accepts a template sequence id through the existing allele_ids field."""
+    c = lines_client['client']
+    token = lines_client['token_owner_w1']
+    response = c.post(
+        '/lines',
+        headers=workspace_headers(token, lines_client['w1']),
+        json={
+            'uid': 'L-NEW-TEMPLATE',
+            'allele_ids': [lines_client['template_allele_w1_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body['uid'] == 'L-NEW-TEMPLATE'
+    assert [item['sequence']['type'] for item in body['sequences_in_line']] == ['template_sequence']
+    assert [item['sequence']['sequence_type'] for item in body['sequences_in_line']] == ['allele']
+
+
 def test_post_line_duplicate_uid_409(lines_client):
     c = lines_client['client']
     response = c.post(
@@ -418,7 +447,7 @@ def test_post_line_with_allele_from_other_workspace_returns_404(lines_client):
         },
     )
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Sequence not found'
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 def test_patch_line_other_workspace_plasmid_404(lines_client):
@@ -446,7 +475,7 @@ def test_patch_line_other_workspace_plasmid_404(lines_client):
         json={'plasmid_ids': [lines_client['plasmid_w2_id']]},
     )
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Sequence not found'
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 def test_patch_line_alleles_success(lines_client):

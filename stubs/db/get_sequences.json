@@ -12,7 +12,7 @@
     "body": {
       "items": [
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -29,10 +29,11 @@
               "id": 10,
               "name": "templateless_PCR"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -47,10 +48,11 @@
               "id": 10,
               "name": "templateless_PCR"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -67,10 +69,11 @@
               "id": 9,
               "name": "restriction_ligation_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -85,10 +88,11 @@
               "id": 9,
               "name": "restriction_ligation_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -103,10 +107,11 @@
               "id": 9,
               "name": "restriction_ligation_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -121,10 +126,11 @@
               "id": 9,
               "name": "restriction_ligation_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -141,10 +147,11 @@
               "id": 8,
               "name": "homologous_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -159,10 +166,11 @@
               "id": 8,
               "name": "homologous_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -177,10 +185,11 @@
               "id": 8,
               "name": "homologous_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -195,10 +204,11 @@
               "id": 8,
               "name": "homologous_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -215,10 +225,11 @@
               "id": 7,
               "name": "gibson_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -233,10 +244,11 @@
               "id": 7,
               "name": "gibson_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -251,10 +263,11 @@
               "id": 7,
               "name": "gibson_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -269,10 +282,11 @@
               "id": 7,
               "name": "gibson_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -287,10 +301,11 @@
               "id": 7,
               "name": "gibson_assembly"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -307,10 +322,11 @@
               "id": 6,
               "name": "gateway"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -325,10 +341,11 @@
               "id": 6,
               "name": "gateway"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -343,10 +360,11 @@
               "id": 6,
               "name": "gateway"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -361,10 +379,11 @@
               "id": 6,
               "name": "gateway"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -379,10 +398,11 @@
               "id": 6,
               "name": "gateway"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -397,10 +417,11 @@
               "id": 6,
               "name": "gateway"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -417,10 +438,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -435,10 +457,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -453,10 +476,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -471,10 +495,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -489,10 +514,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -507,10 +533,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -525,10 +552,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -543,10 +571,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -561,10 +590,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -579,10 +609,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:58",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -597,10 +628,11 @@
               "id": 5,
               "name": "golden_gate"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -617,10 +649,11 @@
               "id": 4,
               "name": "crispr_hdr"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -635,10 +668,11 @@
               "id": 4,
               "name": "crispr_hdr"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -653,10 +687,11 @@
               "id": 4,
               "name": "crispr_hdr"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -671,10 +706,11 @@
               "id": 4,
               "name": "crispr_hdr"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -691,10 +727,11 @@
               "id": 3,
               "name": "restriction_then_ligation"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -709,10 +746,11 @@
               "id": 3,
               "name": "restriction_then_ligation"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -727,10 +765,11 @@
               "id": 3,
               "name": "restriction_then_ligation"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -745,10 +784,11 @@
               "id": 3,
               "name": "restriction_then_ligation"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -763,10 +803,11 @@
               "id": 3,
               "name": "restriction_then_ligation"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -781,10 +822,11 @@
               "id": 3,
               "name": "restriction_then_ligation"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -801,10 +843,11 @@
               "id": 2,
               "name": "cre_lox_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -819,10 +862,11 @@
               "id": 2,
               "name": "cre_lox_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -837,10 +881,11 @@
               "id": 2,
               "name": "cre_lox_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -855,10 +900,11 @@
               "id": 2,
               "name": "cre_lox_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -873,10 +919,11 @@
               "id": 2,
               "name": "cre_lox_recombination"
             }
-          ]
+          ],
+          "type": "sequence"
         },
         {
-          "created_at": "2026-05-11T17:40:20",
+          "created_at": "2026-05-12T09:52:57",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -893,7 +940,8 @@
               "id": 1,
               "name": "example_sequencing"
             }
-          ]
+          ],
+          "type": "sequence"
         }
       ],
       "page": 1,

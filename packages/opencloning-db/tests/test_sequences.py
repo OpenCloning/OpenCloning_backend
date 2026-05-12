@@ -310,7 +310,7 @@ def test_get_sequence_workspace_mismatch_404(sequences_client):
         f"/sequences/{sequences_client['seq_w2_id']}", headers=workspace_headers(tok, sequences_client['w1'])
     )
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Sequence not found'
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 def test_patch_sequence_owner_rename_ok(sequences_client):
@@ -357,6 +357,18 @@ def test_patch_sequence_circular_rejects_non_plasmid_type(sequences_client):
     )
     assert r.status_code == 400
     assert r.json()['detail'] == "Circular sequences can only have sequence_type 'plasmid'"
+
+
+def test_patch_sequence_type_rejects_sequence_in_line(sequences_client):
+    """Cannot change sequence_type when the sequence is linked to a line."""
+    c = sequences_client['client']
+    r = c.patch(
+        f"/sequences/{sequences_client['pcr_template_id']}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        json={'sequence_type': 'allele'},
+    )
+    assert r.status_code == 400
+    assert r.json()['detail'] == 'Cannot change sequence_type: sequence is present in a line.'
 
 
 def test_patch_sequence_viewer_forbidden(sequences_client):
@@ -493,7 +505,7 @@ def test_delete_sequence_workspace_mismatch_404(sequences_client):
         headers=workspace_headers(sequences_client['token_owner_both'], sequences_client['w1']),
     )
     assert r.status_code == 404
-    assert r.json()['detail'] == 'Sequence not found'
+    assert r.json()['detail'] == 'BaseSequence not found'
 
 
 def _parse_dseqr(payload: dict) -> Dseqrecord:
@@ -640,7 +652,7 @@ def test_change_circularity_workspace_mismatch_404(sequences_client):
         ),
     )
     assert r.status_code == 404
-    assert r.json()['detail'] == 'Sequence not found'
+    assert r.json()['detail'] == 'BaseSequence not found'
 
 
 def test_change_circularity_unauthenticated_401(sequences_client):
@@ -722,7 +734,7 @@ def test_change_annotation_workspace_mismatch_404(sequences_client):
         json=existing_sequence_annotated,
     )
     assert r.status_code == 404
-    assert r.json()['detail'] == 'Sequence not found'
+    assert r.json()['detail'] == 'BaseSequence not found'
 
 
 def test_change_annotation_unauthenticated_401(sequences_client):
@@ -1129,7 +1141,7 @@ def test_get_sequence_lines_workspace_mismatch_404(sequences_client):
         headers=workspace_headers(sequences_client['token_owner_both'], sequences_client['w1']),
     )
     assert r.status_code == 404
-    assert r.json()['detail'] == 'Sequence not found'
+    assert r.json()['detail'] == 'BaseSequence not found'
 
 
 def test_get_sequence_primers_pcr_template_and_product(sequences_client):
@@ -1214,7 +1226,7 @@ def test_post_sequencing_files_workspace_mismatch_404(sequences_client):
         b'x',
     )
     assert r.status_code == 404
-    assert r.json()['detail'] == 'Sequence not found'
+    assert r.json()['detail'] == 'BaseSequence not found'
 
 
 def test_get_sequence_sequencing_files_viewer_ok(sequences_client):
@@ -1480,7 +1492,7 @@ def test_download_sequencing_file_wrong_workspace_404(sequences_client):
         ),
     )
     assert download.status_code == 404
-    assert download.json()['detail'] == 'Sequence not found'
+    assert download.json()['detail'] == 'BaseSequence not found'
 
 
 def test_patch_sequence_cross_workspace_header_404(sequences_client):
@@ -1493,7 +1505,7 @@ def test_patch_sequence_cross_workspace_header_404(sequences_client):
         json={'name': 'should-not-apply'},
     )
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Sequence not found'
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 def test_post_cloning_strategy_from_example(sequences_client):

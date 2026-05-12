@@ -107,7 +107,7 @@ def test_get_sequence_in_workspace_for_user_checks_workspace_and_type(
                 expected_type=SequenceType.allele,
             )
         assert exc.value.status_code == 404
-        assert exc.value.detail == 'Sequence not found'
+        assert exc.value.detail == 'BaseSequence not found'
 
         # Wrong type -> 400
         with pytest.raises(HTTPException) as exc2:
@@ -149,7 +149,7 @@ def test_get_sequence_in_workspace_missing_id_404(deps_session):
                 expected_type=SequenceType.allele,
             )
         assert exc.value.status_code == 404
-        assert exc.value.detail == 'Sequence not found'
+        assert exc.value.detail == 'BaseSequence not found'
 
 
 def test_get_sequence_sample_in_workspace_for_user_missing_404(deps_session):

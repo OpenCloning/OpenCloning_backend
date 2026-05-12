@@ -223,33 +223,46 @@ class InputEntity(Base):
     }
 
 
-class Sequence(InputEntity):
-    __tablename__ = 'sequence'
+class BaseSequence(InputEntity):
+    __tablename__ = 'base_sequence'
 
     id: Mapped[int] = mapped_column(ForeignKey('input_entity.id'), primary_key=True)
+    sequence_type: Mapped[Optional[SequenceType]] = mapped_column(
+        Enum(SequenceType, validate_strings=True), default=None, nullable=True
+    )
+    instances: Mapped[List['SequenceInstance']] = relationship(back_populates='sequence', cascade='all, delete-orphan')
+
+    __mapper_args__ = {
+        'polymorphic_abstract': True,
+    }
+
+    @property
+    def sample_uids(self) -> List[str]:
+        return [s.uid for s in self.instances if isinstance(s, SequenceSample)]
+
+    def to_pydantic_sequence(self) -> opencloning_models.Sequence:
+        raise NotImplementedError('to_pydantic_sequence is not implemented for BaseSequence')
+
+
+class Sequence(BaseSequence):
+    __tablename__ = 'sequence'
+
+    id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), primary_key=True)
     output_of_source: Mapped['Source'] = relationship(
         back_populates='output_sequence', uselist=False, single_parent=True
     )
     overhang_crick_3prime: Mapped[int] = mapped_column(default=0)
     overhang_watson_3prime: Mapped[int] = mapped_column(default=0)
-    sequence_type: Mapped[Optional[SequenceType]] = mapped_column(
-        Enum(SequenceType, validate_strings=True), default=None, nullable=True
-    )
     seguid: Mapped[str] = mapped_column(nullable=False)
 
     file_path: Mapped[str]
     sequencing_files: Mapped[List['SequencingFile']] = relationship(
         back_populates='sequence', cascade='all, delete-orphan'
     )
-    instances: Mapped[List['SequenceInstance']] = relationship(back_populates='sequence', cascade='all, delete-orphan')
 
     __mapper_args__ = {
         'polymorphic_identity': 'sequence',
     }
-
-    @property
-    def sample_uids(self) -> List[str]:
-        return [s.uid for s in self.instances if isinstance(s, SequenceSample)]
 
     def to_pydantic_sequence(self) -> opencloning_models.TextFileSequence:
         path = os.path.join(get_config().sequence_files_dir, self.file_path)
@@ -316,6 +329,37 @@ class Sequence(InputEntity):
             seguid=seguid,
             ctx=ctx,
             **pydantic_sequence.model_dump(include={'overhang_crick_3prime', 'overhang_watson_3prime'}),
+        )
+
+
+class TemplateSequence(BaseSequence):
+    __tablename__ = 'template_sequence'
+
+    id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), primary_key=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'template_sequence',
+    }
+
+    @classmethod
+    def from_create(
+        cls,
+        *,
+        name: str,
+        sequence_type: SequenceType,
+        ctx: WriteContext,
+    ) -> Self:
+        return cls(
+            name=name,
+            workspace_id=ctx.workspace_id,
+            created_by_id=ctx.user.id,
+            sequence_type=sequence_type,
+        )
+
+    def to_pydantic_sequence(self) -> opencloning_models.TemplateSequence:
+        return opencloning_models.TemplateSequence(
+            id=self.id,
+            circular=self.sequence_type == SequenceType.plasmid,
         )
 
 
@@ -558,10 +602,10 @@ class SequenceInstance(Base):
     __tablename__ = 'sequence_instance'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    sequence_id: Mapped[int] = mapped_column(ForeignKey('sequence.id'), nullable=False)
+    sequence_id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), nullable=False)
     type: Mapped[str] = mapped_column()
 
-    sequence: Mapped['Sequence'] = relationship(back_populates='instances')
+    sequence: Mapped['BaseSequence'] = relationship(back_populates='instances')
 
     __mapper_args__ = {
         'polymorphic_on': type,
@@ -723,7 +767,7 @@ def _validate_sequence_sample_workspace(session: SASession) -> None:
             uid_ws = _require_value(
                 s.uid_workspace_id, 'Missing required uid_workspace_id for SequenceSample validation.'
             )
-            seq = _require_row(session, Sequence, 'Sequence', instance=s.sequence, row_id=s.sequence_id)
+            seq = _require_row(session, BaseSequence, 'BaseSequence', instance=s.sequence, row_id=s.sequence_id)
             ws_id_sequence = _require_value(
                 seq.workspace_id, 'Missing required workspace ID for SequenceSample workspace validation.'
             )
@@ -736,7 +780,9 @@ def _validate_sequence_in_line_workspace(session: SASession) -> None:
     for sil in [*session.new, *session.dirty]:
         if not isinstance(sil, SequenceInLine):
             continue
-        sil_sequence = _require_row(session, Sequence, 'Sequence', instance=sil.sequence, row_id=sil.sequence_id)
+        sil_sequence = _require_row(
+            session, BaseSequence, 'BaseSequence', instance=sil.sequence, row_id=sil.sequence_id
+        )
         ws_id_sequence = _require_value(
             sil_sequence.workspace_id, 'Missing required workspace ID for SequenceInLine workspace validation.'
         )

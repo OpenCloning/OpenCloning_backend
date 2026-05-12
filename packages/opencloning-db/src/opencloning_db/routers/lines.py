@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import Column, Select, and_, exists, select
+from sqlalchemy import Select, and_, exists, select
 from sqlalchemy.orm import selectinload
 
 from opencloning_db.apimodels import (
@@ -16,7 +16,7 @@ from opencloning_db.apimodels import (
 
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag, User, WorkspaceRole
+from opencloning_db.models import BaseSequence, Line, SequenceInLine, SequenceType, Tag, User, WorkspaceRole
 from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
@@ -28,15 +28,15 @@ from opencloning_db.workspace_deps import (
 router = APIRouter(tags=['lines'])
 
 
-def get_line_subquery(line_id_col: Column, sequence_type: SequenceType, name: str) -> Select:
+def get_line_subquery(line_id_col, sequence_type: SequenceType, name: str) -> Select:
     subq = (
         select(1)
         .select_from(SequenceInLine)
-        .join(Sequence, SequenceInLine.sequence_id == Sequence.id)
+        .join(BaseSequence, SequenceInLine.sequence_id == BaseSequence.id)
         .where(
             SequenceInLine.line_id == line_id_col,
-            Sequence.sequence_type == sequence_type,
-            Sequence.name.ilike(f"%{name}%"),
+            BaseSequence.sequence_type == sequence_type,
+            BaseSequence.name.ilike(f"%{name}%"),
         )
     )
     return subq
@@ -66,7 +66,7 @@ def get_lines(
         .options(
             selectinload(Line.sequences_in_line)
             .selectinload(SequenceInLine.sequence)
-            .options(selectinload(Sequence.tags)),
+            .options(selectinload(BaseSequence.tags)),
             selectinload(Line.parents),
             selectinload(Line.tags),
             selectinload(Line.created_by),

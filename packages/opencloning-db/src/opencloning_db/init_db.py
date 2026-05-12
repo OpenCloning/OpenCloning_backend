@@ -17,10 +17,12 @@ from opencloning_db.models import (
     Base,
     Line,
     Primer,
+    Sequence,
     SequenceInLine,
     SequenceSample,
     Tag,
     SequenceType,
+    TemplateSequence,
     User,
     Workspace,
     WorkspaceMembership,
@@ -158,6 +160,25 @@ def init_db(config: Config):
         # session.add(create_sequencing_file(seq, pydantic_seq.file_content.encode('utf-8'), 'entry_clone_lacZ.gb'))
         # session.add(create_sequencing_file(seq, pydantic_seq.file_content.encode('utf-8'), 'entry_clone_lacZ2.gb'))
         # session.add(SequenceSample(uid='entry_clone_lacZ-sample', sequence_id=seq.id, uid_workspace_id=workspace.id))
+
+        # Add a template sequence
+        template_sequence = TemplateSequence.from_create(
+            name='template_sequence_allele', sequence_type=SequenceType.allele, ctx=seed_ctx
+        )
+        new_line = Line.from_create(uid='template_sequence-line', ctx=seed_ctx)
+        new_line.parents = [parent_strain]
+        new_line.sequences_in_line.append(SequenceInLine(sequence=template_sequence))
+        session.add(new_line)
+        # Add also a real plasmid to the same line
+        plasmid = session.scalar(select(Sequence).where(Sequence.name == 'entry_clone_lacZ'))
+        new_line.sequences_in_line.append(SequenceInLine(sequence=plasmid))
+        session.flush()
+
+        # Add a template plasmid without a line
+        template_plasmid = TemplateSequence.from_create(
+            name='template_sequence_plasmid', sequence_type=SequenceType.plasmid, ctx=seed_ctx
+        )
+        session.add(template_plasmid)
         session.commit()
 
     print('Database initialized successfully.')

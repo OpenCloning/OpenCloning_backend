@@ -8,6 +8,7 @@ import opencloning_linkml.datamodel.models as opencloning_models
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
 from fastapi import status
 
+from opencloning_db.models import BaseSequence
 from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
 from fastapi.responses import FileResponse, JSONResponse
@@ -59,6 +60,7 @@ from opencloning_db.workspace_deps import (
     get_editor_workspace_ctx,
     get_sequence_in_workspace_for_user,
     get_viewer_workspace_ctx,
+    require_real_sequence,
 )
 
 from pydna.dseq import Dseq
@@ -91,29 +93,29 @@ def get_sequences(
     _, session, workspace_id = ctx.destructure()
 
     query = (
-        select(Sequence)
+        select(BaseSequence)
         .options(
             selectinload(InputEntity.tags),
-            selectinload(Sequence.instances),
+            selectinload(BaseSequence.instances),
             selectinload(InputEntity.created_by),
         )
-        .where(Sequence.workspace_id == workspace_id)
+        .where(BaseSequence.workspace_id == workspace_id)
     )
     if tags:
         query = query.where(InputEntity.tags.any(and_(Tag.id.in_(tags), Tag.workspace_id == workspace_id)))
     if instantiated is not None:
-        query = query.where(Sequence.instances.any() if instantiated else ~Sequence.instances.any())
+        query = query.where(BaseSequence.instances.any() if instantiated else ~BaseSequence.instances.any())
     if sequence_types is not None and len(sequence_types) > 0:
-        query = query.where(Sequence.sequence_type.in_(sequence_types))
+        query = query.where(BaseSequence.sequence_type.in_(sequence_types))
     if name is not None:
-        query = query.where(Sequence.name.ilike(f"%{name}%"))
+        query = query.where(BaseSequence.name.ilike(f"%{name}%"))
     if uid is not None:
         # This creates a boolean filter by including 1 if the sequence has a sample with the given uid
         subq = (
             select(1)
             .select_from(SequenceSample)
             .where(
-                SequenceSample.sequence_id == Sequence.id,
+                SequenceSample.sequence_id == BaseSequence.id,
                 SequenceSample.uid.ilike(f"%{uid}%"),
                 SequenceSample.uid_workspace_id == workspace_id,
             )
@@ -124,15 +126,17 @@ def get_sequences(
             select(1)
             .select_from(SequenceSample)
             .where(
-                SequenceSample.sequence_id == Sequence.id,
+                SequenceSample.sequence_id == BaseSequence.id,
                 SequenceSample.uid.isnot(None),
                 SequenceSample.uid_workspace_id == workspace_id,
             )
         )
         query = query.where(exists(subq))
     if created_by is not None:
-        query = query.join(User, User.id == Sequence.created_by_id).where(User.display_name.ilike(f"%{created_by}%"))
-    query = query.order_by(Sequence.id.desc())
+        query = query.join(User, User.id == BaseSequence.created_by_id).where(
+            User.display_name.ilike(f"%{created_by}%")
+        )
+    query = query.order_by(BaseSequence.id.desc())
     return paginate(session, query)
 
 
@@ -166,13 +170,16 @@ def patch_sequence(
         db_sequence.name = body.name
 
     if body.sequence_type is not None:
-        # Enforce: circular sequences can only be typed as plasmids.
-        seq_record = read_dsrecord_from_json(db_sequence.to_pydantic_sequence())
-        if seq_record.circular and body.sequence_type != SequenceType.plasmid:
-            raise HTTPException(
-                status_code=400,
-                detail="Circular sequences can only have sequence_type 'plasmid'",
-            )
+        if any(isinstance(i, SequenceInLine) for i in db_sequence.instances):
+            raise HTTPException(status_code=400, detail='Cannot change sequence_type: sequence is present in a line.')
+        if isinstance(db_sequence, Sequence):
+            # Enforce: circular sequences can only be typed as plasmids.
+            seq_record = read_dsrecord_from_json(db_sequence.to_pydantic_sequence())
+            if seq_record.circular and body.sequence_type != SequenceType.plasmid:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Circular sequences can only have sequence_type 'plasmid'",
+                )
         db_sequence.sequence_type = body.sequence_type
 
     session.commit()
@@ -197,19 +204,20 @@ def delete_sequence(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
 
-    if db_sequence.source_inputs:
-        raise HTTPException(status_code=409, detail='Cannot delete sequence: it has child sequences.')
-    parent_source = db_sequence.output_of_source
-    if any(isinstance(instance, SequenceInLine) for instance in db_sequence.instances):
-        raise HTTPException(status_code=409, detail='Cannot delete sequence: it is present in a line.')
+    if isinstance(db_sequence, Sequence):
+        if db_sequence.source_inputs:
+            raise HTTPException(status_code=409, detail='Cannot delete sequence: it has child sequences.')
+        parent_source = db_sequence.output_of_source
+        if any(isinstance(instance, SequenceInLine) for instance in db_sequence.instances):
+            raise HTTPException(status_code=409, detail='Cannot delete sequence: it is present in a line.')
 
-    seq_files_dir = Path(get_config().sequence_files_dir)
-    sequencing_files_dir = Path(get_config().sequencing_files_dir)
-    sequence_file_path = seq_files_dir / db_sequence.file_path
-    sequencing_file_paths = [sequencing_files_dir / sf.storage_path for sf in db_sequence.sequencing_files]
+        seq_files_dir = Path(get_config().sequence_files_dir)
+        sequencing_files_dir = Path(get_config().sequencing_files_dir)
+        sequence_file_path = seq_files_dir / db_sequence.file_path
+        sequencing_file_paths = [sequencing_files_dir / sf.storage_path for sf in db_sequence.sequencing_files]
 
-    for source_input in list(parent_source.input):
-        session.delete(source_input)
+        for source_input in list(parent_source.input):
+            session.delete(source_input)
     session.delete(parent_source)
     session.delete(db_sequence)
     session.commit()
@@ -276,6 +284,7 @@ def change_sequence_circularity(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
+    db_sequence = require_real_sequence(db_sequence, detail='Only real sequences can have their circularity changed.')
 
     if db_sequence.source_inputs:
         raise HTTPException(status_code=400, detail='Cannot change circularity: sequence has child sequences.')
@@ -324,6 +333,7 @@ def change_sequence_annotation(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
+    db_sequence = require_real_sequence(db_sequence, detail='Only real sequences can have their annotation changed.')
 
     submitted_dseqr = read_dsrecord_from_json(body)
     existing_dseqr = read_dsrecord_from_json(db_sequence.to_pydantic_sequence())
@@ -364,7 +374,7 @@ def get_sequence_by_uid(
     return sequence_ref(db_sequence)
 
 
-def _seguid_query(seguid: str, workspace_id: int) -> Select[Sequence]:
+def _seguid_query(seguid: str, workspace_id: int) -> Select[tuple[Sequence]]:
     return (
         select(Sequence)
         .where(
@@ -560,6 +570,7 @@ def get_cloning_strategy(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
+    db_sequence = require_real_sequence(db_sequence, detail='cloning_strategy endpoint only supports real sequences.')
     parent_source = db_sequence.output_of_source
     parent_sequences = [
         source_input.input_entity
@@ -669,6 +680,7 @@ def get_sequence_sequencing_files(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
+    db_sequence = require_real_sequence(db_sequence, detail='sequencing_files endpoint only supports real sequences.')
     return [SequencingFileRef(id=f.id, original_name=f.original_name) for f in db_sequence.sequencing_files]
 
 
@@ -683,7 +695,7 @@ async def post_sequence_sequencing_files(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
-
+    db_sequence = require_real_sequence(db_sequence, detail='sequencing_files endpoint only supports real sequences.')
     created = []
     for upload in files:
         content = await upload.read()

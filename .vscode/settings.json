@@ -12,4 +12,5 @@
     "flake8.path": [".venv/bin/flake8"],
     "black-formatter.path": [".venv/bin/black"],
     "python.defaultInterpreterPath": ".venv/bin/python",
+    "cursorpyright.analysis.typeCheckingMode": "basic"
 }

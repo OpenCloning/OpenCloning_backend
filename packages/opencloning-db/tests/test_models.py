@@ -23,6 +23,7 @@ from opencloning_db.models import (
     AnySourceParser,
     AssemblyFragment,
     Base,
+    BaseSequence,
     InputEntity,
     Line,
     Primer,
@@ -34,6 +35,7 @@ from opencloning_db.models import (
     SourceInput,
     SourceType,
     Tag,
+    TemplateSequence,
     User,
     Workspace,
     _to_db_input,
@@ -183,6 +185,25 @@ class TestBaseRepr(unittest.TestCase):
 class TestSequence(_MemoryDbTestCase):
     """Tests for ``Sequence``."""
 
+    def test_base_sequence_loads_concrete_template_subclass(self):
+        """Loading through ``BaseSequence`` preserves the concrete template subtype."""
+        with Session(self.engine) as session:
+            ws = Workspace(name='W')
+            session.add(ws)
+            session.flush()
+            template = TemplateSequence(
+                workspace_id=ws.id,
+                name='tpl',
+                sequence_type=SequenceType.allele,
+                created_by_id=1,
+            )
+            session.add(template)
+            session.commit()
+
+            loaded = session.get(BaseSequence, template.id)
+
+        assert isinstance(loaded, TemplateSequence)
+
     def test_sample_uids_only_sequence_samples(self):
         """``sample_uids`` lists UIDs from ``SequenceSample`` only."""
         with Session(self.engine) as session:
@@ -203,6 +224,30 @@ class TestSequence(_MemoryDbTestCase):
             session.flush()
             session.refresh(seq)
             self.assertEqual(set(seq.sample_uids), {'S-1'})
+
+    def test_sequence_in_line_accepts_template_sequence_in_same_workspace(self):
+        """Template sequences can be linked to lines through the shared SequenceInLine table."""
+        with Session(self.engine) as session:
+            ws = Workspace(name='W')
+            session.add(ws)
+            session.flush()
+            template = TemplateSequence(
+                workspace_id=ws.id,
+                name='tpl',
+                sequence_type=SequenceType.allele,
+                created_by_id=1,
+            )
+            line = Line(workspace_id=ws.id, uid='L-1', created_by_id=1)
+            session.add_all([template, line])
+            session.flush()
+
+            sil = SequenceInLine(sequence_id=template.id, line_id=line.id)
+            session.add(sil)
+            session.commit()
+            session.refresh(sil)
+            linked_sequence = sil.sequence
+
+        assert isinstance(linked_sequence, TemplateSequence)
 
     def test_to_pydantic_sequence_reads_genbank_file(self):
         """Reads GenBank file text from configured sequence directory."""

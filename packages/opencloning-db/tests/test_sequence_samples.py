@@ -191,7 +191,7 @@ def test_post_sequence_sample_wrong_workspace_sequence_rejected(
         },
     )
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Sequence not found'
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 def test_patch_sequence_sample_viewer_forbidden(seq_samples_client):
@@ -296,7 +296,7 @@ def test_post_sequence_sample_invalid_sequence_id_404(seq_samples_client):
         json={'uid': 'S-BAD-SEQ', 'sequence_id': 9_999_999},
     )
     assert response.status_code == 404
-    assert response.json()['detail'] == 'Sequence not found'
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 def test_delete_sequence_sample_viewer_forbidden(seq_samples_client):

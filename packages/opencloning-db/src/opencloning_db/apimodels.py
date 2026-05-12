@@ -5,7 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
-from opencloning_db.models import SequenceType, Sequence, Primer, Line, SequenceInLine
+from opencloning_db.models import BaseSequence, SequenceType, Sequence, Primer, Line, SequenceInLine
 
 
 class ApiModel(BaseModel):
@@ -137,6 +137,7 @@ class CloningStrategyResponse(ApiModel):
 # --- Sequence / primer refs ---
 class SequenceRef(ApiModel):
     id: int
+    type: str
     name: str | None
     sequence_type: SequenceType
     tags: list[TagRead] = []
@@ -149,6 +150,18 @@ class SequenceRef(ApiModel):
 class SequenceUpdate(ApiModel):
     name: str | None = None
     sequence_type: SequenceType | None = None
+
+
+class TemplateSequenceCreate(ApiModel):
+    name: str = Field(min_length=1)
+    sequence_type: SequenceType
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def strip_name(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 class PrimerUpdate(ApiModel):
@@ -250,14 +263,15 @@ def _user_ref(user) -> UserRef | None:
     return UserRef(id=user.id, display_name=user.display_name)
 
 
-def sequence_ref(sequence: Sequence) -> SequenceRef:
+def sequence_ref(sequence: BaseSequence) -> SequenceRef:
     return SequenceRef(
         id=sequence.id,
+        type=sequence.type,
         name=sequence.name,
         sequence_type=sequence.sequence_type,
         tags=[TagRead(id=t.id, name=t.name) for t in sequence.tags],
         sample_uids=sequence.sample_uids,
-        seguid=sequence.seguid,
+        seguid=sequence.seguid if isinstance(sequence, Sequence) else None,
         created_at=sequence.created_at,
         created_by=_user_ref(sequence.created_by),
     )
