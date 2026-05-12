@@ -1639,3 +1639,133 @@ def test_post_sequences_bulk_sets_created_by(sequences_client):
         'display_name': 'Owner W1',
     }
     assert items[0]['created_at'] is not None
+
+
+def test_delete_sequence_missing_file_on_disk_still_succeeds(sequences_client):
+    """Deleting a sequence whose .gb file is already gone succeeds (FileNotFoundError silenced)."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_w1_id']
+    headers = workspace_headers(tok, wid)
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        sequence_file_path = Path(get_config().sequence_files_dir) / seq.file_path
+
+    assert sequence_file_path.exists()
+    sequence_file_path.unlink()
+    assert not sequence_file_path.exists()
+
+    r = c.delete(f"/sequences/{sid}", headers=headers)
+    assert r.status_code == 200
+    assert r.json() == {'deleted': sid, 'data': None}
+
+
+def test_change_circularity_write_fails_returns_500(sequences_client, monkeypatch):
+    """OSError when writing the new sequence file returns 500."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_patch_linear_id']
+    headers = workspace_headers(tok, wid)
+
+    original_write_text = Path.write_text
+
+    def failing_write_text(self, *args, **kwargs):
+        if str(self).endswith('.gb'):
+            raise OSError('disk full')
+        return original_write_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'write_text', failing_write_text)
+
+    r = c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
+    assert r.status_code == 500
+    assert 'Failed to write sequence file' in r.json()['detail']
+
+
+def test_change_circularity_commit_fails_cleans_up_new_file(sequences_client, monkeypatch):
+    """When session.commit() fails in _replace_sequence_file, the new file is cleaned up."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_patch_linear_id']
+    headers = workspace_headers(tok, wid)
+
+    seq_dir = Path(get_config().sequence_files_dir)
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        old_path = seq_dir / seq.file_path
+
+    assert old_path.exists()
+    files_before = set(seq_dir.glob('*.gb'))
+
+    original_commit = Session.commit
+    call_count = [0]
+
+    def commit_failing_once(self):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            raise RuntimeError('simulated commit failure')
+        return original_commit(self)
+
+    monkeypatch.setattr(Session, 'commit', commit_failing_once)
+
+    with pytest.raises(RuntimeError, match='simulated commit failure'):
+        c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
+
+    assert old_path.exists()
+    files_after = set(seq_dir.glob('*.gb'))
+    assert files_after == files_before
+
+
+def test_change_circularity_old_file_unlink_fails_returns_500(sequences_client, monkeypatch):
+    """OSError when removing the old file after a successful commit returns 500."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_patch_linear_id']
+    headers = workspace_headers(tok, wid)
+
+    with Session(sequences_client['engine']) as session:
+        seq = session.get(Sequence, sid)
+        old_path = Path(get_config().sequence_files_dir) / seq.file_path
+
+    original_unlink = Path.unlink
+
+    def failing_unlink(self, *args, **kwargs):
+        if self == old_path:
+            raise OSError('permission denied')
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'unlink', failing_unlink)
+
+    r = c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
+    assert r.status_code == 500
+    assert 'failed to remove old file' in r.json()['detail']
+
+
+def test_post_sequences_bulk_integrity_error_returns_409(sequences_client, monkeypatch):
+    """IntegrityError during commit (race condition) in bulk submission returns 409."""
+    from sqlalchemy.exc import IntegrityError
+
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        ('race.gb', Dseqrecord('ATGCATGCAAA', name='race_seq').format('genbank').encode('utf-8')),
+    ]
+
+    original_commit = Session.commit
+    call_count = [0]
+
+    def commit_raising_once(self):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            raise IntegrityError('mock', {}, Exception())
+        return original_commit(self)
+
+    monkeypatch.setattr(Session, 'commit', commit_raising_once)
+
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=True)
+    assert r.status_code == 409

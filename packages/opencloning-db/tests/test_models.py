@@ -282,6 +282,34 @@ class TestSequence(_MemoryDbTestCase):
         self.assertEqual(pyd.overhang_watson_3prime, 5)
         self.assertEqual(pyd.sequence_file_format, 'genbank')
 
+    def test_base_sequence_to_pydantic_raises_not_implemented(self):
+        base = BaseSequence.__new__(BaseSequence)
+        with self.assertRaises(NotImplementedError):
+            base.to_pydantic_sequence()
+
+    def test_template_sequence_to_pydantic(self):
+        with Session(self.engine) as session:
+            for sequence_type in [SequenceType.allele, SequenceType.plasmid]:
+                ws = Workspace(name='W')
+                session.add(ws)
+                session.flush()
+                ts = TemplateSequence(
+                    workspace_id=ws.id,
+                    name='tpl',
+                    sequence_type=sequence_type,
+                    created_by_id=1,
+                )
+                session.add(ts)
+                session.flush()
+                pyd = ts.to_pydantic_sequence()
+
+                self.assertIsInstance(pyd, opencloning_models.TemplateSequence)
+                self.assertEqual(pyd.id, ts.id)
+                if sequence_type == SequenceType.plasmid:
+                    self.assertTrue(pyd.circular)
+                else:
+                    self.assertFalse(pyd.circular)
+
 
 class TestPrimer(_MemoryDbTestCase):
     """Tests for ``Primer``."""
@@ -845,3 +873,40 @@ class TestForeignKeysApply(_MemoryDbTestCase):
             line = Line(workspace_id=ws.id, uid='L', created_by_id=10)
             session.add(line)
             self.assertRaises(IntegrityError, session.commit)
+
+
+class TestApiModelValidators(unittest.TestCase):
+    """Edge-case branches in Pydantic validators defined in apimodels."""
+
+    def test_template_sequence_create_strip_name_non_string(self):
+        from pydantic import ValidationError
+
+        from opencloning_db.apimodels import TemplateSequenceCreate
+
+        with pytest.raises(ValidationError):
+            TemplateSequenceCreate(name=None, sequence_type=SequenceType.allele)
+
+    def test_primer_update_strip_uid_non_string(self):
+        from opencloning_db.apimodels import PrimerUpdate
+
+        obj = PrimerUpdate(uid=None)
+        assert obj.uid is None
+
+    def test_primer_update_strip_name_short_raises(self):
+        from pydantic import ValidationError
+
+        from opencloning_db.apimodels import PrimerUpdate
+
+        with pytest.raises(ValidationError, match='at least 2 characters'):
+            PrimerUpdate(name=' a ')
+
+    def test_primer_update_strip_name_non_string(self):
+        from opencloning_db.apimodels import PrimerUpdate
+
+        obj = PrimerUpdate(name=None)
+        assert obj.name is None
+
+    def test_user_ref_none_returns_none(self):
+        from opencloning_db.apimodels import _user_ref
+
+        assert _user_ref(None) is None

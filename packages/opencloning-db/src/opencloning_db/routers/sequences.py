@@ -419,7 +419,7 @@ def _sequence_validation_rows_with_flags(
     submitted_files: list[tuple[str, str]],
     session,
     workspace_id: int,
-) -> list[SequenceValidationRow]:
+) -> tuple[list[SequenceValidationRow], list[opencloning_models.TextFileSequence]]:
     if len(submitted_files) > 100:
         raise HTTPException(status_code=400, detail='A maximum of 100 sequence files can be submitted')
 
@@ -527,7 +527,7 @@ async def post_sequences_bulk(
         session.commit()
     except IntegrityError:
         session.rollback()
-        conflict_rows = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
+        conflict_rows, _ = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
         return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in conflict_rows])
 
     for db_sequence in db_sequences:

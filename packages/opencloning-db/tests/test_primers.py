@@ -823,3 +823,42 @@ def test_get_primers_filter_by_created_by(primers_client):
     r = c.get('/primers?created_by=nobody', headers=headers_owner)
     assert r.status_code == 200
     assert r.json()['items'] == []
+
+
+def test_validate_upload_whitespace_uid_not_flagged_as_existing(primers_client):
+    """Whitespace-only UID is normalised to None by _normalize_uid, so uid_exists is False."""
+    c = primers_client['client']
+    headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
+    payload = [{'name': 'ws_uid_primer', 'sequence': 'AACCGG', 'uid': '   '}]
+
+    r = c.post('/primers/validate-upload', headers=headers, json=payload)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 1
+    assert rows[0]['uid_exists'] is False
+    assert rows[0]['uid_duplicated'] is False
+
+
+def test_post_primers_bulk_integrity_error_returns_409(primers_client, monkeypatch):
+    """IntegrityError during commit (race condition) returns 409 with validation rows."""
+    from sqlalchemy.exc import IntegrityError
+
+    c = primers_client['client']
+    headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
+    payload = [{'name': 'race_primer', 'sequence': 'AACCGG', 'uid': 'RACE-UID-1'}]
+
+    original_commit = Session.commit
+    call_count = [0]
+
+    def commit_raising_once(self):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            raise IntegrityError('mock', {}, Exception())
+        return original_commit(self)
+
+    monkeypatch.setattr(Session, 'commit', commit_raising_once)
+
+    r = c.post('/primers/bulk', headers=headers, json=payload)
+    assert r.status_code == 409
+    rows = r.json()
+    assert len(rows) == 1
