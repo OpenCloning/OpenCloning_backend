@@ -201,7 +201,7 @@ class InputEntity(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)
     type: Mapped[str] = mapped_column()
-    name: Mapped[Optional[str]] = mapped_column(default='name')
+    name: Mapped[str] = mapped_column(default='name')
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -230,12 +230,12 @@ class Sequence(InputEntity):
     output_of_source: Mapped['Source'] = relationship(
         back_populates='output_sequence', uselist=False, single_parent=True
     )
-    overhang_crick_3prime: Mapped[Optional[int]] = mapped_column(default=0)
-    overhang_watson_3prime: Mapped[Optional[int]] = mapped_column(default=0)
+    overhang_crick_3prime: Mapped[int] = mapped_column(default=0)
+    overhang_watson_3prime: Mapped[int] = mapped_column(default=0)
     sequence_type: Mapped[Optional[SequenceType]] = mapped_column(
         Enum(SequenceType, validate_strings=True), default=None, nullable=True
     )
-    seguid: Mapped[Optional[str]] = mapped_column(nullable=False)
+    seguid: Mapped[str] = mapped_column(nullable=False)
 
     file_path: Mapped[str]
     sequencing_files: Mapped[List['SequencingFile']] = relationship(
@@ -636,7 +636,7 @@ class Line(Base):
     created_by_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
 
     workspace: Mapped['Workspace'] = relationship(back_populates='lines')
-    created_by: Mapped[Optional['User']] = relationship(foreign_keys=[created_by_id])
+    created_by: Mapped['User'] = relationship(foreign_keys=[created_by_id])
 
     # Self-referential many-to-many: a line can have many parents,
     # and each parent can have many children.
