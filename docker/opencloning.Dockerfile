@@ -48,6 +48,8 @@ FROM workspace-full AS builder-test
 ARG PACKAGE_VERSION="0.1.0"
 ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
 
+COPY packages/opencloning-cli packages/opencloning-cli
+
 RUN uv sync --frozen --no-default-groups --no-editable --group test
 
 ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"

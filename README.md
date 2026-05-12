@@ -102,6 +102,12 @@ docker run -d --name backendcontainer -p 8000:8000 \
   manulera/opencloningbackend
 ```
 
+If you want to build the test image locally, you can do so by:
+
+```bash
+docker build -f docker/opencloning.Dockerfile -t manulera/opencloningbackend-test --target builder-test .
+```
+
 If you don't want to download the repository and build the image, you can fetch the latest image from dockerhub.
 
 ```bash
