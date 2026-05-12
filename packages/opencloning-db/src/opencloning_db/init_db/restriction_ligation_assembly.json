@@ -119,14 +119,14 @@
     {
       "id": 5,
       "type": "Primer",
-      "name": "fwd",
+      "name": "fwd_restriction_ligation_assembly",
       "database_id": null,
       "sequence": "TAAGCAGTCGACatgcaaacagtaatgatggatg"
     },
     {
       "id": 6,
       "type": "Primer",
-      "name": "rvs",
+      "name": "rvs_restriction_ligation_assembly",
       "database_id": null,
       "sequence": "TAAGCAGGCGCGCCttaaaagccttcttctccccatt"
     }

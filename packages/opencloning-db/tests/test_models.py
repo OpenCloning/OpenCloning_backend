@@ -13,14 +13,17 @@ import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 import opencloning_db.config as app_config
 from opencloning_db.config import Config
+from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import (
     AnySourceParser,
     AssemblyFragment,
     Base,
+    BaseSequence,
     InputEntity,
     Line,
     Primer,
@@ -32,6 +35,8 @@ from opencloning_db.models import (
     SourceInput,
     SourceType,
     Tag,
+    TemplateSequence,
+    User,
     Workspace,
     _to_db_input,
     _require_value,
@@ -41,6 +46,11 @@ from opencloning_db.models import (
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
 
 
+def _ctx(workspace_id: int, user_id: int = 1) -> WriteContext:
+    """Build a WriteContext with a lightweight (unsaved) User stub for tests."""
+    return WriteContext(user=User(id=user_id, email='unused@test'), workspace_id=workspace_id)
+
+
 class _MemoryDbTestCase(unittest.TestCase):
     """Fresh in-memory SQLite schema per test."""
 
@@ -48,6 +58,9 @@ class _MemoryDbTestCase(unittest.TestCase):
         super().setUp()
         self.engine = create_engine('sqlite:///:memory:')
         Base.metadata.create_all(self.engine)
+        with Session(self.engine) as session:
+            session.add(User(email='test@test.com'))
+            session.commit()
 
 
 class TestConfig(unittest.TestCase):
@@ -172,14 +185,33 @@ class TestBaseRepr(unittest.TestCase):
 class TestSequence(_MemoryDbTestCase):
     """Tests for ``Sequence``."""
 
+    def test_base_sequence_loads_concrete_template_subclass(self):
+        """Loading through ``BaseSequence`` preserves the concrete template subtype."""
+        with Session(self.engine) as session:
+            ws = Workspace(name='W')
+            session.add(ws)
+            session.flush()
+            template = TemplateSequence(
+                workspace_id=ws.id,
+                name='tpl',
+                sequence_type=SequenceType.allele,
+                created_by_id=1,
+            )
+            session.add(template)
+            session.commit()
+
+            loaded = session.get(BaseSequence, template.id)
+
+        assert isinstance(loaded, TemplateSequence)
+
     def test_sample_uids_only_sequence_samples(self):
         """``sample_uids`` lists UIDs from ``SequenceSample`` only."""
         with Session(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            seq = Sequence(workspace_id=ws.id, file_path='s.gb', name='seq')
-            line = Line(workspace_id=ws.id, uid='L-1')
+            seq = Sequence(workspace_id=ws.id, file_path='s.gb', name='seq', seguid='SEGUID-SEQ', created_by_id=1)
+            line = Line(workspace_id=ws.id, uid='L-1', created_by_id=1)
             session.add_all([seq, line])
             session.flush()
             samp = SequenceSample(
@@ -193,13 +225,37 @@ class TestSequence(_MemoryDbTestCase):
             session.refresh(seq)
             self.assertEqual(set(seq.sample_uids), {'S-1'})
 
+    def test_sequence_in_line_accepts_template_sequence_in_same_workspace(self):
+        """Template sequences can be linked to lines through the shared SequenceInLine table."""
+        with Session(self.engine) as session:
+            ws = Workspace(name='W')
+            session.add(ws)
+            session.flush()
+            template = TemplateSequence(
+                workspace_id=ws.id,
+                name='tpl',
+                sequence_type=SequenceType.allele,
+                created_by_id=1,
+            )
+            line = Line(workspace_id=ws.id, uid='L-1', created_by_id=1)
+            session.add_all([template, line])
+            session.flush()
+
+            sil = SequenceInLine(sequence_id=template.id, line_id=line.id)
+            session.add(sil)
+            session.commit()
+            session.refresh(sil)
+            linked_sequence = sil.sequence
+
+        assert isinstance(linked_sequence, TemplateSequence)
+
     def test_to_pydantic_sequence_reads_genbank_file(self):
         """Reads GenBank file text from configured sequence directory."""
         rel = 'sub/test.gb'
         seq_root = Path(app_config.get_config().sequence_files_dir)
         full = seq_root / rel
         full.parent.mkdir(parents=True)
-        full.write_text('LOCUS       X\n//\n', encoding='utf-8')
+        full.write_text(pcr_product.format('genbank'), encoding='utf-8')
 
         with Session(self.engine) as session:
             ws = Workspace(name='W')
@@ -211,6 +267,8 @@ class TestSequence(_MemoryDbTestCase):
                 name='n',
                 overhang_crick_3prime=3,
                 overhang_watson_3prime=5,
+                seguid='SEGUID-SEQ',
+                created_by_id=1,
             )
             session.add(seq)
             session.flush()
@@ -223,6 +281,34 @@ class TestSequence(_MemoryDbTestCase):
         self.assertEqual(pyd.overhang_crick_3prime, 3)
         self.assertEqual(pyd.overhang_watson_3prime, 5)
         self.assertEqual(pyd.sequence_file_format, 'genbank')
+
+    def test_base_sequence_to_pydantic_raises_not_implemented(self):
+        base = BaseSequence.__new__(BaseSequence)
+        with self.assertRaises(NotImplementedError):
+            base.to_pydantic_sequence()
+
+    def test_template_sequence_to_pydantic(self):
+        with Session(self.engine) as session:
+            for sequence_type in [SequenceType.allele, SequenceType.plasmid]:
+                ws = Workspace(name='W')
+                session.add(ws)
+                session.flush()
+                ts = TemplateSequence(
+                    workspace_id=ws.id,
+                    name='tpl',
+                    sequence_type=sequence_type,
+                    created_by_id=1,
+                )
+                session.add(ts)
+                session.flush()
+                pyd = ts.to_pydantic_sequence()
+
+                self.assertIsInstance(pyd, opencloning_models.TemplateSequence)
+                self.assertEqual(pyd.id, ts.id)
+                if sequence_type == SequenceType.plasmid:
+                    self.assertTrue(pyd.circular)
+                else:
+                    self.assertFalse(pyd.circular)
 
 
 class TestPrimer(_MemoryDbTestCase):
@@ -240,7 +326,7 @@ class TestPrimer(_MemoryDbTestCase):
                 sequence='ATGC',
                 database_id=None,
             )
-            primer = Primer.from_pydantic(pp, workspace_id=ws.id)
+            primer = Primer.from_pydantic(pp, ctx=_ctx(ws.id))
             session.add(primer)
             session.flush()
             session.refresh(primer)
@@ -255,7 +341,7 @@ class TestPrimer(_MemoryDbTestCase):
             Primer(
                 workspace_id=1,
                 uid_workspace_id=2,
-                sequence='A',
+                sequence='AT',
                 uid=None,
             )
 
@@ -265,9 +351,34 @@ class TestPrimer(_MemoryDbTestCase):
             Primer(
                 workspace_id=1,
                 uid_workspace_id=1,
-                sequence='A',
+                sequence='AT',
                 uid='',
             )
+
+    def test_sequence_invalid_characters_rejected_on_instantiation(self):
+        """Primer sequence must be ACGT only (ORM ``@validates``)."""
+        with self.assertRaisesRegex(ValueError, 'only contain ACGT'):
+            Primer(workspace_id=1, uid_workspace_id=1, name='p', sequence='ATNX')
+
+    def test_sequence_too_short_rejected_on_instantiation(self):
+        """Primer sequence must be at least two bases."""
+        with self.assertRaisesRegex(ValueError, 'at least 2 characters'):
+            Primer(workspace_id=1, uid_workspace_id=1, name='p', sequence='A')
+
+    def test_from_pydantic_rejects_sequence_too_short(self):
+        """``from_pydantic`` applies the same sequence rules as direct construction."""
+        with Session(self.engine) as session:
+            ws = Workspace(name='W')
+            session.add(ws)
+            session.flush()
+            pp = opencloning_models.Primer(
+                id=0,
+                name='p1',
+                sequence='G',
+                database_id=None,
+            )
+            with self.assertRaisesRegex(ValueError, 'at least 2 characters'):
+                Primer.from_pydantic(pp, ctx=_ctx(ws.id))
 
 
 class TestSource(_MemoryDbTestCase):
@@ -282,7 +393,7 @@ class TestSource(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            seq = Sequence(workspace_id=ws.id, file_path='o.gb', name='out')
+            seq = Sequence(workspace_id=ws.id, file_path='o.gb', name='out', seguid='SEGUID-OUT', created_by_id=1)
             session.add(seq)
             session.flush()
 
@@ -305,7 +416,7 @@ class TestSource(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            seq = Sequence(workspace_id=ws.id, file_path='e.gb', name='e')
+            seq = Sequence(workspace_id=ws.id, file_path='e.gb', name='e', seguid='SEGUID-E', created_by_id=1)
             session.add(seq)
             session.flush()
             pyd = opencloning_models.PCRSource.model_validate(
@@ -334,7 +445,7 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            ent = Sequence(workspace_id=ws.id, file_path='in.gb', name='in')
+            ent = Sequence(workspace_id=ws.id, file_path='in.gb', name='in', seguid='SEGUID-IN', created_by_id=1)
             session.add(ent)
             session.flush()
             src_row = Source(
@@ -375,10 +486,12 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            ent = Sequence(workspace_id=ws.id, file_path='af.gb', name='af')
+            ent = Sequence(workspace_id=ws.id, file_path='af.gb', name='af', seguid='SEGUID-AF', created_by_id=1)
             session.add(ent)
             session.flush()
-            out_seq = Sequence(workspace_id=ws.id, file_path='out.gb', name='out')
+            out_seq = Sequence(
+                workspace_id=ws.id, file_path='out.gb', name='out', seguid='SEGUID-OUT', created_by_id=1
+            )
             session.add(out_seq)
             session.flush()
             src_row = Source(
@@ -414,7 +527,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
     def test_dseqrecord_to_db_raises_when_strategy_has_multiple_sequences(self):
         """``dseqrecord_to_db`` rejects strategies that produce more than one sequence."""
         with self.assertRaisesRegex(ValueError, 'expects exactly one sequence'):
-            dseqrecord_to_db(pcr_product, None, 1)
+            dseqrecord_to_db(pcr_product, None, ctx=_ctx(1))
 
     def test_cloning_strategy_to_db_raises_when_sequence_has_no_source(self):
         """Every strategy sequence must have a source with the same id."""
@@ -423,7 +536,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
         strategy.sources = [s for s in strategy.sources if s.id != missing_source_id]
 
         with self.assertRaisesRegex(ValueError, f"No source produces sequence {missing_source_id}"):
-            cloning_strategy_to_db(strategy, None, 1)
+            cloning_strategy_to_db(strategy, None, ctx=_ctx(1))
 
     def test_id_mappings_all_new_entities(self):
         """Mappings include all strategy ids and point to persisted rows."""
@@ -434,7 +547,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            output_rows, id_mappings = cloning_strategy_to_db(strategy, session, ws.id)
+            output_rows, id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
 
             self.assertEqual(set(id_mappings.keys()), expected_ids)
             self.assertEqual(len(output_rows), len(strategy.sequences))
@@ -456,7 +569,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
             session.add(ws)
             session.flush()
             # First, commit some sequences
-            _, id_mappings = cloning_strategy_to_db(strategy, session, ws.id)
+            _, id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
             num_sequences_before = session.query(Sequence).count()
             num_primers_before = session.query(Primer).count()
             self.assertEqual(num_sequences_before, 2)
@@ -472,7 +585,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
             pcr_product = next(s for s in strategy.sequences if s.id == pcr_source.id)
             pcr_product.id = 999
             pcr_source.id = 999
-            new_output_rows, new_id_mappings = cloning_strategy_to_db(strategy, session, ws.id)
+            new_output_rows, new_id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
             num_sequences_after = session.query(Sequence).count()
             num_primers_after = session.query(Primer).count()
             self.assertEqual(num_sequences_after, 3)
@@ -525,8 +638,8 @@ class TestSequenceSample(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            seq_w1 = Sequence(workspace_id=w1.id, file_path='q1.gb')
-            seq_w2 = Sequence(workspace_id=w2.id, file_path='q2.gb')
+            seq_w1 = Sequence(workspace_id=w1.id, file_path='q1.gb', seguid='SEGUID-Q1', created_by_id=1)
+            seq_w2 = Sequence(workspace_id=w2.id, file_path='q2.gb', seguid='SEGUID-Q2', created_by_id=1)
             session.add_all([seq_w1, seq_w2])
             session.flush()
             samp = SequenceSample(
@@ -548,7 +661,7 @@ class TestSequenceSample(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            seq = Sequence(workspace_id=w1.id, file_path='q.gb')
+            seq = Sequence(workspace_id=w1.id, file_path='q.gb', seguid='SEGUID-Q', created_by_id=1)
             session.add(seq)
             session.flush()
             samp = SequenceSample(
@@ -582,8 +695,8 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            line_w1 = Line(workspace_id=w1.id, uid='L-W1')
-            seq_w2 = Sequence(workspace_id=w2.id, file_path='s2.gb', name='S2')
+            line_w1 = Line(workspace_id=w1.id, uid='L-W1', created_by_id=1)
+            seq_w2 = Sequence(workspace_id=w2.id, file_path='s2.gb', name='S2', seguid='SEGUID-S2', created_by_id=1)
             session.add_all([line_w1, seq_w2])
             session.flush()
             session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w2.id))
@@ -595,8 +708,8 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w1 = Workspace(name='W1')
             session.add(w1)
             session.flush()
-            line_w1 = Line(workspace_id=w1.id, uid='L-W1')
-            seq_w1 = Sequence(workspace_id=w1.id, file_path='s1.gb', name='S1')
+            line_w1 = Line(workspace_id=w1.id, uid='L-W1', created_by_id=1)
+            seq_w1 = Sequence(workspace_id=w1.id, file_path='s1.gb', name='S1', seguid='SEGUID-S1', created_by_id=1)
             session.add_all([line_w1, seq_w1])
             session.flush()
             session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w1.id))
@@ -608,8 +721,10 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            out_seq = Sequence(workspace_id=w1.id, file_path='out.gb', name='Out')
-            in_seq = Sequence(workspace_id=w2.id, file_path='in.gb', name='In')
+            out_seq = Sequence(
+                workspace_id=w1.id, file_path='out.gb', name='Out', seguid='SEGUID-OUT', created_by_id=1
+            )
+            in_seq = Sequence(workspace_id=w2.id, file_path='in.gb', name='In', seguid='SEGUID-IN', created_by_id=1)
             session.add_all([out_seq, in_seq])
             session.flush()
             src = Source(
@@ -638,7 +753,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            line = Line(workspace_id=w1.id, uid='L')
+            line = Line(workspace_id=w1.id, uid='L', created_by_id=1)
             tag_w2 = Tag(workspace_id=w2.id, name='T2')
             session.add_all([line, tag_w2])
             session.flush()
@@ -652,7 +767,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            ent = Sequence(workspace_id=w1.id, file_path='e.gb', name='E')
+            ent = Sequence(workspace_id=w1.id, file_path='e.gb', name='E', seguid='SEGUID-E', created_by_id=1)
             tag_w2 = Tag(workspace_id=w2.id, name='T2')
             session.add_all([ent, tag_w2])
             session.flush()
@@ -665,8 +780,8 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w1 = Workspace(name='W1')
             session.add(w1)
             session.flush()
-            line = Line(workspace_id=w1.id, uid='L')
-            ent = Sequence(workspace_id=w1.id, file_path='e.gb', name='E')
+            line = Line(workspace_id=w1.id, uid='L', created_by_id=1)
+            ent = Sequence(workspace_id=w1.id, file_path='e.gb', name='E', seguid='SEGUID-E', created_by_id=1)
             tag = Tag(workspace_id=w1.id, name='T1')
             session.add_all([line, ent, tag])
             session.flush()
@@ -684,8 +799,8 @@ class TestLine(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            parent = Line(workspace_id=ws.id, uid='P')
-            child = Line(workspace_id=ws.id, uid='C')
+            parent = Line(workspace_id=ws.id, uid='P', created_by_id=1)
+            child = Line(workspace_id=ws.id, uid='C', created_by_id=1)
             session.add_all([parent, child])
             session.flush()
             child.parents.append(parent)
@@ -701,18 +816,22 @@ class TestLine(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            line = Line(workspace_id=ws.id, uid='L')
+            line = Line(workspace_id=ws.id, uid='L', created_by_id=1)
             session.add(line)
             session.flush()
             allele_seq = Sequence(
                 workspace_id=ws.id,
                 file_path='a.gb',
                 sequence_type=SequenceType.allele,
+                seguid='SEGUID-ALLELE',
+                created_by_id=1,
             )
             plasmid_seq = Sequence(
                 workspace_id=ws.id,
                 file_path='p.gb',
                 sequence_type=SequenceType.plasmid,
+                seguid='SEGUID-PLASMID',
+                created_by_id=1,
             )
             session.add_all([allele_seq, plasmid_seq])
             session.flush()
@@ -741,3 +860,53 @@ class TestRequireValueAndRow(_MemoryDbTestCase):
             session.flush()
             with self.assertRaisesRegex(ValueError, 'Cannot resolve'):
                 _require_row(session, Sequence, 'Sequence', row_id=999)
+
+
+class TestForeignKeysApply(_MemoryDbTestCase):
+    """Tests for foreign key constraints."""
+
+    def test_foreign_keys_apply(self):
+        with Session(self.engine) as session:
+            ws = Workspace(name='W')
+            session.add(ws)
+            session.flush()
+            line = Line(workspace_id=ws.id, uid='L', created_by_id=10)
+            session.add(line)
+            self.assertRaises(IntegrityError, session.commit)
+
+
+class TestApiModelValidators(unittest.TestCase):
+    """Edge-case branches in Pydantic validators defined in apimodels."""
+
+    def test_template_sequence_create_strip_name_non_string(self):
+        from pydantic import ValidationError
+
+        from opencloning_db.apimodels import TemplateSequenceCreate
+
+        with pytest.raises(ValidationError):
+            TemplateSequenceCreate(name=None, sequence_type=SequenceType.allele)
+
+    def test_primer_update_strip_uid_non_string(self):
+        from opencloning_db.apimodels import PrimerUpdate
+
+        obj = PrimerUpdate(uid=None)
+        assert obj.uid is None
+
+    def test_primer_update_strip_name_short_raises(self):
+        from pydantic import ValidationError
+
+        from opencloning_db.apimodels import PrimerUpdate
+
+        with pytest.raises(ValidationError, match='at least 2 characters'):
+            PrimerUpdate(name=' a ')
+
+    def test_primer_update_strip_name_non_string(self):
+        from opencloning_db.apimodels import PrimerUpdate
+
+        obj = PrimerUpdate(name=None)
+        assert obj.name is None
+
+    def test_user_ref_none_returns_none(self):
+        from opencloning_db.apimodels import _user_ref
+
+        assert _user_ref(None) is None

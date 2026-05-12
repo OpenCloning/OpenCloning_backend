@@ -22,7 +22,7 @@ You can do some of these tasks in parallel, specially if you need to wait for ap
 * [ ] Write tests for the new source under `packages/opencloning/tests/` (see existing endpoint tests). You can use the existing tests as a template.
 * [ ] Once the tests pass, merge the PR of the new source in [OpenCloning_LinkML] and make a release of the `opencloning-linkml` package.
 * [ ] Update the dependency in the branch of this repository to the new released version: set `opencloning-linkml` in `packages/opencloning/pyproject.toml` and run `uv lock` from the repo root (see [PyPI versions](https://pypi.org/project/opencloning-linkml/)).
-* [ ] Implement the frontend functionality in a branch, following [the frontend wiki](https://github.com/manulera/OpenCloning_frontend/wiki/Checklist-%E2%80%90--adding-a-source).
+* [ ] Implement the frontend functionality in a branch, following [the frontend wiki](https://github.com/OpenCloning/OpenCloning_frontend/wiki/Checklist-%E2%80%90--adding-a-source).
 * [ ] Make tests for the frontend functionality.
 * [ ] Merge the PR in this repository into master.
 * [ ]  Update the backend submodule in the frontend repository to the latest master.

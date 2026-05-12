@@ -5,6 +5,7 @@ requires-python = ">=3.11,<4"
 dependencies = [
     "opencloning",
     "opencloning-db",
+    "opencloning-cli",
     "python-multipart>=0.0.24",
 ]
 
@@ -15,11 +16,13 @@ default-groups = ["dev", "test", "ipython"]
 [tool.uv.sources]
 opencloning = { workspace = true }
 opencloning-db = { workspace = true }
+opencloning-cli = { workspace = true }
 
 [tool.uv.workspace]
 members = [
     "packages/opencloning",
     "packages/opencloning-db",
+    "packages/opencloning-cli",
 ]
 
 [dependency-groups]

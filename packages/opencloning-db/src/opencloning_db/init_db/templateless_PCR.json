@@ -6,7 +6,7 @@
       "sequence_file_format": "genbank",
       "overhang_crick_3prime": -59,
       "overhang_watson_3prime": -59,
-      "file_content": "LOCUS       name                     139 bp    DNA     linear   UNK 01-JAN-1980\nDEFINITION  description.\nACCESSION   id\nVERSION     id\nKEYWORDS    .\nSOURCE      .\n  ORGANISM  .\n            .\nFEATURES             Location/Qualifiers\nORIGIN\n        1 agaactcaac cattacgggt ttgacgaata tagacgagat tcgcaattac ttgtctgatg\n       61 gattaccaag atgatgggct tggtgaaatg attgagtttt tggagggtat gcatgaagtt\n      121 taactcaaat atctcgtaa\n//"
+      "file_content": "LOCUS       templateless_PCR         139 bp    DNA     linear   UNK 01-JAN-1980\nDEFINITION  description.\nACCESSION   1\nVERSION     1\nKEYWORDS    .\nSOURCE      \n  ORGANISM  .\n            .\nFEATURES             Location/Qualifiers\nORIGIN\n        1 agaactcaac cattacgggt ttgacgaata tagacgagat tcgcaattac ttgtctgatg\n       61 gattaccaag atgatgggct tggtgaaatg attgagtttt tggagggtat gcatgaagtt\n      121 taactcaaat atctcgtaa\n//"
     },
     {
       "id": 2,
@@ -14,14 +14,14 @@
       "sequence_file_format": "genbank",
       "overhang_crick_3prime": 0,
       "overhang_watson_3prime": 0,
-      "file_content": "LOCUS       name                     139 bp    DNA     linear   UNK 01-JAN-1980\nDEFINITION  description.\nACCESSION   id\nVERSION     id\nKEYWORDS    .\nSOURCE      .\n  ORGANISM  .\n            .\nFEATURES             Location/Qualifiers\nORIGIN\n        1 agaactcaac cattacgggt ttgacgaata tagacgagat tcgcaattac ttgtctgatg\n       61 gattaccaag atgatgggct tggtgaaatg attgagtttt tggagggtat gcatgaagtt\n      121 taactcaaat atctcgtaa\n//"
+      "file_content": "LOCUS       polymerase_extended      139 bp    DNA     linear   UNK 01-JAN-1980\nDEFINITION  description.\nACCESSION   2\nVERSION     2\nKEYWORDS    .\nSOURCE      \n  ORGANISM  .\n            .\nFEATURES             Location/Qualifiers\nORIGIN\n        1 agaactcaac cattacgggt ttgacgaata tagacgagat tcgcaattac ttgtctgatg\n       61 gattaccaag atgatgggct tggtgaaatg attgagtttt tggagggtat gcatgaagtt\n      121 taactcaaat atctcgtaa\n//"
     }
   ],
   "sources": [
     {
       "id": 1,
       "type": "OligoHybridizationSource",
-      "output_name": null,
+      "output_name": "templateless_PCR",
       "database_id": null,
       "input": [
         {
@@ -38,7 +38,7 @@
     {
       "id": 2,
       "type": "PolymeraseExtensionSource",
-      "output_name": null,
+      "output_name": "polymerase_extended",
       "database_id": null,
       "input": [
         {
@@ -48,6 +48,7 @@
       ]
     }
   ],
+  "description": "",
   "primers": [
     {
       "id": 3,
@@ -64,9 +65,7 @@
       "sequence": "ttacgagatatttgagttaaacttcatgcataccctccaaaaactcaatcatttcaccaagcccatcatcttggtaatcc"
     }
   ],
-  "description": "",
-  "files": null,
+  "backend_version": "1.2.10.post1.dev0+ce99f69",
   "schema_version": "1.0.0",
-  "backend_version": null,
-  "frontend_version": null
+  "frontend_version": "__VERSION__"
 }

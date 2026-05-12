@@ -10,6 +10,10 @@ import os
 from pydantic import BaseModel, Field
 
 
+def parse_bool(value: str | bool) -> bool:
+    return value in {'1', 'TRUE', 'true', 'True', True}
+
+
 def _default_jwt_secret() -> str:
     """Development default; set OPENCLONING_JWT_SECRET in production."""
     return os.environ.get(

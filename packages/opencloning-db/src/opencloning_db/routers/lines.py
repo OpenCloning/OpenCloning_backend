@@ -3,13 +3,20 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import Column, Select, and_, exists, select
+from sqlalchemy import Select, and_, exists, select
 from sqlalchemy.orm import selectinload
 
-from opencloning_db.apimodels import LineCreate, LineRef, LineUpdateLinks, SequenceInLineRef, TagRead
+from opencloning_db.apimodels import (
+    DeletedResponse,
+    LineCreate,
+    LineRef,
+    LineUpdate,
+    line_ref,
+)
+
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceType, Tag, WorkspaceRole
+from opencloning_db.models import BaseSequence, Line, SequenceInLine, SequenceType, Tag, User, WorkspaceRole
 from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
@@ -21,37 +28,15 @@ from opencloning_db.workspace_deps import (
 router = APIRouter(tags=['lines'])
 
 
-def _sil_ref(sil: SequenceInLine) -> SequenceInLineRef:
-    """Build a SequenceInLineRef from a SequenceInLine ORM instance."""
-    seq = sil.sequence
-    return SequenceInLineRef(
-        id=sil.id,
-        sequence_id=seq.id,
-        name=seq.name,
-        sequence_type=seq.sequence_type,
-        tags=[TagRead(id=t.id, name=t.name) for t in seq.tags],
-    )
-
-
-def _line_ref(line: Line) -> LineRef:
-    return LineRef(
-        id=line.id,
-        uid=line.uid,
-        sequences_in_line=[_sil_ref(sil) for sil in line.sequences_in_line],
-        parent_ids=line.parent_ids,
-        tags=[TagRead(id=tag.id, name=tag.name) for tag in line.tags],
-    )
-
-
-def get_line_subquery(line_id_col: Column, sequence_type: SequenceType, name: str) -> Select:
+def get_line_subquery(line_id_col, sequence_type: SequenceType, name: str) -> Select:
     subq = (
         select(1)
         .select_from(SequenceInLine)
-        .join(Sequence, SequenceInLine.sequence_id == Sequence.id)
+        .join(BaseSequence, SequenceInLine.sequence_id == BaseSequence.id)
         .where(
             SequenceInLine.line_id == line_id_col,
-            Sequence.sequence_type == sequence_type,
-            Sequence.name.ilike(f"%{name}%"),
+            BaseSequence.sequence_type == sequence_type,
+            BaseSequence.name.ilike(f"%{name}%"),
         )
     )
     return subq
@@ -69,17 +54,22 @@ def get_lines(
         description='Filter lines by plasmid name (case-insensitive substring match), spaces are AND', default=None
     ),
     uid: str | None = Query(description='Filter lines by uid (case-insensitive substring match)', default=None),
+    created_by: str | None = Query(
+        description='Filter lines by creator display name (case-insensitive substring match)',
+        default=None,
+    ),
 ):
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     query = (
         select(Line)
         .options(
             selectinload(Line.sequences_in_line)
             .selectinload(SequenceInLine.sequence)
-            .options(selectinload(Sequence.tags)),
+            .options(selectinload(BaseSequence.tags)),
             selectinload(Line.parents),
             selectinload(Line.tags),
+            selectinload(Line.created_by),
         )
         .where(Line.workspace_id == workspace_id)
     )
@@ -95,27 +85,41 @@ def get_lines(
             query = query.where(exists(subq))
     if uid is not None:
         query = query.where(Line.uid.ilike(f"%{uid}%"))
-    return paginate(session, query, transformer=lambda items: [_line_ref(line) for line in items])
+    if created_by is not None:
+        query = query.join(User, User.id == Line.created_by_id).where(User.display_name.ilike(f"%{created_by}%"))
+    query = query.order_by(Line.id.desc())
+    return paginate(session, query, transformer=lambda items: [line_ref(line) for line in items])
 
 
-@router.get('/line/{line_id}', response_model=LineRef)
+@router.get('/lines/{line_id}', response_model=LineRef)
 def get_line(
     line_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get a single engineered strain / cell line by id."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.viewer)
-    return _line_ref(line)
+    return line_ref(line)
 
 
-@router.post('/line', response_model=LineRef)
+@router.get('/lines/{line_id}/children', response_model=list[LineRef])
+def get_line_children(
+    line_id: int,
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+):
+    """List direct children of a line."""
+    current_user, session, workspace_id = ctx.destructure()
+    line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.viewer)
+    return [line_ref(child) for child in line.children]
+
+
+@router.post('/lines', response_model=LineRef)
 def post_line(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     body: LineCreate,
 ):
     """Create a new engineered strain / cell line."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     existing = session.query(Line).filter_by(uid=body.uid, workspace_id=workspace_id).first()
     if existing:
@@ -156,7 +160,7 @@ def post_line(
             )
         )
 
-    line = Line(uid=body.uid, workspace_id=workspace_id)
+    line = Line.from_create(uid=body.uid, ctx=ctx)
     line.parents = parents
     line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in allele_seqs] + [
         SequenceInLine(sequence=seq) for seq in plasmid_seqs
@@ -165,19 +169,25 @@ def post_line(
     session.add(line)
     session.commit()
     session.refresh(line)
-    return _line_ref(line)
+    return line_ref(line)
 
 
-@router.patch('/line/{line_id}', response_model=LineRef)
+@router.patch('/lines/{line_id}', response_model=LineRef)
 def patch_line_links(
     line_id: int,
-    body: LineUpdateLinks,
+    body: LineUpdate,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
-    """Update alleles and/or plasmids linked to a line (replaces the lists)."""
-    current_user, session, workspace_id = ctx
+    """Update a line uid, parents, and/or linked alleles/plasmids."""
+    current_user, session, workspace_id = ctx.destructure()
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.editor)
     workspace_id = line.workspace_id
+
+    if body.uid is not None and body.uid != line.uid:
+        existing = session.query(Line).filter_by(uid=body.uid, workspace_id=workspace_id).first()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"Line UID '{body.uid}' already exists")
+        line.uid = body.uid
 
     if body.allele_ids is not None:
         for sil in list(line.alleles):
@@ -227,4 +237,25 @@ def patch_line_links(
 
     session.commit()
     session.refresh(line)
-    return _line_ref(line)
+    return line_ref(line)
+
+
+@router.delete('/lines/{line_id}', response_model=DeletedResponse)
+def delete_line(
+    line_id: int,
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+):
+    """Delete a line when it has no children."""
+    current_user, session, workspace_id = ctx.destructure()
+    line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.editor)
+    if line.children:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete line '{line.uid}' because it has children",
+        )
+    for sil in list(line.sequences_in_line):
+        session.delete(sil)
+
+    session.delete(line)
+    session.commit()
+    return DeletedResponse(deleted=line_id)

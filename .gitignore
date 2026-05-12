@@ -8,8 +8,6 @@
 .coverage
 coverage.xml
 
-# API stubs
-stubs/
 
 # Frontend build
 frontend/

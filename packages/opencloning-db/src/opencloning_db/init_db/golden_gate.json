@@ -293,14 +293,14 @@
     {
       "id": 12,
       "type": "Primer",
-      "name": "fwd",
+      "name": "fwd_golden_gate",
       "database_id": null,
       "sequence": "aaGGTCTCATTCTatggtaattgaggtaagaggt"
     },
     {
       "id": 13,
       "type": "Primer",
-      "name": "rvs",
+      "name": "rvs_golden_gate",
       "database_id": null,
       "sequence": "aaGGTCTCAGGATttaacgtttataatgtttaata"
     }

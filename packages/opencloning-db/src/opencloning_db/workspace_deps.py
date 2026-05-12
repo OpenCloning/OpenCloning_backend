@@ -1,12 +1,15 @@
 """Shared workspace-scoped dependencies and helpers."""
 
-from typing import Annotated, Tuple
+from dataclasses import dataclass
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 
+from opencloning_db.context import WriteContext
 from opencloning_db.deps import get_current_user, get_db
 from opencloning_db.models import (
+    BaseSequence,
     InputEntity,
     Line,
     Primer,
@@ -19,7 +22,15 @@ from opencloning_db.models import (
 )
 from opencloning_db.workspace_auth import assert_workspace_access
 
-WorkspaceContext = Tuple[User, Session, int]
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceContext(WriteContext):
+    """Per-request write context plus the bound DB session."""
+
+    session: Session
+
+    def destructure(self) -> tuple[User, Session, int]:
+        return self.user, self.session, self.workspace_id
 
 
 def get_viewer_workspace_ctx(
@@ -29,7 +40,7 @@ def get_viewer_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for read-only endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.viewer)
-    return user, session, workspace_id
+    return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
 def get_editor_workspace_ctx(
@@ -39,7 +50,7 @@ def get_editor_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for write endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.editor)
-    return user, session, workspace_id
+    return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
 def get_resource_for_user(
@@ -66,7 +77,7 @@ def _require_selected_workspace(
 
 
 def _require_sequence_type(
-    sequence: Sequence,
+    sequence: BaseSequence,
     expected_type: SequenceType,
     sequence_id: int,
 ) -> None:
@@ -83,8 +94,8 @@ def get_resource_in_workspace_for_user(
     workspace_id: int,
     resource_id: int,
     min_role: WorkspaceRole,
-    resource_type: Primer | Sequence | Line | Tag | InputEntity,
-) -> Primer | Sequence | Line | Tag | InputEntity:
+    resource_type: Primer | BaseSequence | Line | Tag | InputEntity,
+) -> Primer | BaseSequence | Line | Tag | InputEntity:
     resource = get_resource_for_user(session, user, resource_id, min_role, resource_type)
     _require_selected_workspace(resource.workspace_id, workspace_id, f"{resource_type.__name__} not found")
     return resource
@@ -103,11 +114,22 @@ def get_sequence_in_workspace_for_user(
     sequence_id: int,
     min_role: WorkspaceRole,
     expected_type: SequenceType | None = None,
-) -> Sequence:
-    seq = get_resource_in_workspace_for_user(session, user, workspace_id, sequence_id, min_role, Sequence)
+) -> BaseSequence:
+    seq = get_resource_in_workspace_for_user(session, user, workspace_id, sequence_id, min_role, BaseSequence)
     if expected_type is not None:
         _require_sequence_type(seq, expected_type, sequence_id)
     return seq
+
+
+def require_real_sequence(
+    sequence: BaseSequence,
+    *,
+    detail: str = 'Sequence not found',
+    status_code: int = status.HTTP_404_NOT_FOUND,
+) -> Sequence:
+    if not isinstance(sequence, Sequence):
+        raise HTTPException(status_code=status_code, detail=detail)
+    return sequence
 
 
 def get_line_in_workspace_for_user(

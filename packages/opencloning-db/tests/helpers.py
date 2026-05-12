@@ -50,9 +50,9 @@ def post_sequencing_file_upload(
     filename: str,
     body: bytes,
 ):
-    """POST multipart upload to ``/sequence/{id}/sequencing_files``."""
+    """POST multipart upload to ``/sequences/{id}/sequencing_files``."""
     return client.post(
-        f"/sequence/{seq_id}/sequencing_files",
+        f"/sequences/{seq_id}/sequencing_files",
         headers=workspace_headers(token, workspace_id),
         files={'files': (filename, body, 'application/octet-stream')},
     )

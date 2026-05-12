@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from opencloning_db.apimodels import (
+    DeletedResponse,
     SequenceSampleCreate,
     SequenceSampleCreated,
     SequenceSampleRead,
@@ -32,7 +33,7 @@ def get_sequence_samples(
     ),
 ):
     """List sequence samples in a workspace (lab samples with user-defined UIDs)."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     query = session.query(SequenceSample).filter_by(uid_workspace_id=workspace_id)
     if uid is not None:
@@ -49,13 +50,13 @@ def get_sequence_samples(
     ]
 
 
-@router.post('/sequence_sample', response_model=SequenceSampleCreated)
+@router.post('/sequence_samples', response_model=SequenceSampleCreated)
 def post_sequence_sample(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     body: SequenceSampleCreate,
 ):
     """Create a sequence sample. UID is user-defined, assigned before sequencing."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
 
     # Validate that the sequence exists and the user has access to it
     get_sequence_in_workspace_for_user(session, current_user, workspace_id, body.sequence_id, WorkspaceRole.editor)
@@ -74,28 +75,42 @@ def post_sequence_sample(
     return SequenceSampleCreated(id=ps.id, uid=ps.uid)
 
 
-@router.get('/sequence_sample/{uid}', response_model=SequenceSampleRead)
+@router.get('/sequence_samples/{uid}', response_model=SequenceSampleRead)
 def get_sequence_sample(
     uid: str,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
 ):
     """Get a sequence sample by its user-defined UID."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     ps = get_sequence_sample_in_workspace_for_user(session, current_user, workspace_id, uid, WorkspaceRole.viewer)
     return SequenceSampleRead(id=ps.id, uid=ps.uid, sequence_id=ps.sequence_id)
 
 
-@router.patch('/sequence_sample/{uid}', response_model=SequenceSampleRead)
+@router.patch('/sequence_samples/{uid}', response_model=SequenceSampleRead)
 def patch_sequence_sample(
     uid: str,
     body: SequenceSampleUpdate,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
 ):
     """Update a sequence sample. Use to transfer UID to real sequence after sequencing."""
-    current_user, session, workspace_id = ctx
+    current_user, session, workspace_id = ctx.destructure()
     ps = get_sequence_sample_in_workspace_for_user(session, current_user, workspace_id, uid, WorkspaceRole.editor)
     get_sequence_in_workspace_for_user(session, current_user, workspace_id, body.sequence_id, WorkspaceRole.editor)
     ps.sequence_id = body.sequence_id
     session.commit()
     session.refresh(ps)
     return SequenceSampleRead(id=ps.id, uid=ps.uid, sequence_id=ps.sequence_id)
+
+
+@router.delete('/sequence_samples/{uid}', response_model=DeletedResponse)
+def delete_sequence_sample(
+    uid: str,
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+):
+    """Delete a sequence sample."""
+    current_user, session, workspace_id = ctx.destructure()
+    ps = get_sequence_sample_in_workspace_for_user(session, current_user, workspace_id, uid, WorkspaceRole.editor)
+    sequence_id = ps.sequence_id
+    session.delete(ps)
+    session.commit()
+    return DeletedResponse(deleted=ps.id, data={'sequence_id': sequence_id, 'uid': uid})

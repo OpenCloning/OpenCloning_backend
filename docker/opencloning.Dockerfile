@@ -1,5 +1,5 @@
 # Backend for OpenCloning
-# https://github.com/manulera/OpenCloning_backend
+# https://github.com/OpenCloning/OpenCloning_backend
 #
 # Production: docker build -f docker/opencloning.Dockerfile .
 # CI tests:    docker build -f docker/opencloning.Dockerfile --target builder-test .
@@ -47,6 +47,8 @@ FROM workspace-full AS builder-test
 
 ARG PACKAGE_VERSION="0.1.0"
 ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
+
+COPY packages/opencloning-cli packages/opencloning-cli
 
 RUN uv sync --frozen --no-default-groups --no-editable --group test
 

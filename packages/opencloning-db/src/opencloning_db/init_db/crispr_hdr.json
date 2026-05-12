@@ -132,14 +132,14 @@
     {
       "id": 6,
       "type": "Primer",
-      "name": "ase1_fwd",
+      "name": "ase1_fwd_crispr_hdr",
       "database_id": null,
       "sequence": "TTTCATATCTTCCTTTATATTCTATTAATTGAATTTCAAACATCGTTTTATTGAGCTCATTTACATCAACCGGTTCAATGtacccatacgatgttcctga"
     },
     {
       "id": 7,
       "type": "Primer",
-      "name": "ase1_rvs",
+      "name": "ase1_rvs_crispr_hdr",
       "database_id": null,
       "sequence": "AAGTTAGATTCATTATTAGAGTGATTATCTTTTTCAGCAATAGAATCAGTGCTTTGAATGTCATCCATCATTACTGTTTGagcgtaatctggaacgtcat"
     }

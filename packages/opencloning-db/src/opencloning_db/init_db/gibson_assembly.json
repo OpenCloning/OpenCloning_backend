@@ -168,14 +168,14 @@
     {
       "id": 8,
       "type": "Primer",
-      "name": "ase1_fwd",
+      "name": "ase1_fwd_gibson_assembly",
       "database_id": null,
       "sequence": "AGTCGCTTTGTTAAATCAATGCAAACAGTAATGATGGA"
     },
     {
       "id": 9,
       "type": "Primer",
-      "name": "ase1_rvs",
+      "name": "ase1_rvs_gibson_assembly",
       "database_id": null,
       "sequence": "ACAGATCTCTCGAGCATATTAAAAGCCTTCTTCTCCC"
     }

@@ -1,15 +1,15 @@
-[![Python tests](https://github.com/manulera/OpenCloning_backend/actions/workflows/ci.yml/badge.svg)](https://github.com/manulera/OpenCloning_backend/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/manulera/OpenCloning_backend/graph/badge.svg?token=CFIB2H6WMO)](https://codecov.io/gh/manulera/OpenCloning_backend)
+[![Python tests](https://github.com/OpenCloning/OpenCloning_backend/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenCloning/OpenCloning_backend/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/OpenCloning/OpenCloning_backend/graph/badge.svg?token=CFIB2H6WMO)](https://codecov.io/gh/OpenCloning/OpenCloning_backend)
 
 # OpenCloning Backend API
 
-This API is part of a bigger application, before going further, please go to the [main project readme](https://github.com/manulera/OpenCloning), where you can find an introduction.
+This API is part of a bigger application, before going further, please go to the [main project readme](https://github.com/OpenCloning/OpenCloning), where you can find an introduction.
 
 This python API is built with [FastAPI](https://fastapi.tiangolo.com/) and is for *in silico* cloning.
 
 ## Summary
 
-Read [main project readme](https://github.com/manulera/OpenCloning) first.
+Read [main project readme](https://github.com/OpenCloning/OpenCloning) first.
 
 This API provides a series of entry points. The API documentation can be accessed [here](https://api.opencloning.org/docs). You can use the documentation page to try some request directly on the browser. Otherwise, the API is open for you to make requests from a python script or command line at: [https://api.opencloning.org/](https://api.opencloning.org/).
 
@@ -25,7 +25,7 @@ You can write python scripts to automate cloning using the python library [pydna
 
 ## Getting started
 
-If you want to quickly set up a local instance of the frontend and backend of the application, check [getting started in 5 minutes](https://github.com/manulera/OpenCloning#timer_clock-getting-started-in-5-minutes) in the main repository.
+If you want to quickly set up a local instance of the frontend and backend of the application, check [getting started in 5 minutes](https://github.com/OpenCloning/OpenCloning#timer_clock-getting-started-in-5-minutes) in the main repository.
 
 ### Running locally
 
@@ -49,10 +49,10 @@ When installing directly from GitHub, include the `subdirectory` fragment:
 
 ```bash
 # uv
-uv add "opencloning @ git+https://github.com/manulera/OpenCloning_backend.git@master#subdirectory=packages/opencloning"
+uv add "opencloning @ git+https://github.com/OpenCloning/OpenCloning_backend.git@master#subdirectory=packages/opencloning"
 
 # pip
-pip install "git+https://github.com/manulera/OpenCloning_backend.git@master#subdirectory=packages/opencloning"
+pip install "git+https://github.com/OpenCloning/OpenCloning_backend.git@master#subdirectory=packages/opencloning"
 ```
 
 ### Running locally if you want to contribute
@@ -83,7 +83,7 @@ Then you should be able to open the API docs at [http://127.0.0.1:8000/docs](htt
 
 ### Running locally with docker :whale:
 
-If you want to serve the full site (backend and frontend) with docker, check [getting started in 5 minutes](https://github.com/manulera/OpenCloning#timer_clock-getting-started-in-5-minutes) in the main repository.
+If you want to serve the full site (backend and frontend) with docker, check [getting started in 5 minutes](https://github.com/OpenCloning/OpenCloning#timer_clock-getting-started-in-5-minutes) in the main repository.
 
 If you want to serve only the backend from a docker container, an image is available at [manulera/opencloningbackend](https://hub.docker.com/r/manulera/opencloningbackend). The image is built from [`docker/opencloning.Dockerfile`](docker/opencloning.Dockerfile) (repository root as build context) and exposes the port 3000. To run it:
 
@@ -102,6 +102,12 @@ docker run -d --name backendcontainer -p 8000:8000 \
   manulera/opencloningbackend
 ```
 
+If you want to build the test image locally, you can do so by:
+
+```bash
+docker build -f docker/opencloning.Dockerfile -t manulera/opencloningbackend-test --target builder-test .
+```
+
 If you don't want to download the repository and build the image, you can fetch the latest image from dockerhub.
 
 ```bash
@@ -113,7 +119,7 @@ The api will be running at `http://localhost:8000`, so you should be able to acc
 
 ### Connecting to the frontend
 
-If you want to receive requests from the [frontend](https://github.com/manulera/OpenCloning_frontend), or from another web application you may have to include the url of the frontend application in the CORS exceptions. By default, if you run the dev server with `uvicorn opencloning.main:app --reload --reload-exclude='.venv'`, the backend will accept requests coming from `http://localhost:3000`, which is the default address of the frontend dev server (ran with `yarn start`).
+If you want to receive requests from the [frontend](https://github.com/OpenCloning/OpenCloning_frontend), or from another web application you may have to include the url of the frontend application in the CORS exceptions. By default, if you run the dev server with `uvicorn opencloning.main:app --reload --reload-exclude='.venv'`, the backend will accept requests coming from `http://localhost:3000`, which is the default address of the frontend dev server (ran with `yarn start`).
 
 If you want to change the allowed origins, you can do so via env variables (comma-separated). e.g.:
 
@@ -121,25 +127,25 @@ If you want to change the allowed origins, you can do so via env variables (comm
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001 uvicorn opencloning.main:app --reload --reload-exclude='.venv'
 ```
 
-Similarly, the frontend should be configured to send requests to the backend address, [see here](https://github.com/manulera/OpenCloning_frontend#connecting-to-the-backend).
+Similarly, the frontend should be configured to send requests to the backend address, [see here](https://github.com/OpenCloning/OpenCloning_frontend#connecting-to-the-backend).
 
 #### Serving the frontend from the backend
 
 You may prefer to handle everything from a single server. You can do so by:
-* Build the [frontend](https://github.com/manulera/OpenCloning_frontend) with `yarn build`.
+* Build the [frontend](https://github.com/OpenCloning/OpenCloning_frontend) with `yarn build`.
 * Copy the folder `build` from the frontend to the root directory of the backend, and rename it to `frontend`.
 * Set the environment variable `SERVE_FRONTEND=1` when running the backend. By default this will remove all allowed origins, but you can still set them with `ALLOWED_ORIGINS`.
 * Set the value of `backendUrl` in `frontend/config.js` to `/`.
 * Now, when you go to the root of the backend (e.g. `http://localhost:8000`), you should receive the frontend instead of the greeting page of the API.
 
-You can see how this is done in this [docker image](https://github.com/manulera/OpenCloning/blob/master/Dockerfile) and [docker-compose file](https://github.com/manulera/OpenCloning/blob/master/docker-compose.yml).
+You can see how this is done in this [docker image](https://github.com/OpenCloning/OpenCloning/blob/master/Dockerfile) and [docker-compose file](https://github.com/OpenCloning/OpenCloning/blob/master/docker-compose.yml).
 
 ## Contributing :hammer_and_wrench:
 
-Check [contribution guidelines in the main repository](https://github.com/manulera/OpenCloning/blob/master/CONTRIBUTING.md) for general guidelines.
+Check [contribution guidelines in the main repository](https://github.com/OpenCloning/OpenCloning/blob/master/CONTRIBUTING.md) for general guidelines.
 
 For more specific tasks:
-* Creating a new type of source: follow the [new source issue template](.github/ISSUE_TEMPLATE/new-source.md). You can create an issue like that [here](https://github.com/manulera/OpenCloning_backend/issues/new?assignees=&labels=new-source&projects=&template=new-source.md&title=New+source%3A+%3Cname-of-source%3E).
+* Creating a new type of source: follow the [new source issue template](.github/ISSUE_TEMPLATE/new-source.md). You can create an issue like that [here](https://github.com/OpenCloning/OpenCloning_backend/issues/new?assignees=&labels=new-source&projects=&template=new-source.md&title=New+source%3A+%3Cname-of-source%3E).
 
 ## Running the tests locally
 

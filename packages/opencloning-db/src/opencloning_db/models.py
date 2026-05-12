@@ -5,20 +5,27 @@ SQLAlchemy ORM models for the OpenCloning database.
 import enum
 import os
 import uuid
+from datetime import datetime
 from typing import List, Optional, TypeVar, Union, get_args, Self
 
 from opencloning.dna_functions import read_dsrecord_from_json
 from sqlalchemy import (
     CheckConstraint,
     Column,
+    DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     JSON,
     Table,
     UniqueConstraint,
     event,
 )
+import sqlite3
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.sql import func
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -31,8 +38,11 @@ from sqlalchemy.orm import (
 
 import opencloning_linkml.datamodel.models as opencloning_models
 from pydantic import BaseModel as PydanticBaseModel
+from pydna.readers import read
+import re
 
 from opencloning_db.config import get_config
+from opencloning_db.context import WriteContext
 
 # Source type union from CloningStrategy.sources (list[Union[Source, ...]])
 AnySource = get_args(opencloning_models.CloningStrategy.model_fields['sources'].annotation)[0]
@@ -42,6 +52,10 @@ SourceType = enum.Enum(
     'SourceType',
     [(cls.__name__, cls.__name__) for cls in get_args(AnySource)],
 )
+
+
+def sanitize_sequence_name(name: str) -> str:
+    return name.strip().replace(' ', '_')
 
 
 class SequenceType(enum.Enum):
@@ -187,9 +201,16 @@ class InputEntity(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)
     type: Mapped[str] = mapped_column()
-    name: Mapped[Optional[str]] = mapped_column(default='name')
+    name: Mapped[str] = mapped_column(default='name')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    created_by_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
     workspace: Mapped['Workspace'] = relationship(back_populates='input_entities')
     source_inputs: Mapped[List['SourceInput']] = relationship(back_populates='input_entity')
+    created_by: Mapped['User'] = relationship(foreign_keys=[created_by_id])
     tags: Mapped[List['Tag']] = relationship(
         'Tag',
         secondary=input_entity_tag,
@@ -202,48 +223,95 @@ class InputEntity(Base):
     }
 
 
-class Sequence(InputEntity):
-    __tablename__ = 'sequence'
+class BaseSequence(InputEntity):
+    __tablename__ = 'base_sequence'
 
     id: Mapped[int] = mapped_column(ForeignKey('input_entity.id'), primary_key=True)
-    output_of_source: Mapped['Source'] = relationship(
-        back_populates='output_sequence', uselist=False, single_parent=True
-    )
-    overhang_crick_3prime: Mapped[Optional[int]] = mapped_column(default=0)
-    overhang_watson_3prime: Mapped[Optional[int]] = mapped_column(default=0)
     sequence_type: Mapped[Optional[SequenceType]] = mapped_column(
         Enum(SequenceType, validate_strings=True), default=None, nullable=True
-    )
-    seguid: Mapped[Optional[str]] = mapped_column(nullable=True)
-
-    file_path: Mapped[str]
-    sequencing_files: Mapped[List['SequencingFile']] = relationship(
-        back_populates='sequence', cascade='all, delete-orphan'
     )
     instances: Mapped[List['SequenceInstance']] = relationship(back_populates='sequence', cascade='all, delete-orphan')
 
     __mapper_args__ = {
-        'polymorphic_identity': 'sequence',
+        'polymorphic_abstract': True,
     }
 
     @property
     def sample_uids(self) -> List[str]:
         return [s.uid for s in self.instances if isinstance(s, SequenceSample)]
 
+    def to_pydantic_sequence(self) -> opencloning_models.Sequence:
+        raise NotImplementedError('to_pydantic_sequence is not implemented for BaseSequence')
+
+
+class Sequence(BaseSequence):
+    __tablename__ = 'sequence'
+
+    id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), primary_key=True)
+    output_of_source: Mapped['Source'] = relationship(
+        back_populates='output_sequence', uselist=False, single_parent=True
+    )
+    overhang_crick_3prime: Mapped[int] = mapped_column(default=0)
+    overhang_watson_3prime: Mapped[int] = mapped_column(default=0)
+    seguid: Mapped[str] = mapped_column(nullable=False)
+
+    file_path: Mapped[str]
+    sequencing_files: Mapped[List['SequencingFile']] = relationship(
+        back_populates='sequence', cascade='all, delete-orphan'
+    )
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'sequence',
+    }
+
     def to_pydantic_sequence(self) -> opencloning_models.TextFileSequence:
         path = os.path.join(get_config().sequence_files_dir, self.file_path)
         with open(path, 'r', encoding='utf-8') as f:
             file_content = f.read()
+
+        # We do the renaming here when returning the sequence to prevent editing the original sequence file.
+        seqrecord = read(file_content)
+        seqrecord.name = sanitize_sequence_name(self.name)
+
         return opencloning_models.TextFileSequence(
             id=self.id,
-            file_content=file_content,
+            file_content=seqrecord.format('genbank'),
             overhang_crick_3prime=self.overhang_crick_3prime,
             overhang_watson_3prime=self.overhang_watson_3prime,
             sequence_file_format='genbank',
         )
 
     @classmethod
-    def from_pydantic_sequence(cls, pydantic_sequence: opencloning_models.TextFileSequence, workspace_id: int) -> Self:
+    def from_create(
+        cls,
+        *,
+        name: str,
+        file_path: str,
+        seguid: str,
+        ctx: WriteContext,
+        overhang_crick_3prime: int = 0,
+        overhang_watson_3prime: int = 0,
+        sequence_type: Optional[SequenceType] = None,
+    ) -> Self:
+        """Build a Sequence from explicit fields and a write context."""
+        return cls(
+            name=name,
+            workspace_id=ctx.workspace_id,
+            file_path=file_path,
+            seguid=seguid,
+            created_by_id=ctx.user.id,
+            overhang_crick_3prime=overhang_crick_3prime,
+            overhang_watson_3prime=overhang_watson_3prime,
+            sequence_type=sequence_type,
+        )
+
+    @classmethod
+    def from_pydantic_sequence(
+        cls,
+        pydantic_sequence: opencloning_models.TextFileSequence,
+        *,
+        ctx: WriteContext,
+    ) -> Self:
         """
         Create a database sequence from a pydantic sequence. It does not persist the sequence to the database.
         It writes the sequence to a file in the sequence files directory as the file_path is required.
@@ -255,12 +323,43 @@ class Sequence(InputEntity):
         path = os.path.join(seq_files, sequence_file)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(pydantic_sequence.file_content)
-        return cls(
+        return cls.from_create(
             name=seqrecord.name,
-            workspace_id=workspace_id,
             file_path=sequence_file,
             seguid=seguid,
+            ctx=ctx,
             **pydantic_sequence.model_dump(include={'overhang_crick_3prime', 'overhang_watson_3prime'}),
+        )
+
+
+class TemplateSequence(BaseSequence):
+    __tablename__ = 'template_sequence'
+
+    id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), primary_key=True)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'template_sequence',
+    }
+
+    @classmethod
+    def from_create(
+        cls,
+        *,
+        name: str,
+        sequence_type: SequenceType,
+        ctx: WriteContext,
+    ) -> Self:
+        return cls(
+            name=name,
+            workspace_id=ctx.workspace_id,
+            created_by_id=ctx.user.id,
+            sequence_type=sequence_type,
+        )
+
+    def to_pydantic_sequence(self) -> opencloning_models.TemplateSequence:
+        return opencloning_models.TemplateSequence(
+            id=self.id,
+            circular=self.sequence_type == SequenceType.plasmid,
         )
 
 
@@ -290,6 +389,14 @@ class Primer(InputEntity):
             raise ValueError('Primer uid_workspace_id must equal workspace_id on the input_entity row.')
         return value
 
+    @validates('sequence')
+    def _validate_sequence(self, key, value: str) -> str:
+        if not re.match(r'^[ACGTacgt]+$', value):
+            raise ValueError('Primer sequence must only contain ACGT characters')
+        if len(value) < 2:
+            raise ValueError('Primer sequence must be at least 2 characters long')
+        return value
+
     @validates('uid')
     def _validate_uid(self, key, value: Optional[str]) -> Optional[str]:
         if value == '':
@@ -297,11 +404,36 @@ class Primer(InputEntity):
         return value
 
     @classmethod
-    def from_pydantic(cls, pydantic_primer: opencloning_models.Primer, workspace_id: int) -> 'Primer':
+    def from_pydantic(
+        cls,
+        pydantic_primer: opencloning_models.Primer,
+        *,
+        ctx: WriteContext,
+    ) -> 'Primer':
         return cls(
-            workspace_id=workspace_id,
-            uid_workspace_id=workspace_id,
+            workspace_id=ctx.workspace_id,
+            uid_workspace_id=ctx.workspace_id,
+            created_by_id=ctx.user.id,
             **pydantic_primer.model_dump(include={'sequence', 'name'}),
+        )
+
+    @classmethod
+    def from_create(
+        cls,
+        *,
+        name: str,
+        sequence: str,
+        uid: Optional[str] = None,
+        ctx: WriteContext,
+    ) -> 'Primer':
+        """Build a Primer from request-body fields and a write context."""
+        return cls(
+            name=name,
+            sequence=sequence,
+            uid=uid,
+            workspace_id=ctx.workspace_id,
+            uid_workspace_id=ctx.workspace_id,
+            created_by_id=ctx.user.id,
         )
 
     def to_pydantic_primer(self) -> opencloning_models.Primer:
@@ -390,15 +522,18 @@ class SourceInput(Base):
 class AssemblyFragment(SourceInput):
     __tablename__ = 'assembly_fragment'
     __table_args__ = (
+        ForeignKeyConstraint(
+            ['source_id', 'position'],
+            ['source_input.source_id', 'source_input.position'],
+        ),
         CheckConstraint(
             'left_location IS NOT NULL OR right_location IS NOT NULL',
             name='assembly_fragment_has_location',
         ),
     )
 
-    # PK matches parent: (source_id, position)
-    source_id: Mapped[int] = mapped_column(ForeignKey('source_input.source_id'), primary_key=True)
-    position: Mapped[int] = mapped_column(ForeignKey('source_input.position'), primary_key=True)
+    source_id: Mapped[int] = mapped_column(primary_key=True)
+    position: Mapped[int] = mapped_column(primary_key=True)
     left_location: Mapped[Optional[str]]
     right_location: Mapped[Optional[str]]
     reverse_complemented: Mapped[bool]
@@ -467,10 +602,10 @@ class SequenceInstance(Base):
     __tablename__ = 'sequence_instance'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    sequence_id: Mapped[int] = mapped_column(ForeignKey('sequence.id'), nullable=False)
+    sequence_id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), nullable=False)
     type: Mapped[str] = mapped_column()
 
-    sequence: Mapped['Sequence'] = relationship(back_populates='instances')
+    sequence: Mapped['BaseSequence'] = relationship(back_populates='instances')
 
     __mapper_args__ = {
         'polymorphic_on': type,
@@ -537,8 +672,15 @@ class Line(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)
     uid: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    created_by_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
 
     workspace: Mapped['Workspace'] = relationship(back_populates='lines')
+    created_by: Mapped['User'] = relationship(foreign_keys=[created_by_id])
 
     # Self-referential many-to-many: a line can have many parents,
     # and each parent can have many children.
@@ -566,6 +708,11 @@ class Line(Base):
         secondary=line_tag,
         back_populates='lines',
     )
+
+    @classmethod
+    def from_create(cls, *, uid: str, ctx: WriteContext) -> 'Line':
+        """Build a Line from request-body fields and a write context."""
+        return cls(uid=uid, workspace_id=ctx.workspace_id, created_by_id=ctx.user.id)
 
     @property
     def parent_ids(self) -> List[int]:
@@ -620,7 +767,7 @@ def _validate_sequence_sample_workspace(session: SASession) -> None:
             uid_ws = _require_value(
                 s.uid_workspace_id, 'Missing required uid_workspace_id for SequenceSample validation.'
             )
-            seq = _require_row(session, Sequence, 'Sequence', instance=s.sequence, row_id=s.sequence_id)
+            seq = _require_row(session, BaseSequence, 'BaseSequence', instance=s.sequence, row_id=s.sequence_id)
             ws_id_sequence = _require_value(
                 seq.workspace_id, 'Missing required workspace ID for SequenceSample workspace validation.'
             )
@@ -633,7 +780,9 @@ def _validate_sequence_in_line_workspace(session: SASession) -> None:
     for sil in [*session.new, *session.dirty]:
         if not isinstance(sil, SequenceInLine):
             continue
-        sil_sequence = _require_row(session, Sequence, 'Sequence', instance=sil.sequence, row_id=sil.sequence_id)
+        sil_sequence = _require_row(
+            session, BaseSequence, 'BaseSequence', instance=sil.sequence, row_id=sil.sequence_id
+        )
         ws_id_sequence = _require_value(
             sil_sequence.workspace_id, 'Missing required workspace ID for SequenceInLine workspace validation.'
         )
@@ -682,3 +831,11 @@ def _validate_cross_workspace_invariants(session, *_):
     _validate_sequence_in_line_workspace(session)
     _validate_source_input_workspace(session)
     _validate_tag_links_workspace(session)
+
+
+@event.listens_for(Engine, 'connect')
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute('PRAGMA foreign_keys=ON;')
+        cursor.close()

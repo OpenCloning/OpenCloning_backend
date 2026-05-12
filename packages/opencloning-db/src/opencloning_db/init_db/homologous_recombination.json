@@ -121,14 +121,14 @@
     {
       "id": 5,
       "type": "Primer",
-      "name": "fwd",
+      "name": "fwd_homologous_recombination",
       "database_id": null,
       "sequence": "AGTTTTCATATCTTCCTTTATATTCTATTAATTGAATTTCAAACATCGTTTTATTGAGCTCATTTACATCAACCGGTTCACGGATCCCCGGGTTAATTAA"
     },
     {
       "id": 6,
       "type": "Primer",
-      "name": "rvs",
+      "name": "rvs_homologous_recombination",
       "database_id": null,
       "sequence": "CTTTTATGAATTATCTATATGCTGTATTCATATGCAAAAATATGTATATTTAAATTTGATCGATTAGGTAAATAAGAAGCGAATTCGAGCTCGTTTAAAC"
     }
