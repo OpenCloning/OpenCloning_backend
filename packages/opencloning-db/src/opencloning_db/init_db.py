@@ -170,7 +170,7 @@ def init_db(config: Config):
         new_line.sequences_in_line.append(SequenceInLine(sequence=template_sequence))
         session.add(new_line)
         # Add also a real plasmid to the same line
-        plasmid = session.scalar(select(Sequence).where(Sequence.name == 'entry_clone_lacZ'))
+        plasmid = session.scalar(select(Sequence).where(Sequence.name == 'pREX0008'))
         new_line.sequences_in_line.append(SequenceInLine(sequence=plasmid))
         session.flush()
 

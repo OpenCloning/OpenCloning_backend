@@ -12,7 +12,35 @@
     "body": {
       "items": [
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:32",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 72,
+          "name": "template_sequence_plasmid",
+          "sample_uids": [],
+          "seguid": null,
+          "sequence_type": "plasmid",
+          "tags": [],
+          "type": "template_sequence"
+        },
+        {
+          "created_at": "2026-05-12T21:02:32",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 71,
+          "name": "template_sequence_allele",
+          "sample_uids": [],
+          "seguid": null,
+          "sequence_type": "allele",
+          "tags": [],
+          "type": "template_sequence"
+        },
+        {
+          "created_at": "2026-05-12T21:02:32",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -33,7 +61,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:32",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -52,7 +80,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:32",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -73,7 +101,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:32",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -92,7 +120,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:32",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -111,7 +139,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:32",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -130,7 +158,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -151,7 +179,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -170,7 +198,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -189,7 +217,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -208,7 +236,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -229,7 +257,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -248,7 +276,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -267,7 +295,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -286,7 +314,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -305,7 +333,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -326,7 +354,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -345,7 +373,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -364,7 +392,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -383,7 +411,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -402,7 +430,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -421,7 +449,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -442,7 +470,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -461,7 +489,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -480,7 +508,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -499,7 +527,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -518,7 +546,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -537,7 +565,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -556,7 +584,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -575,7 +603,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -594,7 +622,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -613,7 +641,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:58",
+          "created_at": "2026-05-12T21:02:31",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -632,7 +660,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -653,7 +681,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -672,7 +700,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -691,7 +719,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -710,7 +738,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -731,7 +759,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -750,7 +778,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -769,7 +797,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -788,7 +816,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -807,7 +835,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -826,7 +854,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -847,7 +875,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -866,7 +894,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -885,7 +913,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -904,7 +932,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -923,7 +951,7 @@
           "type": "sequence"
         },
         {
-          "created_at": "2026-05-12T09:52:57",
+          "created_at": "2026-05-12T21:02:30",
           "created_by": {
             "display_name": "Bootstrap User",
             "id": 1
@@ -947,7 +975,7 @@
       "page": 1,
       "pages": 1,
       "size": 50,
-      "total": 48
+      "total": 50
     },
     "headers": {
       "content-type": "application/json"
