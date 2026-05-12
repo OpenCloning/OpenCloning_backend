@@ -1662,87 +1662,98 @@ def test_delete_sequence_missing_file_on_disk_still_succeeds(sequences_client):
     assert r.json() == {'deleted': sid, 'data': None}
 
 
-def test_change_circularity_write_fails_returns_500(sequences_client, monkeypatch):
-    """OSError when writing the new sequence file returns 500."""
-    c = sequences_client['client']
-    tok = sequences_client['token_owner_w1']
-    wid = sequences_client['w1']
-    sid = sequences_client['seq_patch_linear_id']
-    headers = workspace_headers(tok, wid)
+class TestReplaceSequenceFile:
+    """Unit tests for _replace_sequence_file error paths."""
 
-    original_write_text = Path.write_text
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            'opencloning_db.routers.sequences.get_config',
+            lambda: type('C', (), {'sequence_files_dir': str(tmp_path)})(),
+        )
+        self.tmp_path = tmp_path
+        old_file = tmp_path / 'old.gb'
+        old_file.write_text('old content')
+        self.old_file = old_file
+        self.mock_seq = type('Seq', (), {'file_path': 'old.gb'})()
+        self.mock_session = type(
+            'S',
+            (),
+            {
+                'commit': lambda self: None,
+                'rollback': lambda self: None,
+                'refresh': lambda self, obj: None,
+            },
+        )()
 
-    def failing_write_text(self, *args, **kwargs):
-        if str(self).endswith('.gb'):
-            raise OSError('disk full')
-        return original_write_text(self, *args, **kwargs)
+    def test_write_fails_raises_500(self, monkeypatch):
+        from fastapi import HTTPException
+        from opencloning_db.routers.sequences import _replace_sequence_file
 
-    monkeypatch.setattr(Path, 'write_text', failing_write_text)
+        original = Path.write_text
 
-    r = c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
-    assert r.status_code == 500
-    assert 'Failed to write sequence file' in r.json()['detail']
+        def fail_write(self, *a, **kw):
+            if str(self).endswith('.gb'):
+                raise OSError('disk full')
+            return original(self, *a, **kw)
 
+        monkeypatch.setattr(Path, 'write_text', fail_write)
+        with pytest.raises(HTTPException) as exc:
+            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
+        assert exc.value.status_code == 500
+        assert 'Failed to write' in exc.value.detail
 
-def test_change_circularity_commit_fails_cleans_up_new_file(sequences_client, monkeypatch):
-    """When session.commit() fails in _replace_sequence_file, the new file is cleaned up."""
-    c = sequences_client['client']
-    tok = sequences_client['token_owner_w1']
-    wid = sequences_client['w1']
-    sid = sequences_client['seq_patch_linear_id']
-    headers = workspace_headers(tok, wid)
+    def test_commit_fails_cleans_up_new_file(self):
+        from opencloning_db.routers.sequences import _replace_sequence_file
 
-    seq_dir = Path(get_config().sequence_files_dir)
-    with Session(sequences_client['engine']) as session:
-        seq = session.get(Sequence, sid)
-        old_path = seq_dir / seq.file_path
+        self.mock_session.commit = lambda: (_ for _ in ()).throw(RuntimeError('db error'))
+        files_before = set(self.tmp_path.glob('*.gb'))
 
-    assert old_path.exists()
-    files_before = set(seq_dir.glob('*.gb'))
+        with pytest.raises(RuntimeError, match='db error'):
+            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
 
-    original_commit = Session.commit
-    call_count = [0]
+        assert self.old_file.exists()
+        assert set(self.tmp_path.glob('*.gb')) == files_before
 
-    def commit_failing_once(self):
-        call_count[0] += 1
-        if call_count[0] == 1:
-            raise RuntimeError('simulated commit failure')
-        return original_commit(self)
+    def test_commit_fails_and_cleanup_fails_silently(self, monkeypatch):
+        from opencloning_db.routers.sequences import _replace_sequence_file
 
-    monkeypatch.setattr(Session, 'commit', commit_failing_once)
+        self.mock_session.commit = lambda: (_ for _ in ()).throw(RuntimeError('db error'))
+        original_unlink = Path.unlink
 
-    with pytest.raises(RuntimeError, match='simulated commit failure'):
-        c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
+        def fail_new_unlink(self_path, *a, **kw):
+            if self_path.name != 'old.gb':
+                raise OSError('cleanup failed too')
+            return original_unlink(self_path, *a, **kw)
 
-    assert old_path.exists()
-    files_after = set(seq_dir.glob('*.gb'))
-    assert files_after == files_before
+        monkeypatch.setattr(Path, 'unlink', fail_new_unlink)
 
+        with pytest.raises(RuntimeError, match='db error'):
+            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
 
-def test_change_circularity_old_file_unlink_fails_returns_500(sequences_client, monkeypatch):
-    """OSError when removing the old file after a successful commit returns 500."""
-    c = sequences_client['client']
-    tok = sequences_client['token_owner_w1']
-    wid = sequences_client['w1']
-    sid = sequences_client['seq_patch_linear_id']
-    headers = workspace_headers(tok, wid)
+    def test_old_file_missing_after_commit_succeeds(self):
+        from opencloning_db.routers.sequences import _replace_sequence_file
 
-    with Session(sequences_client['engine']) as session:
-        seq = session.get(Sequence, sid)
-        old_path = Path(get_config().sequence_files_dir) / seq.file_path
+        self.old_file.unlink()
+        _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
 
-    original_unlink = Path.unlink
+    def test_old_file_unlink_oserror_raises_500(self, monkeypatch):
+        from fastapi import HTTPException
+        from opencloning_db.routers.sequences import _replace_sequence_file
 
-    def failing_unlink(self, *args, **kwargs):
-        if self == old_path:
-            raise OSError('permission denied')
-        return original_unlink(self, *args, **kwargs)
+        original_unlink = Path.unlink
 
-    monkeypatch.setattr(Path, 'unlink', failing_unlink)
+        def fail_old_unlink(self_path, *a, **kw):
+            if self_path.name == 'old.gb':
+                raise OSError('permission denied')
+            return original_unlink(self_path, *a, **kw)
 
-    r = c.patch(f'/sequences/{sid}/change_circularity', headers=headers)
-    assert r.status_code == 500
-    assert 'failed to remove old file' in r.json()['detail']
+        monkeypatch.setattr(Path, 'unlink', fail_old_unlink)
+
+        with pytest.raises(HTTPException) as exc:
+            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
+        assert exc.value.status_code == 500
+        assert 'failed to remove old file' in exc.value.detail
 
 
 def test_post_sequences_bulk_integrity_error_returns_409(sequences_client, monkeypatch):
