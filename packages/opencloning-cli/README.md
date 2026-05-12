@@ -15,8 +15,9 @@ uv run opencloning-cli --help
 
 ## Generate DB Stubs
 
-Use `db stubs` to generate a single JSON stub for frontend testing. By default it writes to `./stubs/db/single_stub.json`.
-The command resets the database to the default baseline and records a primer-list request (`GET /primers`).
+ Use `db stubs` to generate JSON stubs for frontend testing. By default it writes one JSON file per yielded stub request into `./stubs/db` (for example, `get_primers.json`, `get_sequences.json`, and similar request-specific files).
+
+ The command resets the database to the default baseline and records the yielded stub requests as separate files in the output directory.
 
 ```bash
 uv run opencloning-cli db stubs

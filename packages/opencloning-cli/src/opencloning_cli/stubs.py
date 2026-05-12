@@ -34,7 +34,6 @@ class StubResponse(BaseModel):
 
 
 class RecordedStub(BaseModel):
-    name: str
     endpoint: str
     method: str = Field(..., pattern=r'^(GET|POST|PUT|DELETE|PATCH)$')
     name: str

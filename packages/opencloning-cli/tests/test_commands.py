@@ -93,12 +93,13 @@ class TestResetCommand:
 
 
 class TestStubCommand:
-    def test_writes_single_stub_json(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
+    def test_writes_single_stub_json(self, temp_workspace, monkeypatch):
+        workspace, _ = temp_workspace
+        monkeypatch.chdir(workspace)
         result = _invoke('db', 'stubs')
 
         assert result.exit_code == 0, result.output
-        out_dir = tmp_path / 'stubs' / 'db'
+        out_dir = workspace / 'stubs' / 'db'
         files = sorted(out_dir.glob('*.json'))
         stub_files_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'opencloning_cli', 'stubs.py')
         with open(stub_files_path, 'r') as f:
