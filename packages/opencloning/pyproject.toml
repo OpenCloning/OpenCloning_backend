@@ -30,7 +30,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/manulera/OpenCloning_backend"
+Repository = "https://github.com/OpenCloning/OpenCloning_backend"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

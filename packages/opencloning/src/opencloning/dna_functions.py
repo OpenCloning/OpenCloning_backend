@@ -198,7 +198,7 @@ async def request_from_snapgene(plasmid_set: dict, plasmid_name: str) -> Dseqrec
 async def request_from_addgene(repository_id: str) -> Dseqrecord:
     bs = await _addgene_manager.get_page(repository_id)
     addgene_client = await _addgene_manager.get_client()
-    # Get a span.material-name from the soup, see https://github.com/manulera/OpenCloning_backend/issues/182
+    # Get a span.material-name from the soup, see https://github.com/OpenCloning/OpenCloning_backend/issues/182
     plasmid_name = bs.find('span', class_='material-name').text.replace(' ', '_')
 
     # Find the link to either the addgene-full (preferred) or depositor-full (secondary)
@@ -286,7 +286,7 @@ def oligonucleotide_hybridization_overhangs(
     """
     Returns possible overhangs between two oligos, and returns an error if mismatches are found.
 
-    see https://github.com/manulera/OpenCloning_backend/issues/302 for notation
+    see https://github.com/OpenCloning/OpenCloning_backend/issues/302 for notation
 
     """
     matches = common_sub_strings(fwd_oligo_seq.lower(), reverse_complement(rvs_oligo_seq.lower()), minimal_annealing)

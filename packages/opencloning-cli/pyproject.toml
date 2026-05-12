@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/manulera/OpenCloning_backend"
+Repository = "https://github.com/OpenCloning/OpenCloning_backend"
 
 [project.scripts]
 opencloning-cli = "opencloning_cli.main:app"

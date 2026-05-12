@@ -2,7 +2,7 @@
 
 ## backend_v0_3.py
 
-PR fixing this is here: https://github.com/manulera/OpenCloning_backend/pull/305
+PR fixing this is here: https://github.com/OpenCloning/OpenCloning_backend/pull/305
 
 ### Bug in assemblies with locations spanning the origin
 
