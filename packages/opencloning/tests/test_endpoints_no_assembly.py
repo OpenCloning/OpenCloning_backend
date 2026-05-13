@@ -16,10 +16,9 @@ from opencloning_linkml.datamodel import (
 )
 from opencloning.temp_functions import get_enzymes_from_source, restriction_sequence_cut_to_cutsite_tuple
 
-
 test_files = os.path.join(os.path.dirname(__file__), 'test_files')
 
-client = TestClient(_main._app)
+client = TestClient(_main.app)
 
 
 class RestrictionTest(unittest.TestCase):

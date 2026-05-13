@@ -3,8 +3,7 @@ from fastapi.testclient import TestClient
 
 import opencloning.main as _main
 
-
-client = TestClient(_main._app)
+client = TestClient(_main.app)
 
 
 class GreetingTest(unittest.TestCase):

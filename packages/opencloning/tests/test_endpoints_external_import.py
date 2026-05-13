@@ -28,10 +28,9 @@ from opencloning_linkml.datamodel import (
 )
 from opencloning import app_settings, http_client
 
-
 test_files = os.path.join(os.path.dirname(__file__), 'test_files')
 
-client = TestClient(_main._app)
+client = TestClient(_main.app)
 
 
 class ReadFileTest(unittest.TestCase):
