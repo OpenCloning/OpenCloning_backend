@@ -167,6 +167,9 @@ From the repository root:
 # Install/update workspace dependencies
 uv sync
 
+# Start local Postgres with dev/test/e2e databases
+docker compose -f docker/docker-compose.db.yml up -d
+
 # Point opencloning-db at your local Postgres instance
 export OPENCLONING_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev'
 
@@ -187,6 +190,8 @@ uv run --directory packages/opencloning-db/src python -m opencloning_db.init_db
 ```
 
 `opencloning-cli db seed` and `opencloning-cli db reset` are now the preferred local workflows. For Postgres and other non-file backends, `db reset` reseeds directly. Snapshot create/restore commands are still limited to file-backed SQLite databases.
+
+The DB-only compose file creates `opencloning_dev`, `opencloning_test`, and `opencloning_e2e` on first startup so local development, tests, and E2E work can stay separated.
 
 ## Dependency guardrail (deptry)
 
