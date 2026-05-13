@@ -4,7 +4,6 @@ Nested layout::
 
         db
             seed
-            reset
             stubs
 
 Each command delegates directly to :mod:`lifecycle`.
@@ -37,13 +36,6 @@ def seed_command() -> None:
     """Run ``init_db`` against the current config."""
     config = get_config()
     lifecycle.seed(config)
-
-
-@db_app.command('reset')
-def reset_command() -> None:
-    """Reset the DB baseline by reseeding from scratch."""
-    config = get_config()
-    lifecycle.reset(config)
 
 
 @db_app.command('stubs')

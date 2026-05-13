@@ -16,15 +16,11 @@ brew services stop postgresql
 # Start local Postgres with dev/test/e2e databases
 docker compose -f docker/docker-compose.db.yml up -d
 
-# Point opencloning-db at your local Postgres instance
-export OPENCLONING_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev'
+# Load required local runtime config
+source .env.dev
 
-# Optional: use dedicated databases for tests or E2E work
-# export OPENCLONING_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test'
-# export OPENCLONING_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_e2e'
-
-# Seed or reset the local baseline
-uv run opencloning-cli db reset
+# Seed the local baseline
+uv run opencloning-cli db seed
 
 # Run the opencloning-db API
 uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
@@ -32,7 +28,11 @@ uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.ve
 
 If startup succeeds, the API docs should be available at [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs).
 
-`OPENCLONING_DATABASE_URL` should point at Postgres. For local development, `opencloning-cli db reset` reseeds the database from scratch.
+The required runtime config lives in `.env.dev` for local development. Load it before running the CLI or API on the host.
+
+`OPENCLONING_DATABASE_URL` should point at Postgres. For local development, `opencloning-cli db seed` recreates the database baseline from scratch.
+
+Use `OPENCLONING_DATABASE_URL` for the runtime database and `OPENCLONING_TEST_DATABASE_URL` for Postgres-backed test runs when you want to override the default test database.
 
 The DB-only compose file creates these local databases automatically on first startup:
 

@@ -170,14 +170,14 @@ uv sync
 # Start local Postgres with dev/test/e2e databases
 docker compose -f docker/docker-compose.db.yml up -d
 
-# Point opencloning-db at your local Postgres instance
-export OPENCLONING_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev'
+# Load required local runtime config
+source .env.dev
 
 # Run opencloning-db tests
 uv run pytest packages/opencloning-db/tests -v
 
 # Recreate the opencloning-db local database seed
-uv run opencloning-cli db reset
+uv run opencloning-cli db seed
 
 # Run the opencloning-db API
 uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
@@ -189,7 +189,9 @@ If you need to run the init script manually:
 uv run --directory packages/opencloning-db/src python -m opencloning_db.init_db
 ```
 
-`opencloning-cli db seed` and `opencloning-cli db reset` are now the preferred local workflows. `db reset` reseeds the database from scratch.
+`.env.dev` is the canonical local defaults file for host-side development. Load it before running `opencloning-cli`, `opencloning-db`, or local backend tests.
+
+`opencloning-cli db seed` is the preferred local workflow for recreating the baseline database and file directories.
 
 The DB-only compose file creates `opencloning_dev`, `opencloning_test`, and `opencloning_e2e` on first startup so local development, tests, and E2E work can stay separated.
 

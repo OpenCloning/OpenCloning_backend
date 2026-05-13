@@ -60,11 +60,6 @@ def seed(config: Config) -> None:
     _dispose_engine()
 
 
-def reset(config: Config) -> None:
-    """Reset the DB baseline by reseeding from scratch."""
-    seed(config)
-
-
 def _sanitize_headers(headers: dict[str, str] | None) -> dict[str, str]:
     """Drop noisy values and replace auth tokens with placeholders."""
     if not headers:
@@ -198,4 +193,4 @@ def write_stubs(output_dir: Path):
             print('Stub written to', output_file)
         finally:
             if stub.reset_db:
-                reset(config)
+                seed(config)

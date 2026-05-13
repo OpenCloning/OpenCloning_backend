@@ -2,7 +2,7 @@ import os
 from typing import Generator
 from sqlalchemy.orm import Session
 
-from opencloning_db.config import Config, get_config, set_config
+from opencloning_db.config import Config, _peek_config, set_config
 import opencloning_db.db as db_module
 from fastapi.testclient import TestClient
 from opencloning_db.api import app
@@ -26,7 +26,7 @@ def _reset_engine_cache() -> None:
     db_module._bound_database_url = None
 
 
-def _restore_runtime_state(default_config: Config, default_engine, default_bound_url: str | None) -> None:
+def _restore_runtime_state(default_config: Config | None, default_engine, default_bound_url: str | None) -> None:
     _reset_engine_cache()
     db_module._engine = default_engine
     db_module._bound_database_url = default_bound_url
@@ -36,7 +36,7 @@ def _restore_runtime_state(default_config: Config, default_engine, default_bound
 @pytest.fixture
 def postgres_test_config() -> Generator[Config, None, None]:
     """Postgres test config with isolated sequence and sequencing directories."""
-    default_config = get_config()
+    default_config = _peek_config()
     default_engine = db_module._engine
     default_bound_url = db_module._bound_database_url
     with tempfile.TemporaryDirectory() as tmp_dir_sequences:

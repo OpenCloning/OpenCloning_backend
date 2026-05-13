@@ -37,7 +37,7 @@ class TestHelpAndTree:
         result = _invoke('db', '--help')
         assert result.exit_code == 0
         assert 'seed' in result.output
-        assert 'reset' in result.output
+        assert 'stubs' in result.output
 
 
 class TestSeedCommand:
@@ -51,37 +51,6 @@ class TestSeedCommand:
         assert _count_users(config) > 0
         assert len(list(Path(config.sequence_files_dir).iterdir())) == 48
         assert len(list(Path(config.sequencing_files_dir).iterdir())) == 3
-
-
-class TestResetCommand:
-    def test_first_invocation_seeds(self, temp_workspace):
-        _, config = temp_workspace
-
-        result = _invoke('db', 'reset')
-
-        assert result.exit_code == 0, result.output
-        assert result.output.strip() == ''
-        assert _count_users(config) > 0
-        assert len(list(Path(config.sequence_files_dir).iterdir())) == 48
-
-    def test_second_invocation_restores(self, temp_workspace):
-        _, config = temp_workspace
-        first = _invoke('db', 'reset')
-        assert first.exit_code == 0
-
-        expected_users = _count_users(config)
-        with Session(db_module.get_engine(config)) as session:
-            session.add(User(email='reset-extra@example.com'))
-            session.commit()
-
-        extra_file = Path(config.sequence_files_dir) / 'extra.txt'
-        extra_file.write_text('stale-data', encoding='utf-8')
-
-        second = _invoke('db', 'reset')
-        assert second.exit_code == 0
-        assert second.output.strip() == ''
-        assert _count_users(config) == expected_users
-        assert not extra_file.exists()
 
 
 class TestStubCommand:

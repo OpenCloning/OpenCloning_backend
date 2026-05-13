@@ -10,7 +10,7 @@ from typing import Generator
 import pytest
 
 import opencloning_db.db as db_module
-from opencloning_db.config import Config, get_config, set_config
+from opencloning_db.config import Config, _peek_config, set_config
 
 _TEST_DATABASE_URL = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
@@ -21,7 +21,7 @@ _TEST_DATABASE_URL = os.environ.get(
 @pytest.fixture
 def temp_workspace() -> Generator[tuple[Path, Config], None, None]:
     """Yield ``(workspace_dir, config)`` pointing at a temp test workspace."""
-    default_config = get_config()
+    default_config = _peek_config()
     default_engine = db_module._engine
     default_bound_url = db_module._bound_database_url
 

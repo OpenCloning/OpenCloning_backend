@@ -78,42 +78,52 @@ class _MemoryDbTestCase(unittest.TestCase):
 class TestConfig(unittest.TestCase):
     """Tests for Config helpers."""
 
-    def test_database_url_defaults_from_env(self):
-        """Env overrides the local Postgres default URL for runtime configuration."""
+    def test_get_config_loads_required_values_from_env(self):
+        """Runtime config is loaded lazily from the required env vars."""
+        previous_config = app_config.config
         with patch.dict(
             os.environ,
             {
                 'OPENCLONING_DATABASE_URL': 'postgresql://postgres:postgres@localhost:5432/opencloning_dev',
-            },
-            clear=False,
-        ):
-            cfg = Config(jwt_secret='test-secret')
-        self.assertEqual(cfg.database_url, 'postgresql://postgres:postgres@localhost:5432/opencloning_dev')
-
-    def test_file_dirs_default_from_env(self):
-        """Storage directories can move independently of the repo default."""
-        with patch.dict(
-            os.environ,
-            {
                 'OPENCLONING_SEQUENCE_FILES_DIR': '/tmp/sequence-files',
                 'OPENCLONING_SEQUENCING_FILES_DIR': '/tmp/sequencing-files',
+                'OPENCLONING_JWT_SECRET': 'test-secret',
             },
-            clear=False,
+            clear=True,
         ):
-            cfg = Config(jwt_secret='test-secret')
+            app_config.set_config(None)
+            cfg = app_config.get_config()
+        app_config.set_config(previous_config)
+        self.assertEqual(cfg.database_url, 'postgresql://postgres:postgres@localhost:5432/opencloning_dev')
         self.assertEqual(cfg.sequence_files_dir, '/tmp/sequence-files')
         self.assertEqual(cfg.sequencing_files_dir, '/tmp/sequencing-files')
+        self.assertEqual(cfg.jwt_secret, 'test-secret')
 
-    def test_database_url_defaults_to_local_postgres(self):
-        """Without env overrides, config points at the local Postgres dev DB."""
+    def test_get_config_requires_runtime_env_vars(self):
+        """Missing env vars produce one actionable runtime error."""
+        previous_config = app_config.config
         with patch.dict(os.environ, {}, clear=True):
-            cfg = Config()
-        self.assertEqual(cfg.database_url, 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev')
+            app_config.set_config(None)
+            with self.assertRaises(RuntimeError) as exc_info:
+                app_config.get_config()
+        app_config.set_config(previous_config)
+
+        message = str(exc_info.exception)
+        self.assertIn('OPENCLONING_DATABASE_URL', message)
+        self.assertIn('OPENCLONING_SEQUENCE_FILES_DIR', message)
+        self.assertIn('OPENCLONING_SEQUENCING_FILES_DIR', message)
+        self.assertIn('OPENCLONING_JWT_SECRET', message)
+        self.assertIn('.env.dev', message)
 
     def test_database_url_rejects_sqlite(self):
         """SQLite URLs are no longer accepted."""
         with self.assertRaises(ValidationError):
-            Config(database_url='sqlite:///tmp/test.db', jwt_secret='test-secret')
+            Config(
+                database_url='sqlite:///tmp/test.db',
+                sequence_files_dir='/tmp/sequence-files',
+                sequencing_files_dir='/tmp/sequencing-files',
+                jwt_secret='test-secret',
+            )
 
 
 class TestGenerateUniqueFilename(unittest.TestCase):
