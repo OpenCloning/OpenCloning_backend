@@ -72,7 +72,7 @@ def seed(config: Config) -> None:
     with redirect_stdout(io.StringIO()):
         _init_db(config)
     # Dispose again so the next caller sees a fresh engine bound to the
-    # newly-created DB file rather than a stale handle from init_db.
+    # newly-created DB rather than a stale handle from init_db.
     _dispose_engine()
 
 

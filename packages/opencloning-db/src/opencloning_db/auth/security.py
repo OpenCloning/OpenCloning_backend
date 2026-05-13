@@ -6,7 +6,7 @@ from typing import Any
 import jwt
 from pwdlib import PasswordHash
 
-from opencloning_db.config import Config, get_config
+from opencloning_db.config import Config
 
 password_hasher = PasswordHash.recommended()
 
@@ -20,7 +20,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(data: dict[str, Any], config: Config, expires_delta: timedelta) -> str:
-    config = config or get_config()
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({'exp': expire})
