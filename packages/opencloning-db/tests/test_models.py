@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import os
 import tempfile
 import unittest
 import uuid
@@ -65,6 +66,32 @@ class _MemoryDbTestCase(unittest.TestCase):
 
 class TestConfig(unittest.TestCase):
     """Tests for Config helpers."""
+
+    def test_database_url_defaults_from_env(self):
+        """Env overrides the SQLite default URL for runtime configuration."""
+        with patch.dict(
+            os.environ,
+            {
+                'OPENCLONING_DATABASE_URL': 'postgresql://postgres:postgres@localhost:5432/opencloning_dev',
+            },
+            clear=False,
+        ):
+            cfg = Config(jwt_secret='test-secret')
+        self.assertEqual(cfg.database_url, 'postgresql://postgres:postgres@localhost:5432/opencloning_dev')
+
+    def test_file_dirs_default_from_env(self):
+        """Storage directories can move independently of the repo default."""
+        with patch.dict(
+            os.environ,
+            {
+                'OPENCLONING_SEQUENCE_FILES_DIR': '/tmp/sequence-files',
+                'OPENCLONING_SEQUENCING_FILES_DIR': '/tmp/sequencing-files',
+            },
+            clear=False,
+        ):
+            cfg = Config(jwt_secret='test-secret')
+        self.assertEqual(cfg.sequence_files_dir, '/tmp/sequence-files')
+        self.assertEqual(cfg.sequencing_files_dir, '/tmp/sequencing-files')
 
     def test_database_path_for_sqlite_file(self):
         """SQLite URL resolves to on-disk path."""

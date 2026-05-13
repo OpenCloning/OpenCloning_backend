@@ -2,13 +2,12 @@
 
 Nested layout::
 
-    db
-      test
-        seed
-        reset
-        snapshot
-          create
-          restore
+        db
+            seed
+            reset
+            snapshot
+                create
+                restore
 
 Each command delegates directly to :mod:`lifecycle`.
 """
@@ -25,18 +24,9 @@ from opencloning_db.config import get_config
 from .. import lifecycle
 
 db_app = typer.Typer(no_args_is_help=True, help='Database management commands.')
-db_test_app = typer.Typer(
-    no_args_is_help=True,
-    help=(
-        'Commands for local/CI test runs that need a deterministic DB state. '
-        'Typical flow: run `seed` once, run `snapshot create` once, then run '
-        '`reset` between Cypress/E2E tests to restore the seeded baseline quickly.'
-    ),
-)
-snapshot_app = typer.Typer(no_args_is_help=True, help='Manage the test-DB snapshot.')
+snapshot_app = typer.Typer(no_args_is_help=True, help='Manage the DB snapshot.')
 
-db_app.add_typer(db_test_app, name='test')
-db_test_app.add_typer(snapshot_app, name='snapshot')
+db_app.add_typer(snapshot_app, name='snapshot')
 
 
 SnapshotDirOption = Annotated[
@@ -56,9 +46,9 @@ StubOutputDirOption = Annotated[
 ]
 
 
-@db_test_app.command('seed')
+@db_app.command('seed')
 def seed_command() -> None:
-    """Run ``init_db`` against the current test config."""
+    """Run ``init_db`` against the current config."""
     config = get_config()
     lifecycle.seed(config)
 
@@ -83,13 +73,20 @@ def snapshot_restore_command(
     lifecycle.snapshot_restore(config, target)
 
 
-@db_test_app.command('reset')
+@db_app.command('reset')
 def reset_command(
     snapshot_dir: SnapshotDirOption = None,
 ) -> None:
-    """Fast-path restore; reseed + re-snapshot when the snapshot is missing."""
+    """Reset the DB baseline.
+
+    File-backed SQLite restores from a snapshot when available; non-file
+    backends reseed directly.
+    """
     config = get_config()
-    target = lifecycle.resolve_snapshot_dir(config, snapshot_dir)
+    if config.database_path is None:
+        target = Path(snapshot_dir).expanduser() if snapshot_dir is not None else Path('.')
+    else:
+        target = lifecycle.resolve_snapshot_dir(config, snapshot_dir)
     lifecycle.reset(config, target)
 
 
@@ -97,7 +94,7 @@ def reset_command(
 def stubs_command(
     output_dir: StubOutputDirOption = Path('stubs/db'),
 ) -> None:
-    """Generate a single JSON stub for DB/frontend testing."""
+    """Generate stubs for DB/frontend testing."""
     lifecycle.write_stubs(output_dir)
 
 

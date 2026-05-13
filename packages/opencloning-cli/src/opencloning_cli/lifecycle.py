@@ -43,7 +43,7 @@ def default_snapshot_dir(config: Config) -> Path:
     db_path = config.database_path
     if db_path is None:
         raise ValueError(
-            'opencloning-cli db test commands require a file-based SQLite '
+            'opencloning-cli snapshot commands require a file-based SQLite '
             'database_url (sqlite:///...). Non-file backends are not supported.'
         )
     return Path(db_path).expanduser().parent / _DEFAULT_SNAPSHOT_SUBDIR
@@ -89,16 +89,25 @@ def _copy_tree(src: Path, dst: Path) -> None:
         dst.mkdir(parents=True, exist_ok=True)
 
 
+def _reset_tree(path: Path) -> None:
+    """Replace *path* with an empty directory."""
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
+
+
 def seed(config: Config) -> None:
     """Run ``opencloning_db.init_db.init_db`` against *config*.
 
-    Removes any existing SQLite DB (``init_db`` does this internally) and
-    writes a fresh seeded database plus the sequence/sequencing file dirs.
+    Recreates a deterministic database baseline plus fresh sequence and
+    sequencing file directories for the configured backend.
     """
     _dispose_engine()
     db_path_str = config.database_path
     if db_path_str is not None:
         Path(db_path_str).expanduser().parent.mkdir(parents=True, exist_ok=True)
+    _reset_tree(Path(config.sequence_files_dir))
+    _reset_tree(Path(config.sequencing_files_dir))
     # ``init_db`` prints a success message; keep CLI successful runs silent.
     with redirect_stdout(io.StringIO()):
         _init_db(config)
@@ -123,7 +132,7 @@ def snapshot_create(config: Config, snapshot_dir: Path) -> None:
     db_path = Path(db_path_str)
     if not db_path.exists():
         raise FileNotFoundError(
-            f'Cannot snapshot: database file does not exist at {db_path}. ' 'Run "opencloning-cli db test seed" first.'
+            f'Cannot snapshot: database file does not exist at {db_path}. ' 'Run "opencloning-cli db seed" first.'
         )
 
     _dispose_engine()
@@ -182,6 +191,10 @@ def reset(config: Config, snapshot_dir: Path) -> None:
     runs :func:`seed` and then :func:`snapshot_create` so subsequent resets
     take the fast path.
     """
+    if config.database_path is None:
+        seed(config)
+        return
+
     snapshot_dir = Path(snapshot_dir)
     try:
         snapshot_restore(config, snapshot_dir)
@@ -298,7 +311,8 @@ def write_stubs(output_dir: Path):
 
     config = get_config()
     seed(config)
-    snapshot_create(config, resolve_snapshot_dir(config, None))
+    if config.database_path is not None:
+        snapshot_create(config, resolve_snapshot_dir(config, None))
 
     target_dir = Path(output_dir)
     target_dir.mkdir(parents=True, exist_ok=True)

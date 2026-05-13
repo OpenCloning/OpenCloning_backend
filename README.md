@@ -167,11 +167,17 @@ From the repository root:
 # Install/update workspace dependencies
 uv sync
 
+# Point opencloning-db at your local Postgres instance
+export OPENCLONING_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev'
+
 # Run opencloning-db tests
 uv run pytest packages/opencloning-db/tests -v
 
 # Recreate the opencloning-db local database seed
-./restart_db.sh
+uv run opencloning-cli db reset
+
+# Run the opencloning-db API
+uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
 ```
 
 If you need to run the init script manually:
@@ -179,6 +185,8 @@ If you need to run the init script manually:
 ```bash
 uv run --directory packages/opencloning-db/src python -m opencloning_db.init_db
 ```
+
+`opencloning-cli db seed` and `opencloning-cli db reset` are now the preferred local workflows. For Postgres and other non-file backends, `db reset` reseeds directly. Snapshot create/restore commands are still limited to file-backed SQLite databases.
 
 ## Dependency guardrail (deptry)
 
