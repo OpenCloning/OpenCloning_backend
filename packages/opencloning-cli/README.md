@@ -22,20 +22,13 @@ uv run opencloning-cli db seed
 uv run opencloning-cli db reset
 ```
 
-For file-backed SQLite databases, `db reset` restores from a snapshot when one exists and otherwise seeds a new baseline. For non-file backends such as Postgres, `db reset` reseeds directly.
-
-Snapshot commands remain SQLite-specific:
-
-```bash
-uv run opencloning-cli db snapshot create
-uv run opencloning-cli db snapshot restore
-```
+`db reset` reseeds the Postgres database from scratch and recreates the baseline file directories.
 
 ## Generate DB Stubs
 
  Use `db stubs` to generate JSON stubs for frontend testing. By default it writes one JSON file per yielded stub request into `./stubs/db` (for example, `get_primers.json`, `get_sequences.json`, and similar request-specific files).
 
- The command resets the database to the default baseline and records the yielded stub requests as separate files in the output directory.
+ The command reseeds the database to the default baseline between reset points and records the yielded stub requests as separate files in the output directory.
 
 ```bash
 uv run opencloning-cli db stubs

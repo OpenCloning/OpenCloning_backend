@@ -189,7 +189,7 @@ If you need to run the init script manually:
 uv run --directory packages/opencloning-db/src python -m opencloning_db.init_db
 ```
 
-`opencloning-cli db seed` and `opencloning-cli db reset` are now the preferred local workflows. For Postgres and other non-file backends, `db reset` reseeds directly. Snapshot create/restore commands are still limited to file-backed SQLite databases.
+`opencloning-cli db seed` and `opencloning-cli db reset` are now the preferred local workflows. `db reset` reseeds the database from scratch.
 
 The DB-only compose file creates `opencloning_dev`, `opencloning_test`, and `opencloning_e2e` on first startup so local development, tests, and E2E work can stay separated.
 

@@ -32,7 +32,7 @@ uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.ve
 
 If startup succeeds, the API docs should be available at [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs).
 
-`OPENCLONING_DATABASE_URL` also accepts SQLite URLs. For Postgres-backed local development, the CLI `db reset` command reseeds the database directly. Snapshot create/restore commands are still limited to file-backed SQLite databases.
+`OPENCLONING_DATABASE_URL` should point at Postgres. For local development, `opencloning-cli db reset` reseeds the database from scratch.
 
 The DB-only compose file creates these local databases automatically on first startup:
 

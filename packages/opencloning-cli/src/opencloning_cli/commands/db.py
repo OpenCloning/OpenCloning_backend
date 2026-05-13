@@ -5,9 +5,7 @@ Nested layout::
         db
             seed
             reset
-            snapshot
-                create
-                restore
+            stubs
 
 Each command delegates directly to :mod:`lifecycle`.
 """
@@ -15,7 +13,7 @@ Each command delegates directly to :mod:`lifecycle`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -24,18 +22,6 @@ from opencloning_db.config import get_config
 from .. import lifecycle
 
 db_app = typer.Typer(no_args_is_help=True, help='Database management commands.')
-snapshot_app = typer.Typer(no_args_is_help=True, help='Manage the DB snapshot.')
-
-db_app.add_typer(snapshot_app, name='snapshot')
-
-
-SnapshotDirOption = Annotated[
-    Optional[Path],
-    typer.Option(
-        '--snapshot-dir',
-        help='Override the snapshot directory (default: <db parent>/snapshot).',
-    ),
-]
 
 StubOutputDirOption = Annotated[
     Path,
@@ -53,41 +39,11 @@ def seed_command() -> None:
     lifecycle.seed(config)
 
 
-@snapshot_app.command('create')
-def snapshot_create_command(
-    snapshot_dir: SnapshotDirOption = None,
-) -> None:
-    """Capture the current DB + file dirs as the golden snapshot."""
-    config = get_config()
-    target = lifecycle.resolve_snapshot_dir(config, snapshot_dir)
-    lifecycle.snapshot_create(config, target)
-
-
-@snapshot_app.command('restore')
-def snapshot_restore_command(
-    snapshot_dir: SnapshotDirOption = None,
-) -> None:
-    """Restore DB + file dirs from the golden snapshot."""
-    config = get_config()
-    target = lifecycle.resolve_snapshot_dir(config, snapshot_dir)
-    lifecycle.snapshot_restore(config, target)
-
-
 @db_app.command('reset')
-def reset_command(
-    snapshot_dir: SnapshotDirOption = None,
-) -> None:
-    """Reset the DB baseline.
-
-    File-backed SQLite restores from a snapshot when available; non-file
-    backends reseed directly.
-    """
+def reset_command() -> None:
+    """Reset the DB baseline by reseeding from scratch."""
     config = get_config()
-    if config.database_path is None:
-        target = Path(snapshot_dir).expanduser() if snapshot_dir is not None else Path('.')
-    else:
-        target = lifecycle.resolve_snapshot_dir(config, snapshot_dir)
-    lifecycle.reset(config, target)
+    lifecycle.reset(config)
 
 
 @db_app.command('stubs')

@@ -33,10 +33,7 @@ from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, ge
 
 def init_db(config: Config):
     engine = get_engine(config)
-    if config.database_path is not None and os.path.exists(config.database_path):
-        os.remove(config.database_path)
-    else:
-        Base.metadata.drop_all(engine)
+    Base.metadata.drop_all(engine)
 
     os.makedirs(config.sequence_files_dir, exist_ok=True)
     os.makedirs(config.sequencing_files_dir, exist_ok=True)

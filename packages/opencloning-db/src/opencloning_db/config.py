@@ -7,7 +7,8 @@ or by loading from environment variables (e.g. via pydantic-settings).
 
 import os
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.engine import make_url
 
 
 def parse_bool(value: str | bool) -> bool:
@@ -33,7 +34,7 @@ def _default_database_url() -> str:
     return (
         os.environ.get('OPENCLONING_DATABASE_URL')
         or os.environ.get('DATABASE_URL')
-        or f'sqlite:///{_default_database_dir()}/example.db'
+        or 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev'
     )
 
 
@@ -48,9 +49,16 @@ def _default_sequencing_files_dir() -> str:
 class Config(BaseModel):
     """OpenCloning database configuration with sensible defaults."""
 
+    @field_validator('database_url')
+    @classmethod
+    def _validate_database_url(cls, value: str) -> str:
+        if make_url(value).get_backend_name() != 'postgresql':
+            raise ValueError('Only PostgreSQL database URLs are supported.')
+        return value
+
     database_url: str = Field(
         default_factory=_default_database_url,
-        description='SQLAlchemy database URL (sqlite or postgresql)',
+        description='SQLAlchemy PostgreSQL database URL',
     )
     sequence_files_dir: str = Field(
         default_factory=_default_sequence_files_dir,
@@ -72,11 +80,8 @@ class Config(BaseModel):
     )
 
     @property
-    def database_path(self) -> str | None:
-        """Path to DB file when using SQLite; None for non-file DBs."""
-        if self.database_url.startswith('sqlite:///'):
-            return self.database_url.removeprefix('sqlite:///')
-        return None
+    def database_backend(self) -> str:
+        return make_url(self.database_url).get_backend_name()
 
 
 config = Config()

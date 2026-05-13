@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -46,6 +47,11 @@ from opencloning_db.models import (
 )
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
 
+_TEST_DATABASE_URL = os.environ.get(
+    'OPENCLONING_TEST_DATABASE_URL',
+    'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test',
+)
+
 
 def _ctx(workspace_id: int, user_id: int = 1) -> WriteContext:
     """Build a WriteContext with a lightweight (unsaved) User stub for tests."""
@@ -53,22 +59,27 @@ def _ctx(workspace_id: int, user_id: int = 1) -> WriteContext:
 
 
 class _MemoryDbTestCase(unittest.TestCase):
-    """Fresh in-memory SQLite schema per test."""
+    """Fresh Postgres schema per test."""
 
     def setUp(self):
         super().setUp()
-        self.engine = create_engine('sqlite:///:memory:')
+        self.engine = create_engine(_TEST_DATABASE_URL)
+        Base.metadata.drop_all(self.engine)
         Base.metadata.create_all(self.engine)
         with Session(self.engine) as session:
             session.add(User(email='test@test.com'))
             session.commit()
+
+    def tearDown(self):
+        self.engine.dispose()
+        super().tearDown()
 
 
 class TestConfig(unittest.TestCase):
     """Tests for Config helpers."""
 
     def test_database_url_defaults_from_env(self):
-        """Env overrides the SQLite default URL for runtime configuration."""
+        """Env overrides the local Postgres default URL for runtime configuration."""
         with patch.dict(
             os.environ,
             {
@@ -93,18 +104,16 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg.sequence_files_dir, '/tmp/sequence-files')
         self.assertEqual(cfg.sequencing_files_dir, '/tmp/sequencing-files')
 
-    def test_database_path_for_sqlite_file(self):
-        """SQLite URL resolves to on-disk path."""
-        cfg = Config(database_url='sqlite:///tmp/test.db', jwt_secret='test-secret')
-        self.assertEqual(cfg.database_path, 'tmp/test.db')
+    def test_database_url_defaults_to_local_postgres(self):
+        """Without env overrides, config points at the local Postgres dev DB."""
+        with patch.dict(os.environ, {}, clear=True):
+            cfg = Config()
+        self.assertEqual(cfg.database_url, 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev')
 
-    def test_database_path_for_non_sqlite_none(self):
-        """Non-SQLite URLs expose no local database path."""
-        cfg = Config(
-            database_url='postgresql://user:pass@localhost:5432/opencloning',
-            jwt_secret='test-secret',
-        )
-        self.assertIsNone(cfg.database_path)
+    def test_database_url_rejects_sqlite(self):
+        """SQLite URLs are no longer accepted."""
+        with self.assertRaises(ValidationError):
+            Config(database_url='sqlite:///tmp/test.db', jwt_secret='test-secret')
 
 
 class TestGenerateUniqueFilename(unittest.TestCase):
@@ -458,7 +467,6 @@ class TestSource(_MemoryDbTestCase):
             session.add(src)
             session.flush()
             self.assertTrue(src.extra_fields.get('circular'))
-            # SQLite may coerce Enum to plain str.
             typ = getattr(src.type, 'value', src.type)
             self.assertEqual(typ, 'PCRSource')
 
