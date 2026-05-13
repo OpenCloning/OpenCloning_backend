@@ -155,6 +155,19 @@ From the repository root (after `uv sync`):
 uv run pytest packages/opencloning/tests -v -ks
 ```
 
+If you wanted to run them in docker:
+
+```bash
+export COMPOSE_PROJECT_NAME=opencloning-local-docker
+# Plus env vars for ADDGENE and NCBI API keys
+
+docker compose \
+  -f docker/docker-compose.db.yml \
+  -f docker/docker-compose.ci-tests.yml \
+  run --rm tests \
+  python -m pytest -vs -o cache_dir=/tmp/pytest-cache
+```
+
 ## Running opencloning-db locally
 
 `opencloning-db` is a companion API/database service for OpenCloning data workflows. It now lives in `packages/opencloning-db/src` and uses the local workspace `opencloning` package.

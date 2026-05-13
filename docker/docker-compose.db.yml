@@ -1,5 +1,6 @@
 # Docker compose file to run only the local Postgres server for opencloning-db.
 # To run: docker compose -f docker/docker-compose.db.yml up -d
+# CI reuses this file for Postgres; in-container tests also merge docker-compose.ci-tests.yml.
 services:
   postgres:
     image: postgres:18
