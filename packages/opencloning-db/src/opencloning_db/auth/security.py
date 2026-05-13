@@ -19,15 +19,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hasher.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict[str, Any], config: Config, expires_delta: timedelta | None = None) -> str:
+def create_access_token(data: dict[str, Any], config: Config, expires_delta: timedelta) -> str:
     config = config or get_config()
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=config.access_token_expire_minutes,
-        )
+    expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({'exp': expire})
     encoded_jwt = jwt.encode(
         to_encode,
