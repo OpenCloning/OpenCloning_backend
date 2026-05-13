@@ -1,5 +1,4 @@
-import glob
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -58,25 +57,10 @@ else:
     async def get_frontend_index(request: Request):
         return FileResponse('frontend/index.html')
 
-    frontend_files = (
-        glob.glob('frontend/*.json')
-        + glob.glob('frontend/*.ico')
-        + glob.glob('frontend/*.png')
-        + glob.glob('frontend/*.txt')
-    )
-    frontend_files = [f.split('/')[-1] for f in frontend_files]
-
     @router.get('/config.json', response_model=FrontendConfig)
     async def get_config_json():
         """Return frontend config file built from env vars"""
         return frontend_config
-
-    @router.get('/{name:path}')
-    async def get_other_frontend_files(name: str):
-        """Catch-all for frontend files"""
-        if name in frontend_files:
-            return FileResponse(f'frontend/{name}')
-        raise HTTPException(404)
 
 
 _app.include_router(import_router, tags=['External Import'])
@@ -99,9 +83,9 @@ if settings.BATCH_CLONING:
     _app.include_router(pombe_router, tags=['Batch Cloning'])
 
 
-# This router must be added last because when SERVE_FRONTEND is True,
-# it contains a catch-all route. The catch-all route '/{name:path}' matches any URL path, so if this
-# section were placed earlier, it would intercept all requests before they could reach their intended
-# API endpoints. For example, requests to '/docs' or '/version' would incorrectly return 404 errors
-# instead of reaching their proper handlers.
+# This router must be added before the frontend StaticFiles mount. When SERVE_FRONTEND is True,
+# the mount at '/' is registered last and would otherwise take precedence over API routes.
 _app.include_router(router, tags=['General'])
+
+if settings.SERVE_FRONTEND:
+    _app.mount('/', StaticFiles(directory='frontend', html=False), name='frontend')
