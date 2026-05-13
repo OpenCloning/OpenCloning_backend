@@ -44,11 +44,18 @@ class Config(BaseModel):
     @field_validator('database_url')
     @classmethod
     def _validate_database_url(cls, value: str) -> str:
-        if make_url(value).get_backend_name() != 'postgresql':
+        url = make_url(value)
+        if url.get_backend_name() != 'postgresql':
             raise ValueError('Only PostgreSQL database URLs are supported.')
+        if url.drivername != 'postgresql+psycopg':
+            raise ValueError(
+                'Only PostgreSQL database URLs using the psycopg driver are supported ' '(postgresql+psycopg://...).'
+            )
         return value
 
-    database_url: str = Field(description='SQLAlchemy PostgreSQL database URL')
+    database_url: str = Field(
+        description='SQLAlchemy PostgreSQL URL using the psycopg (v3) driver (postgresql+psycopg://...)',
+    )
     sequence_files_dir: str = Field(
         description='Directory for storing sequence GenBank files',
     )

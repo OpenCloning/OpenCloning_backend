@@ -84,7 +84,7 @@ class TestConfig(unittest.TestCase):
         with patch.dict(
             os.environ,
             {
-                'OPENCLONING_DATABASE_URL': 'postgresql://postgres:postgres@localhost:5432/opencloning_dev',
+                'OPENCLONING_DATABASE_URL': 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev',
                 'OPENCLONING_SEQUENCE_FILES_DIR': '/tmp/sequence-files',
                 'OPENCLONING_SEQUENCING_FILES_DIR': '/tmp/sequencing-files',
                 'OPENCLONING_JWT_SECRET': 'test-secret',
@@ -94,7 +94,7 @@ class TestConfig(unittest.TestCase):
             app_config.set_config(None)
             cfg = app_config.get_config()
         app_config.set_config(previous_config)
-        self.assertEqual(cfg.database_url, 'postgresql://postgres:postgres@localhost:5432/opencloning_dev')
+        self.assertEqual(cfg.database_url, 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev')
         self.assertEqual(cfg.sequence_files_dir, '/tmp/sequence-files')
         self.assertEqual(cfg.sequencing_files_dir, '/tmp/sequencing-files')
         self.assertEqual(cfg.jwt_secret, 'test-secret')
@@ -124,6 +124,17 @@ class TestConfig(unittest.TestCase):
                 sequencing_files_dir='/tmp/sequencing-files',
                 jwt_secret='test-secret',
             )
+
+    def test_database_url_rejects_default_postgresql_driver(self):
+        """Bare postgresql:// selects psycopg2 in SQLAlchemy; this package depends on psycopg3."""
+        with self.assertRaises(ValidationError) as exc_info:
+            Config(
+                database_url='postgresql://postgres:postgres@localhost:5432/opencloning_dev',
+                sequence_files_dir='/tmp/sequence-files',
+                sequencing_files_dir='/tmp/sequencing-files',
+                jwt_secret='test-secret',
+            )
+        self.assertIn('postgresql+psycopg', str(exc_info.exception))
 
 
 class TestGenerateUniqueFilename(unittest.TestCase):

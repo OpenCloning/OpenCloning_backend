@@ -28,7 +28,7 @@ def reset_db(x_test_reset_token: str | None = Header(default=None)) -> Response:
     _dispose_engine()
 
     result = subprocess.run(
-        ['opencloning-cli', 'db', 'reset'],
+        ['opencloning-cli', 'db', 'seed'],
         capture_output=True,
         text=True,
         check=False,
