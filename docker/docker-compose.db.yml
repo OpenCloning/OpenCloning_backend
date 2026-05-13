@@ -11,10 +11,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: opencloning_dev
-      OPENCLONING_POSTGRES_MULTIPLE_DATABASES: opencloning_test,opencloning_e2e
     volumes:
       - opencloning_postgres_dev_data:/var/lib/postgresql
-      - ./postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
+      - ./postgres/init-multiple-databases.sql:/docker-entrypoint-initdb.d/init-multiple-databases.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
