@@ -26,10 +26,14 @@ def _reset_engine_cache() -> None:
     db_module._bound_database_url = None
 
 
-def _restore_runtime_state(default_config: Config | None, default_engine, default_bound_url: str | None) -> None:
+def _restore_runtime_state(default_config: Config | None) -> None:
+    """Clear engine cache and restore config.
+
+    Do not reattach a pre-fixture ``db_module._engine`` reference: setup may have
+    disposed that engine via ``_reset_engine_cache()``; leave cache empty so the
+    next ``get_engine()`` builds a fresh engine for ``default_config``.
+    """
     _reset_engine_cache()
-    db_module._engine = default_engine
-    db_module._bound_database_url = default_bound_url
     set_config(default_config)
 
 
@@ -37,8 +41,6 @@ def _restore_runtime_state(default_config: Config | None, default_engine, defaul
 def postgres_test_config() -> Generator[Config, None, None]:
     """Postgres test config with isolated sequence and sequencing directories."""
     default_config = _peek_config()
-    default_engine = db_module._engine
-    default_bound_url = db_module._bound_database_url
     with tempfile.TemporaryDirectory() as tmp_dir_sequences:
         with tempfile.TemporaryDirectory() as tmp_dir_sequencing:
             test_config = Config(
@@ -50,7 +52,7 @@ def postgres_test_config() -> Generator[Config, None, None]:
             _reset_engine_cache()
             set_config(test_config)
             yield test_config
-    _restore_runtime_state(default_config, default_engine, default_bound_url)
+    _restore_runtime_state(default_config)
 
 
 @pytest.fixture

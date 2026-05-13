@@ -22,8 +22,6 @@ _TEST_DATABASE_URL = os.environ.get(
 def temp_workspace() -> Generator[tuple[Path, Config], None, None]:
     """Yield ``(workspace_dir, config)`` pointing at a temp test workspace."""
     default_config = _peek_config()
-    default_engine = db_module._engine
-    default_bound_url = db_module._bound_database_url
 
     with tempfile.TemporaryDirectory(prefix='opencloning-cli-test-') as tmp:
         workspace = Path(tmp)
@@ -43,6 +41,6 @@ def temp_workspace() -> Generator[tuple[Path, Config], None, None]:
         finally:
             if db_module._engine is not None:
                 db_module._engine.dispose()
-            db_module._engine = default_engine
-            db_module._bound_database_url = default_bound_url
+            db_module._engine = None
+            db_module._bound_database_url = None
             set_config(default_config)
