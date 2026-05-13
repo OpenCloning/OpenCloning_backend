@@ -14,7 +14,7 @@ from pydna.opencloning_models import SequenceLocationStr
 
 test_files = os.path.join(os.path.dirname(__file__), 'test_files')
 
-client = TestClient(_main._app)
+client = TestClient(_main.app)
 
 
 class ZiqiangEtAl2024Test(unittest.TestCase):

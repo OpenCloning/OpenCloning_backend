@@ -29,7 +29,7 @@ class StubRouteTest(unittest.TestCase):
         reload(no_assembly_endpoints)
         reload(main)
 
-        self.client = TestClient(main._app)
+        self.client = TestClient(main.app)
 
     def tearDown(self):
         MonkeyPatch().setenv('RECORD_STUBS', '0')

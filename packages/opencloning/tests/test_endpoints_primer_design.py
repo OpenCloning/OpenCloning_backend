@@ -31,7 +31,7 @@ from opencloning.temp_functions import primer_model_to_pydna_primer
 
 test_files = os.path.join(os.path.dirname(__file__), 'test_files')
 
-client = TestClient(_main._app)
+client = TestClient(_main.app)
 
 
 alt_primer_settings = PrimerDesignSettings(primer_dna_conc=500)

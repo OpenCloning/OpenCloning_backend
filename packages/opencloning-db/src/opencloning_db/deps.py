@@ -12,7 +12,7 @@ from opencloning_db.config import Config, get_config
 from opencloning_db.db import get_engine
 from opencloning_db.models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 
 def get_db(config: Annotated[Config, Depends(get_config)]):
