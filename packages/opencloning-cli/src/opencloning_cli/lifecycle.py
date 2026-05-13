@@ -21,6 +21,22 @@ from opencloning_db.api import app
 from fastapi.testclient import TestClient
 from .stubs import stubs, RecordedStub, StubRequest, StubResponse
 
+# Canonical timestamp for recorded HTTP stubs (avoids diffs from DB server_default times).
+_STUB_CREATED_AT = '2000-01-01T00:00:00Z'
+
+
+def _replace_created_at_in_json(value: Any) -> Any:
+    """Return a deep structure copy with every ``created_at`` key set to a fixed string.
+
+    Walks dicts and lists only; leaves scalars unchanged except under the key
+    ``created_at``. Does not mutate *value* (safe for shared stub request bodies).
+    """
+    if isinstance(value, dict):
+        return {k: _STUB_CREATED_AT if k == 'created_at' else _replace_created_at_in_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_replace_created_at_in_json(item) for item in value]
+    return value
+
 
 def _dispose_engine() -> None:
     """Dispose any cached SQLAlchemy engine before reset or stub generation.
@@ -126,12 +142,19 @@ def create_stub(
             ]
         }
 
+    if isinstance(response_body, (dict, list)):
+        response_body = _replace_created_at_in_json(response_body)
+
+    recorded_body: Any = stub.body
+    if isinstance(recorded_body, (dict, list)):
+        recorded_body = _replace_created_at_in_json(recorded_body)
+
     return RecordedStub(
         name=stub.name,
         endpoint=stub.endpoint,
         method=stub.method,
         params=stub.params,
-        body=stub.body,
+        body=recorded_body,
         headers=_sanitize_headers(stub.headers),
         response=StubResponse(
             body=response_body,
