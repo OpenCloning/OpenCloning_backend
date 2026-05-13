@@ -43,7 +43,7 @@ def test_reset_endpoint_calls_cli(testing_app_client, monkeypatch):
     assert response.status_code == 204
     assert calls
     cmd, capture_output, text, check = calls[0]
-    assert cmd == ['opencloning-cli', 'db', 'test', 'reset']
+    assert cmd == ['opencloning-cli', 'db', 'reset']
     assert capture_output is True
     assert text is True
     assert check is False
