@@ -27,6 +27,7 @@ dependencies = [
     "primer3-py>=2.3",
     "pairwise-alignments-to-msa>=0.1.1",
     "pydna>=5.5.11",
+    "starlette>=1.0.0",
 ]
 
 [project.urls]

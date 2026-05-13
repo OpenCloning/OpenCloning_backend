@@ -9,7 +9,6 @@ import tempfile
 import opencloning.main as main
 import opencloning.app_settings as app_settings
 
-
 test_files = os.path.join(os.path.dirname(__file__), 'test_files')
 
 
@@ -28,7 +27,7 @@ class TestServeFrontend(unittest.TestCase):
         MonkeyPatch().setenv('SERVE_FRONTEND', '1')
         reload(app_settings)
         reload(main)
-        self.client = TestClient(main._app)
+        self.client = TestClient(main.app)
 
     def tearDown(self):
         MonkeyPatch().setenv('SERVE_FRONTEND', '0')
@@ -69,7 +68,7 @@ class TestServeFrontend(unittest.TestCase):
             monkeypatch.setenv('STATIC_CONTENT_PATH', '/srv/static')
             reload(app_settings)
             reload(main)
-            client = TestClient(main._app)
+            client = TestClient(main.app)
 
             response = client.get('/config.json')
             self.assertEqual(response.status_code, 200)

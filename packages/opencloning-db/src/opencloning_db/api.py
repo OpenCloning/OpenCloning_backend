@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 import os
+from starlette.types import ASGIApp
 
 from opencloning.app_settings import settings as opencloning_settings
 from opencloning_db.config import parse_bool
@@ -22,7 +23,7 @@ from opencloning_db.routers import (
 )
 
 
-def create_app() -> FastAPI:
+def create_fastapi_app() -> FastAPI:
     app = FastAPI(title='OpenCloningDB API')
 
     app.include_router(auth.router)
@@ -38,14 +39,22 @@ def create_app() -> FastAPI:
 
     # Register routes first so Page[...] endpoints get pagination_ctx.
     add_pagination(app)
-    app = CORSMiddleware(
+    return app
+
+
+def wrap_with_cors(app: ASGIApp) -> ASGIApp:
+    return CORSMiddleware(
         app,
         allow_origins=opencloning_settings.ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    return app
 
 
-app = create_app()
+def create_app() -> ASGIApp:
+    return wrap_with_cors(create_fastapi_app())
+
+
+fastapi_app = create_fastapi_app()
+app = wrap_with_cors(fastapi_app)

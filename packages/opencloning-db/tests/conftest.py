@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from opencloning_db.config import Config, _peek_config, set_config
 import opencloning_db.db as db_module
 from fastapi.testclient import TestClient
-from opencloning_db.api import app
+from opencloning_db.api import app, fastapi_app
 from opencloning_db.deps import get_db
 from opencloning_db.models import Base
 from sqlalchemy.engine import Engine
@@ -82,7 +82,7 @@ def engine_client_config(
         finally:
             session.close()
 
-    app.dependency_overrides[get_db] = override_get_db
+    fastapi_app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as client:
         yield postgres_test_engine, client, postgres_test_config
-    app.dependency_overrides.pop(get_db, None)
+    fastapi_app.dependency_overrides.pop(get_db, None)

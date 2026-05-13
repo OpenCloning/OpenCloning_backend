@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp
 
 from .get_router import get_router
 
@@ -17,7 +18,7 @@ from .app_settings import settings
 # =====================================================
 
 
-def create_app() -> FastAPI:
+def create_fastapi_app() -> FastAPI:
     app = FastAPI()
 
     router = get_router()
@@ -80,8 +81,12 @@ def create_app() -> FastAPI:
     if settings.SERVE_FRONTEND:
         app.mount('/', StaticFiles(directory='frontend', html=False), name='frontend')
 
-    # Middleware is added here, otherwise internal server errors fail cors.
-    app = CORSMiddleware(
+    return app
+
+
+def wrap_with_cors(app: ASGIApp) -> ASGIApp:
+    # Middleware is added at the outer ASGI layer so uncaught server errors still carry CORS headers.
+    return CORSMiddleware(
         app,
         allow_origins=settings.ALLOWED_ORIGINS,
         allow_credentials=True,
@@ -89,7 +94,11 @@ def create_app() -> FastAPI:
         allow_headers=['*'],
         expose_headers=['x-warning'],
     )
-    return app
 
 
-app = create_app()
+def create_app() -> ASGIApp:
+    return wrap_with_cors(create_fastapi_app())
+
+
+fastapi_app = create_fastapi_app()
+app = wrap_with_cors(fastapi_app)
