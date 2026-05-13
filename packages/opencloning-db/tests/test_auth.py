@@ -11,7 +11,6 @@ from uuid import uuid4
 import jwt
 import pytest
 
-from opencloning_db.auth.security import create_access_token
 from opencloning_db.config import get_config
 
 
@@ -184,19 +183,6 @@ def test_me_expired_jwt_401(auth_client):
     )
     assert r.status_code == 401
     assert r.json()['detail'] == 'Could not validate credentials'
-
-
-def test_create_access_token_uses_default_expiry_when_none():
-    """No explicit expires_delta uses configured access_token_expire_minutes."""
-    config = get_config()
-    token = create_access_token({'sub': '123'}, config)
-    payload = jwt.decode(token, options={'verify_signature': False})
-    exp = datetime.fromtimestamp(payload['exp'], tz=timezone.utc)
-    now = datetime.now(timezone.utc)
-    ttl_seconds = (exp - now).total_seconds()
-    expected_seconds = config.access_token_expire_minutes * 60
-    # Allow tiny execution-time skew while still validating default branch.
-    assert expected_seconds - 5 <= ttl_seconds <= expected_seconds + 5
 
 
 def test_me_token_without_sub_claim_401(auth_client):

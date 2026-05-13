@@ -3,6 +3,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   build_and_push_docker_image:
     runs-on: ubuntu-latest
@@ -58,6 +61,7 @@ jobs:
       name: publish
       url: https://pypi.org/p/opencloning
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4

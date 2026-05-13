@@ -22,9 +22,7 @@ from sqlalchemy import (
     UniqueConstraint,
     event,
 )
-import sqlite3
 
-from sqlalchemy.engine import Engine
 from sqlalchemy.sql import func
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import (
@@ -831,11 +829,3 @@ def _validate_cross_workspace_invariants(session, *_):
     _validate_sequence_in_line_workspace(session)
     _validate_source_input_workspace(session)
     _validate_tag_links_workspace(session)
-
-
-@event.listens_for(Engine, 'connect')
-def _set_sqlite_pragma(dbapi_connection, connection_record):
-    if isinstance(dbapi_connection, sqlite3.Connection):
-        cursor = dbapi_connection.cursor()
-        cursor.execute('PRAGMA foreign_keys=ON;')
-        cursor.close()

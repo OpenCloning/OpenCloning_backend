@@ -6,10 +6,12 @@ from opencloning_cli.stubs import RecordedStub
 import os
 from pathlib import Path
 
+from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
+import opencloning_db.db as db_module
+from opencloning_db.models import User
 from opencloning_cli.main import app
-
 
 runner = CliRunner()
 
@@ -20,76 +22,35 @@ def _invoke(*args: str):
     return runner.invoke(app, list(args))
 
 
+def _count_users(config) -> int:
+    with Session(db_module.get_engine(config)) as session:
+        return session.query(User).count()
+
+
 class TestHelpAndTree:
     def test_root_help(self):
         result = _invoke('--help')
         assert result.exit_code == 0
         assert 'db' in result.output
 
-    def test_nested_help(self):
-        result = _invoke('db', 'test', 'snapshot', '--help')
+    def test_top_level_db_help(self):
+        result = _invoke('db', '--help')
         assert result.exit_code == 0
-        assert 'create' in result.output
-        assert 'restore' in result.output
+        assert 'seed' in result.output
+        assert 'stubs' in result.output
 
 
 class TestSeedCommand:
     def test_success_human_output(self, temp_workspace):
         _, config = temp_workspace
 
-        result = _invoke('db', 'test', 'seed')
+        result = _invoke('db', 'seed')
 
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''
-        assert Path(config.database_path).exists()
-
-
-class TestSnapshotCommands:
-    def test_create_and_restore(self, temp_workspace):
-        _, _ = temp_workspace
-
-        assert _invoke('db', 'test', 'seed').exit_code == 0
-        create = _invoke('db', 'test', 'snapshot', 'create')
-        assert create.exit_code == 0, create.output
-        snapshot_dir = Path(temp_workspace[1].database_path).parent / 'snapshot'
-        assert (snapshot_dir / 'db' / Path(temp_workspace[1].database_path).name).exists()
-
-        restore = _invoke('db', 'test', 'snapshot', 'restore')
-        assert restore.exit_code == 0, restore.output
-
-    def test_restore_missing_snapshot_exit_code(self, temp_workspace):
-        result = _invoke('db', 'test', 'snapshot', 'restore')
-
-        assert result.exit_code != 0
-
-    def test_custom_snapshot_dir(self, temp_workspace, tmp_path):
-        _, _ = temp_workspace
-        assert _invoke('db', 'test', 'seed').exit_code == 0
-
-        custom = tmp_path / 'custom-snapshot'
-        result = _invoke('db', 'test', 'snapshot', 'create', '--snapshot-dir', str(custom))
-
-        assert result.exit_code == 0
-        assert (custom / 'db' / Path(temp_workspace[1].database_path).name).exists()
-
-
-class TestResetCommand:
-    def test_first_invocation_seeds(self, temp_workspace):
-        _, config = temp_workspace
-
-        result = _invoke('db', 'test', 'reset')
-
-        assert result.exit_code == 0, result.output
-        assert result.output.strip() == ''
-        assert Path(config.database_path).exists()
-
-    def test_second_invocation_restores(self, temp_workspace):
-        first = _invoke('db', 'test', 'reset')
-        assert first.exit_code == 0
-
-        second = _invoke('db', 'test', 'reset')
-        assert second.exit_code == 0
-        assert second.output.strip() == ''
+        assert _count_users(config) > 0
+        assert len(list(Path(config.sequence_files_dir).iterdir())) == 48
+        assert len(list(Path(config.sequencing_files_dir).iterdir())) == 3
 
 
 class TestStubCommand:

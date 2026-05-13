@@ -1,26 +1,9 @@
 import os
-import tempfile
-
-from opencloning_db.config import Config, get_config, set_config
 from opencloning_db.init_db import init_db
 
 
-def test_init_db():
-    """Seed init_db assets; restore process config afterward (same idea as ``engine_client_config``)."""
-    previous_config = get_config()
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir_sequences:
-            with tempfile.TemporaryDirectory() as tmp_dir_sequencing:
-                with tempfile.NamedTemporaryFile() as tmp_db_file:
-                    config = Config(
-                        database_url=f"sqlite:///{tmp_db_file.name}",
-                        sequence_files_dir=tmp_dir_sequences,
-                        sequencing_files_dir=tmp_dir_sequencing,
-                    )
-                    set_config(config)
-
-                    init_db(config)
-                    assert len(os.listdir(tmp_dir_sequences)) == 48
-                    assert len(os.listdir(tmp_dir_sequencing)) == 3
-    finally:
-        set_config(previous_config)
+def test_init_db(postgres_test_config):
+    """Seed init_db assets into the Postgres test DB using the shared test config fixture."""
+    init_db(postgres_test_config)
+    assert len(os.listdir(postgres_test_config.sequence_files_dir)) == 48
+    assert len(os.listdir(postgres_test_config.sequencing_files_dir)) == 3

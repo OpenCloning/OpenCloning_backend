@@ -155,6 +155,19 @@ From the repository root (after `uv sync`):
 uv run pytest packages/opencloning/tests -v -ks
 ```
 
+If you wanted to run them in docker:
+
+```bash
+export COMPOSE_PROJECT_NAME=opencloning-local-docker
+# Plus env vars for ADDGENE and NCBI API keys
+
+docker compose \
+  -f docker/docker-compose.db.yml \
+  -f docker/docker-compose.ci-tests.yml \
+  run --rm tests \
+  python -m pytest -vs -o cache_dir=/tmp/pytest-cache
+```
+
 ## Running opencloning-db locally
 
 `opencloning-db` is a companion API/database service for OpenCloning data workflows. It now lives in `packages/opencloning-db/src` and uses the local workspace `opencloning` package.
@@ -167,11 +180,20 @@ From the repository root:
 # Install/update workspace dependencies
 uv sync
 
+# Start local Postgres with dev/test/e2e databases
+docker compose -f docker/docker-compose.db.yml up -d
+
+# Load required local runtime config
+source .env.dev
+
 # Run opencloning-db tests
 uv run pytest packages/opencloning-db/tests -v
 
 # Recreate the opencloning-db local database seed
-./restart_db.sh
+uv run opencloning-cli db seed
+
+# Run the opencloning-db API
+uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
 ```
 
 If you need to run the init script manually:
@@ -179,6 +201,12 @@ If you need to run the init script manually:
 ```bash
 uv run --directory packages/opencloning-db/src python -m opencloning_db.init_db
 ```
+
+`.env.dev` is the canonical local defaults file for host-side development. Load it before running `opencloning-cli`, `opencloning-db`, or local backend tests.
+
+`opencloning-cli db seed` is the preferred local workflow for recreating the baseline database and file directories.
+
+The DB-only compose file creates `opencloning_dev`, `opencloning_test`, and `opencloning_e2e` on first startup so local development, tests, and E2E work can stay separated.
 
 ## Dependency guardrail (deptry)
 
