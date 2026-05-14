@@ -22,24 +22,27 @@ source .env.dev
 # Seed the local baseline
 uv run opencloning-cli db seed
 
-# Run the opencloning-db API
-uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
+# Run both the cloning and the database API - this what the OpenCloningDB frontend expects
+uv run uvicorn opencloning_db.combined:app --reload --reload-exclude='.venv'
+
+# Run the opencloning-db API (only database, not cloning. This is not used when running with the frontend)
+uv run uvicorn opencloning_db.api:app --reload --reload-exclude='.venv'
 ```
 
-If startup succeeds, the API docs should be available at [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs).
+That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.0.1:8000/cloning) and the database API at [http://127.0.0.1:8001/db](http://127.0.0.1:8001/db). That's what the OpenCloningDB frontend expects.
 
-The required runtime config lives in `.env.dev` for local development. Load it before running the CLI or API on the host.
+## Running tests locally
 
-`OPENCLONING_DATABASE_URL` should point at Postgres. For local development, `opencloning-cli db seed` recreates the database baseline from scratch.
+From the repository root:
 
-Use `OPENCLONING_DATABASE_URL` for the runtime database and `OPENCLONING_TEST_DATABASE_URL` for Postgres-backed test runs when you want to override the default test database.
+```bash
+# Install or update workspace dependencies
+uv sync
 
-The DB-only compose file creates these local databases automatically on first startup:
+# Run the tests
+uv run pytest packages/opencloning-db/tests -v -ks
+```
 
-- `opencloning_dev`
-- `opencloning_test`
-- `opencloning_e2e`
+## Frontend testing
 
-## Related local workflows
-
-For test and database seed commands, see the repository root [README](../../README.md#running-opencloning-db-locally).
+Frontend testing using the database requires reseting after tests that modify the database. You can do this by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`.
