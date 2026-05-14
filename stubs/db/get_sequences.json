@@ -1,6 +1,6 @@
 {
   "body": null,
-  "endpoint": "/sequences",
+  "endpoint": "/db/sequences",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

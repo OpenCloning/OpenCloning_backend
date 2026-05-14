@@ -17,7 +17,7 @@ from typing import Any
 import opencloning_db.db as _db_module
 from opencloning_db.config import Config, get_config
 from opencloning_db.init_db import init_db as _init_db
-from opencloning_db.api import app
+from opencloning_db.combined import app
 from fastapi.testclient import TestClient
 from .stubs import stubs, RecordedStub, StubRequest, StubResponse
 
@@ -166,14 +166,14 @@ def create_stub(
 
 def _default_auth_headers(test_client: Any) -> dict[str, str]:
     token_response = test_client.post(
-        '/auth/token',
+        'db/auth/token',
         data={'username': 'bootstrap@example.com', 'password': 'password'},
     )
     token_response.raise_for_status()
     token = token_response.json()['access_token']
 
     workspaces_response = test_client.get(
-        '/workspaces',
+        'db/workspaces',
         headers={'Authorization': f'Bearer {token}'},
     )
     workspaces_response.raise_for_status()
@@ -197,23 +197,24 @@ def write_stubs(output_dir: Path):
     client = TestClient(app)
     headers = _default_auth_headers(client)
     generated_payloads: dict[str, dict[str, Any]] = {}
+    # Delete existing stubs
+    for file in target_dir.glob('*.json'):
+        file.unlink()
     for stub in stubs(str(target_dir)):
 
         stub.headers = headers
         output_file = target_dir / f'{stub.name}.json'
-        try:
-            if stub.body_from_stub:
-                source_payload = generated_payloads.get(stub.body_from_stub)
-                if source_payload is None:
-                    raise ValueError(f'Unknown body source stub "{stub.body_from_stub}" for "{stub.name}".')
-                stub.body = source_payload['response']['body']
+        if stub.body_from_stub:
+            source_payload = generated_payloads.get(stub.body_from_stub)
+            if source_payload is None:
+                raise ValueError(f'Unknown body source stub "{stub.body_from_stub}" for "{stub.name}".')
+            stub.body = source_payload['response']['body']
 
-            recorded_stub = create_stub(client, stub)
+        recorded_stub = create_stub(client, stub)
 
-            with output_file.open('w', encoding='utf-8') as handle:
-                json.dump(recorded_stub.model_dump(), handle, indent=2, sort_keys=True)
-                handle.write('\n')
-            print('Stub written to', output_file)
-        finally:
-            if stub.reset_db:
-                seed(config)
+        with output_file.open('w', encoding='utf-8') as handle:
+            json.dump(recorded_stub.model_dump(), handle, indent=2, sort_keys=True)
+            handle.write('\n')
+        print('Stub written to', output_file)
+        if stub.reset_db:
+            seed(config)

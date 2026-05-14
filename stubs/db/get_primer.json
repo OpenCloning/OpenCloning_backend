@@ -1,6 +1,6 @@
 {
   "body": null,
-  "endpoint": "/primers/37",
+  "endpoint": "/db/primers/37",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

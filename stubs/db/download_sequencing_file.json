@@ -1,15 +1,15 @@
 {
   "body": null,
-  "endpoint": "/sequencing_files/4/download",
+  "endpoint": "/db/sequencing_files/4/download",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"
   },
   "method": "GET",
+  "name": "download_sequencing_file",
   "params": null,
   "response": {
     "body": "U0VRVUVOQ0lORy1SVU4tMQ==",
-    "body_encoding": "base64",
     "headers": {
       "content-disposition": "attachment; filename=\"run.ab1\"",
       "content-type": "application/octet-stream"

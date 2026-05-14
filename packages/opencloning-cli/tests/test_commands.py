@@ -54,7 +54,7 @@ class TestSeedCommand:
 
 
 class TestStubCommand:
-    def test_writes_single_stub_json(self, temp_workspace, monkeypatch):
+    def test_write_stubs(self, temp_workspace, monkeypatch):
         workspace, _ = temp_workspace
         monkeypatch.chdir(workspace)
         result = _invoke('db', 'stubs')
