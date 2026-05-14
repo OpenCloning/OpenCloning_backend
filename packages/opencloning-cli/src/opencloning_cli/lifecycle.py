@@ -17,7 +17,7 @@ from typing import Any
 import opencloning_db.db as _db_module
 from opencloning_db.config import Config, get_config
 from opencloning_db.init_db import init_db as _init_db
-from opencloning_db.api import app
+from opencloning_db.combined import app
 from fastapi.testclient import TestClient
 from .stubs import stubs, RecordedStub, StubRequest, StubResponse
 
@@ -166,14 +166,14 @@ def create_stub(
 
 def _default_auth_headers(test_client: Any) -> dict[str, str]:
     token_response = test_client.post(
-        '/auth/token',
+        'db/auth/token',
         data={'username': 'bootstrap@example.com', 'password': 'password'},
     )
     token_response.raise_for_status()
     token = token_response.json()['access_token']
 
     workspaces_response = test_client.get(
-        '/workspaces',
+        'db/workspaces',
         headers={'Authorization': f'Bearer {token}'},
     )
     workspaces_response.raise_for_status()

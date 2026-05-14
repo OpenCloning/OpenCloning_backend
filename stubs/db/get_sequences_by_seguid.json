@@ -1,6 +1,6 @@
 {
   "body": null,
-  "endpoint": "/sequences/by-seguid/ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
+  "endpoint": "db/sequences/by-seguid/ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"

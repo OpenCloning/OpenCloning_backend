@@ -1,6 +1,6 @@
 {
   "body": null,
-  "endpoint": "/sequences/by-uid/example_sequencing-sample",
+  "endpoint": "db/sequences/by-uid/example_sequencing-sample",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"
