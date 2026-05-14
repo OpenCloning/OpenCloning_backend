@@ -197,6 +197,9 @@ def write_stubs(output_dir: Path):
     client = TestClient(app)
     headers = _default_auth_headers(client)
     generated_payloads: dict[str, dict[str, Any]] = {}
+    # Delete existing stubs
+    for file in target_dir.glob('*.json'):
+        file.unlink()
     for stub in stubs(str(target_dir)):
 
         stub.headers = headers

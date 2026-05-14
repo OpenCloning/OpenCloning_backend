@@ -28,7 +28,7 @@ class StubRequest(BaseModel):
 
 
 class StubResponse(BaseModel):
-    body: dict | list
+    body: dict | list | str
     status_code: int
     headers: dict
 
@@ -144,33 +144,34 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
         body=cs_pcr,
         reset_db=True,
     )
-    # StubRequest(
-    #     name='post_sequence_search',
-    #     endpoint='db/sequences/search',
-    #     method='POST',
-    #     body_from_stub='get_text_file_sequence',
-    # )
-    # StubRequest(
-    #     name='post_sequence_sequencing_files',
-    #     endpoint='db/sequences/10/sequencing_files',
-    #     method='POST',
-    #     multipart_files=[
-    #         {
-    #             'filename': 'run.ab1',
-    #             'content': 'SEQUENCING-RUN-1',
-    #             'content_type': 'application/octet-stream',
-    #         }
-    #     ],
-    # )
-    # StubRequest(
-    #     name='get_sequence_sequencing_files',
-    #     endpoint='db/sequences/10/sequencing_files',
-    #     method='GET',
-    # )
-    # StubRequest(
-    #     name='download_sequencing_file',
-    #     endpoint='db/sequencing_files/{last_file_id}/download',
-    #     method='GET',
-    #     binary_response=True,
-    #     reset_db=True,
-    # )
+    yield StubRequest(
+        name='post_sequence_search',
+        endpoint='db/sequences/search',
+        method='POST',
+        body=get_stub(dirname, 'get_text_file_sequence').response.body,
+    )
+    yield StubRequest(
+        name='post_sequence_sequencing_files',
+        endpoint='db/sequences/10/sequencing_files',
+        method='POST',
+        multipart_files=[
+            {
+                'filename': 'run.ab1',
+                'content': 'SEQUENCING-RUN-1',
+                'content_type': 'application/octet-stream',
+            }
+        ],
+    )
+    yield StubRequest(
+        name='get_sequence_sequencing_files',
+        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/sequencing_files',
+        method='GET',
+    )
+    last_file_id = get_stub(dirname, 'get_sequence_sequencing_files').response.body[-1]['id']
+    yield StubRequest(
+        name='download_sequencing_file',
+        endpoint=f'db/sequencing_files/{last_file_id}/download',
+        method='GET',
+        binary_response=True,
+        reset_db=True,
+    )

@@ -8,12 +8,13 @@
       }
     ]
   },
-  "endpoint": "/sequences/10/sequencing_files",
+  "endpoint": "db/sequences/10/sequencing_files",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"
   },
   "method": "POST",
+  "name": "post_sequence_sequencing_files",
   "params": null,
   "response": {
     "body": [
