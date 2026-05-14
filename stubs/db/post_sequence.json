@@ -14,7 +14,7 @@
       },
       {
         "database_id": null,
-        "id": 3,
+        "id": 2,
         "name": "name",
         "sequence": "GCGCGCGC",
         "type": "Primer"
@@ -24,7 +24,7 @@
     "sequences": [
       {
         "file_content": "LOCUS       name                      22 bp    DNA     linear   UNK 01-JAN-1980\nDEFINITION  description.\nACCESSION   id\nVERSION     id\nKEYWORDS    .\nSOURCE      \n  ORGANISM  .\n            .\nFEATURES             Location/Qualifiers\nORIGIN\n        1 acgtacgtaa aaaagcgcgc gc\n//",
-        "id": 2,
+        "id": 3,
         "overhang_crick_3prime": 0,
         "overhang_watson_3prime": 0,
         "sequence_file_format": "genbank",
@@ -44,7 +44,7 @@
         "add_primer_features": false,
         "circular": false,
         "database_id": null,
-        "id": 2,
+        "id": 3,
         "input": [
           {
             "left_location": null,
@@ -64,7 +64,7 @@
             "left_location": "1..8",
             "reverse_complemented": true,
             "right_location": null,
-            "sequence": 3,
+            "sequence": 2,
             "type": "AssemblyFragment"
           }
         ],
@@ -94,7 +94,7 @@
       "mappings": [
         {
           "databaseId": 76,
-          "localId": 2
+          "localId": 3
         },
         {
           "databaseId": 75,
@@ -106,7 +106,7 @@
         },
         {
           "databaseId": 74,
-          "localId": 3
+          "localId": 2
         }
       ]
     },

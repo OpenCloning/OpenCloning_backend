@@ -100,14 +100,15 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
         method='GET',
         params={'name': 'ase1_CDS_PCR'},
     )
+    selected_sequence_id = get_selected_sequence_id(dirname, 'get_sequences')
     yield StubRequest(
         name='get_sequence',
-        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}',
+        endpoint=f'db/sequences/{selected_sequence_id}',
         method='GET',
     )
     yield StubRequest(
         name='patch_sequence',
-        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}',
+        endpoint=f'db/sequences/{selected_sequence_id}',
         method='PATCH',
         body={'name': 'ase1_renamed'},
         reset_db=True,
@@ -124,17 +125,17 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     )
     yield StubRequest(
         name='get_text_file_sequence',
-        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/text_file_sequence',
+        endpoint=f'db/sequences/{selected_sequence_id}/text_file_sequence',
         method='GET',
     )
     yield StubRequest(
         name='get_cloning_strategy',
-        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/cloning_strategy',
+        endpoint=f'db/sequences/{selected_sequence_id}/cloning_strategy',
         method='GET',
     )
     yield StubRequest(
         name='get_sequence_primers',
-        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/primers',
+        endpoint=f'db/sequences/{selected_sequence_id}/primers',
         method='GET',
     )
     yield StubRequest(
@@ -152,7 +153,7 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     )
     yield StubRequest(
         name='post_sequence_sequencing_files',
-        endpoint='db/sequences/10/sequencing_files',
+        endpoint=f'db/sequences/{selected_sequence_id}/sequencing_files',
         method='POST',
         multipart_files=[
             {
@@ -164,7 +165,7 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     )
     yield StubRequest(
         name='get_sequence_sequencing_files',
-        endpoint=f'db/sequences/{get_selected_sequence_id(dirname, "get_sequences")}/sequencing_files',
+        endpoint=f'db/sequences/{selected_sequence_id}/sequencing_files',
         method='GET',
     )
     last_file_id = get_stub(dirname, 'get_sequence_sequencing_files').response.body[-1]['id']

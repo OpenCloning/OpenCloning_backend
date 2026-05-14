@@ -204,19 +204,17 @@ def write_stubs(output_dir: Path):
 
         stub.headers = headers
         output_file = target_dir / f'{stub.name}.json'
-        try:
-            if stub.body_from_stub:
-                source_payload = generated_payloads.get(stub.body_from_stub)
-                if source_payload is None:
-                    raise ValueError(f'Unknown body source stub "{stub.body_from_stub}" for "{stub.name}".')
-                stub.body = source_payload['response']['body']
+        if stub.body_from_stub:
+            source_payload = generated_payloads.get(stub.body_from_stub)
+            if source_payload is None:
+                raise ValueError(f'Unknown body source stub "{stub.body_from_stub}" for "{stub.name}".')
+            stub.body = source_payload['response']['body']
 
-            recorded_stub = create_stub(client, stub)
+        recorded_stub = create_stub(client, stub)
 
-            with output_file.open('w', encoding='utf-8') as handle:
-                json.dump(recorded_stub.model_dump(), handle, indent=2, sort_keys=True)
-                handle.write('\n')
-            print('Stub written to', output_file)
-        finally:
-            if stub.reset_db:
-                seed(config)
+        with output_file.open('w', encoding='utf-8') as handle:
+            json.dump(recorded_stub.model_dump(), handle, indent=2, sort_keys=True)
+            handle.write('\n')
+        print('Stub written to', output_file)
+        if stub.reset_db:
+            seed(config)
