@@ -3,7 +3,7 @@
     "name": "new",
     "sequence": "GGCC"
   },
-  "endpoint": "db/primers",
+  "endpoint": "/db/primers",
   "headers": {
     "authorization": "Bearer __TEST_TOKEN__",
     "x-workspace-id": "1"
