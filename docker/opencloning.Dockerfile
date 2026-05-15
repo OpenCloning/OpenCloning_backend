@@ -85,6 +85,9 @@ ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 ENV ROOT_PATH=""
 ENV USE_HTTPS=false
 
+# Worker processes per container
+ENV WEB_CONCURRENCY=2
+
 COPY ./docker/docker_entrypoint.sh ./docker_entrypoint.sh
 
 CMD ["sh", "./docker_entrypoint.sh"]

@@ -19,8 +19,8 @@ if [ "$USE_HTTPS" = "true" ]; then
         echo "Error: TLS certificate files /certs/key.pem and /certs/cert.pem must both exist and be readable"
         exit 1
     fi
-    uvicorn "${APP_MODULE}:app" --host 0.0.0.0 --port 8000 --ssl-keyfile /certs/key.pem --ssl-certfile /certs/cert.pem ${ROOT_PATH:+--root-path ${ROOT_PATH}}
+    uvicorn "${APP_MODULE}:app" --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY} ${ROOT_PATH:+--root-path ${ROOT_PATH}} --ssl-keyfile /certs/key.pem --ssl-certfile /certs/cert.pem
 else
     echo "Using HTTP"
-    uvicorn "${APP_MODULE}:app" --host 0.0.0.0 --port 8000 ${ROOT_PATH:+--root-path ${ROOT_PATH}}
+    uvicorn "${APP_MODULE}:app" --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY} ${ROOT_PATH:+--root-path ${ROOT_PATH}}
 fi
