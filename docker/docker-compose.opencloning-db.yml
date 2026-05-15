@@ -1,0 +1,18 @@
+services:
+  opencloning-db:
+    build:
+      context: .
+      dockerfile: docker/opencloning.Dockerfile
+      args:
+        APP_TARGET: db
+    image: manulera/opencloning-db
+    container_name: opencloning-db
+    ports:
+      - "8000:8000"
+    environment:
+      ROOT_PATH: ""
+      USE_HTTPS: "false"
+      OPENCLONING_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/opencloning_dev
+      OPENCLONING_SEQUENCE_FILES_DIR: dev_database/sequence_files
+      OPENCLONING_SEQUENCING_FILES_DIR: dev_database/sequencing_files
+      OPENCLONING_JWT_SECRET: local-dev-only-jwt-secret-change-for-shared-envs
