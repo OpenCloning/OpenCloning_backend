@@ -34,9 +34,6 @@ COPY packages/opencloning/src packages/opencloning/src
 # Production venv — only opencloning + runtime deps
 FROM workspace-opencloning AS builder-prod-cloning
 
-ARG PACKAGE_VERSION="0.1.0"
-ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
-
 RUN uv sync --frozen --package opencloning --no-default-groups --no-editable
 
 # Workspace + opencloning-db (for CI / full workspace test sync)
@@ -47,9 +44,6 @@ COPY packages/opencloning-db/README.md packages/opencloning-db/
 COPY packages/opencloning-db/src packages/opencloning-db/src
 
 FROM workspace-full AS builder-test
-
-ARG PACKAGE_VERSION="0.1.0"
-ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
 
 COPY packages/opencloning-cli packages/opencloning-cli
 
@@ -64,8 +58,6 @@ FROM workspace-full AS builder-prod-db
 
 ENV VIRTUAL_ENV="/home/backend/venv"
 ENV UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV
-ARG PACKAGE_VERSION="0.1.0"
-ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
 RUN uv sync --frozen --package opencloning-db --no-default-groups --no-editable
 
 FROM builder-prod-${APP_TARGET} AS builder-selected
