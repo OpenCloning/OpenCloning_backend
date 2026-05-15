@@ -46,3 +46,20 @@ uv run pytest packages/opencloning-db/tests -v -ks
 ## Frontend testing
 
 Frontend testing using the database requires reseting after tests that modify the database. You can do this by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`.
+
+## Building and running the Docker image
+
+The Dockerfile is shared with the cloning app, and the build arg `APP_TARGET` determines which app to build. So you can build the image by running:
+
+```bash
+docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloning-db .
+```
+
+Then run it for development:
+
+```bash
+docker compose \
+    -f docker/docker-compose.db.yml \
+    -f docker/docker-compose.opencloning-db.yml \
+    up -d
+```

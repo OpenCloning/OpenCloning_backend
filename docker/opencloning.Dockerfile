@@ -1,8 +1,11 @@
 # Backend for OpenCloning
 # https://github.com/OpenCloning/OpenCloning_backend
 #
-# Production: docker build -f docker/opencloning.Dockerfile .
-# CI tests:    docker build -f docker/opencloning.Dockerfile --target builder-test .
+# Production (cloning app): docker build -f docker/opencloning.Dockerfile .
+# Production (db combined): docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db .
+# CI tests:                docker build -f docker/opencloning.Dockerfile --target builder-test .
+
+ARG APP_TARGET="cloning"
 
 # BUILDER — shared setup
 FROM manulera/opencloningbackend-base:python_3.12-alpine3.21 AS base-setup
@@ -29,7 +32,7 @@ COPY packages/opencloning/pyproject.toml packages/opencloning/README.md packages
 COPY packages/opencloning/src packages/opencloning/src
 
 # Production venv — only opencloning + runtime deps
-FROM workspace-opencloning AS builder-prod
+FROM workspace-opencloning AS builder-prod-cloning
 
 ARG PACKAGE_VERSION="0.1.0"
 ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
@@ -57,6 +60,16 @@ ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 COPY packages/opencloning-db/tests packages/opencloning-db/tests
 COPY packages/opencloning/tests packages/opencloning/tests
 
+FROM workspace-full AS builder-prod-db
+
+ENV VIRTUAL_ENV="/home/backend/venv"
+ENV UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV
+ARG PACKAGE_VERSION="0.1.0"
+ENV SETUPTOOLS_SCM_PRETEND_VERSION="${PACKAGE_VERSION}"
+RUN uv sync --frozen --package opencloning-db --no-default-groups --no-editable
+
+FROM builder-prod-${APP_TARGET} AS builder-selected
+
 # FINAL IMAGE (default build target)
 FROM python:3.12-alpine3.21 AS production
 
@@ -67,17 +80,19 @@ RUN apk update --no-cache && apk add --no-cache bash libstdc++ libgomp libgcc
 RUN adduser -s /bin/bash -D backend
 USER backend
 WORKDIR /home/backend
+ARG APP_TARGET="cloning"
+ENV APP_TARGET="${APP_TARGET}"
 
 ENV VIRTUAL_ENV="/home/backend/venv"
-COPY --from=builder-prod $VIRTUAL_ENV $VIRTUAL_ENV
-COPY --from=builder-prod /usr/local/bin/mars /usr/local/bin/mars
-COPY --from=builder-prod /usr/local/bin/mafft /usr/local/bin/mafft
+COPY --from=builder-selected $VIRTUAL_ENV $VIRTUAL_ENV
+COPY --from=builder-selected /usr/local/bin/mars /usr/local/bin/mars
+COPY --from=builder-selected /usr/local/bin/mafft /usr/local/bin/mafft
 
 ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 # For example, ROOT_PATH="/syc"
 ENV ROOT_PATH=""
 ENV USE_HTTPS=false
 
-COPY ./docker_entrypoint.sh ./docker_entrypoint.sh
+COPY ./docker/docker_entrypoint.sh ./docker_entrypoint.sh
 
 CMD ["sh", "./docker_entrypoint.sh"]
