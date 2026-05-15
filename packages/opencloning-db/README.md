@@ -58,6 +58,10 @@ docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manul
 Then run it for development:
 
 ```bash
+# Create the file storage directories
+mkdir -p docker/file_storage/sequence_files docker/file_storage/sequencing_files
+
+# Run the containers
 docker compose \
     -f docker/docker-compose.db.yml \
     -f docker/docker-compose.opencloning-db.yml \

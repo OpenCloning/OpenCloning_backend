@@ -13,6 +13,10 @@ services:
       ROOT_PATH: ""
       USE_HTTPS: "false"
       OPENCLONING_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/opencloning_dev
-      OPENCLONING_SEQUENCE_FILES_DIR: dev_database/sequence_files
-      OPENCLONING_SEQUENCING_FILES_DIR: dev_database/sequencing_files
+      OPENCLONING_SEQUENCE_FILES_DIR: file_storage/sequence_files
+      OPENCLONING_SEQUENCING_FILES_DIR: file_storage/sequencing_files
       OPENCLONING_JWT_SECRET: local-dev-only-jwt-secret-change-for-shared-envs
+
+    volumes:
+      - ./file_storage/sequence_files:/home/backend/file_storage/sequence_files
+      - ./file_storage/sequencing_files:/home/backend/file_storage/sequencing_files
