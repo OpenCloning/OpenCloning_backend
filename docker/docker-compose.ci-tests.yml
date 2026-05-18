@@ -1,6 +1,6 @@
-# CI / local: run pytest in Docker against Postgres from docker-compose.db.yml.
+# CI / local: run pytest in Docker against Postgres from docker-compose.postgres.yml.
 # Usage (from repo root):
-#   docker compose -f docker/docker-compose.db.yml -f docker/docker-compose.ci-tests.yml run --rm tests
+#   docker compose -f docker/docker-compose.postgres.yml -f docker/docker-compose.ci-tests.yml run --rm tests
 services:
   tests:
     image: manulera/opencloningbackend-test

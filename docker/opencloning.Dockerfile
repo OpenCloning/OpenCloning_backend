@@ -81,8 +81,6 @@ COPY --from=builder-selected /usr/local/bin/mars /usr/local/bin/mars
 COPY --from=builder-selected /usr/local/bin/mafft /usr/local/bin/mafft
 
 ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
-# For example, ROOT_PATH="/syc"
-ENV ROOT_PATH=""
 ENV USE_HTTPS=false
 
 # Worker processes per container

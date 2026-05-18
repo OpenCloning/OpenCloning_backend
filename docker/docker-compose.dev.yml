@@ -13,7 +13,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      ROOT_PATH: ""
       USE_HTTPS: "false"
     command: >
       uvicorn opencloning.main:app

@@ -10,7 +10,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      ROOT_PATH: ""
       USE_HTTPS: "false"
       OPENCLONING_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/opencloning_dev
       OPENCLONING_SEQUENCE_FILES_DIR: file_storage/sequence_files

@@ -14,7 +14,7 @@ uv sync
 brew services stop postgresql
 
 # Start local Postgres with dev/test/e2e databases
-docker compose -f docker/docker-compose.db.yml up -d
+docker compose -f docker/docker-compose.postgres.yml up -d
 
 # Load required local runtime config
 source .env.dev
@@ -63,7 +63,7 @@ mkdir -p docker/file_storage/sequence_files docker/file_storage/sequencing_files
 
 # Run the containers
 docker compose \
-    -f docker/docker-compose.db.yml \
+    -f docker/docker-compose.postgres.yml \
     -f docker/docker-compose.opencloning-db.yml \
     up -d
 ```

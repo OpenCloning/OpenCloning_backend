@@ -3,7 +3,7 @@
 #   db       -> opencloning_db.combined:app
 #
 # WEB_CONCURRENCY: Gunicorn worker processes (default: 2).
-# ROOT_PATH: optional subpath prefix (applied by OpenCloningUvicornWorker).
+# WORKER_TIMEOUT: the timeout for each worker process (default: 20).
 
 case "${APP_TARGET}" in
     cloning) APP_MODULE=opencloning.main ;;
@@ -14,11 +14,14 @@ case "${APP_TARGET}" in
         ;;
 esac
 
+echo "WEB_CONCURRENCY: $WEB_CONCURRENCY"
+echo "APP_MODULE: $APP_MODULE"
+
 GUNICORN_ARGS=(
-    -k opencloning.gunicorn_worker.OpenCloningUvicornWorker
+    -k uvicorn.workers.UvicornWorker
     -w "${WEB_CONCURRENCY:-2}"
     --bind 0.0.0.0:8000
-    --timeout 20
+    --timeout "${WORKER_TIMEOUT:-20}"
     --access-logfile -
     --error-logfile -
     "${APP_MODULE}:app"
