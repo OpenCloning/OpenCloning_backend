@@ -42,10 +42,9 @@ FROM workspace-opencloning AS workspace-full
 COPY packages/opencloning-db/pyproject.toml packages/opencloning-db/
 COPY packages/opencloning-db/README.md packages/opencloning-db/
 COPY packages/opencloning-db/src packages/opencloning-db/src
+COPY packages/opencloning-cli packages/opencloning-cli
 
 FROM workspace-full AS builder-test
-
-COPY packages/opencloning-cli packages/opencloning-cli
 
 RUN uv sync --frozen --no-default-groups --no-editable --group test
 
@@ -58,7 +57,7 @@ FROM workspace-full AS builder-prod-db
 
 ENV VIRTUAL_ENV="/home/backend/venv"
 ENV UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV
-RUN uv sync --frozen --package opencloning-db --no-default-groups --no-editable
+RUN uv sync --frozen --package opencloning-db --package opencloning-cli --no-default-groups --no-editable
 
 FROM builder-prod-${APP_TARGET} AS builder-selected
 
@@ -86,6 +85,11 @@ ENV USE_HTTPS=false
 # Worker processes per container
 ENV WEB_CONCURRENCY=2
 
+# db image only: backend-owned upload dirs (copied into empty named volumes on first mount).
+RUN if [ "$APP_TARGET" = "db" ]; then \
+        mkdir -p file_storage/sequence_files file_storage/sequencing_files; \
+    fi
+
 COPY ./docker/docker_entrypoint.sh ./docker_entrypoint.sh
 
-CMD ["sh", "./docker_entrypoint.sh"]
+CMD ["bash", "./docker_entrypoint.sh"]

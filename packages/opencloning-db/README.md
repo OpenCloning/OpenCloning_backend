@@ -52,7 +52,7 @@ Frontend testing using the database requires reseting after tests that modify th
 The Dockerfile is shared with the cloning app, and the build arg `APP_TARGET` determines which app to build. So you can build the image by running:
 
 ```bash
-docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloning-db .
+docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloningbackend-db .
 ```
 
 Then run it for development:
