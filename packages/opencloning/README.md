@@ -143,7 +143,7 @@ export COMPOSE_PROJECT_NAME=opencloning-local-docker
 # Plus env vars for ADDGENE and NCBI API keys
 
 docker compose \
-  -f docker/docker-compose.db.yml \
+  -f docker/docker-compose.postgres.yml \
   -f docker/docker-compose.ci-tests.yml \
   run --rm tests \
   python -m pytest -vs -o cache_dir=/tmp/pytest-cache
