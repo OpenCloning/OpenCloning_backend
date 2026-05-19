@@ -2,17 +2,22 @@ services:
   opencloning-db:
     image: manulera/opencloningbackend-db:local
     container_name: opencloning-db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
       USE_HTTPS: "false"
       OPENCLONING_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/opencloning_dev
-      OPENCLONING_SEQUENCE_FILES_DIR: file_storage/sequence_files
-      OPENCLONING_SEQUENCING_FILES_DIR: file_storage/sequencing_files
+      OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL: http://minio:9000
+      OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID: opencloning-dev
+      OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY: opencloning-dev-secret
+      OPENCLONING_OBJECT_STORAGE_BUCKET: opencloning-dev
+      OPENCLONING_OBJECT_STORAGE_REGION: us-east-1
+      OPENCLONING_OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
+      OPENCLONING_SEQUENCE_OBJECTS_PREFIX: sequences/
+      OPENCLONING_SEQUENCING_OBJECTS_PREFIX: sequencing-files/
       OPENCLONING_JWT_SECRET: local-dev-only-jwt-secret-change-for-shared-envs
-
-    volumes:
-      - opencloning_file_storage:/home/backend/file_storage
-
-volumes:
-  opencloning_file_storage:

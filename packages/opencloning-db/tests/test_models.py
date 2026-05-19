@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import os
-import tempfile
 import unittest
-import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -43,7 +41,6 @@ from opencloning_db.models import (
     _to_db_input,
     _require_value,
     _require_row,
-    generate_unique_filename,
 )
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
 
@@ -135,40 +132,6 @@ class TestConfig(unittest.TestCase):
                 jwt_secret='test-secret',
             )
         self.assertIn('postgresql+psycopg', str(exc_info.exception))
-
-
-class TestGenerateUniqueFilename(unittest.TestCase):
-    """Tests for ``generate_unique_filename``."""
-
-    def setUp(self):
-        super().setUp()
-        self._tmpdir = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmpdir.cleanup)
-        self.tmp_path = Path(self._tmpdir.name)
-
-    def test_returns_new_file_name(self):
-        """Name ends with extension and path does not exist yet."""
-        name = generate_unique_filename(str(self.tmp_path), extension='.gb')
-        self.assertTrue(name.endswith('.gb'))
-        self.assertFalse((self.tmp_path / name).exists())
-
-    def test_retries_if_collision(self):
-        """Loops until ``os.path.exists`` is false for the candidate path."""
-        first_hex = '0' * 32
-        second_hex = '1' * 32
-        (self.tmp_path / f"{first_hex}.gb").write_text('x', encoding='utf-8')
-        hex_iter = iter([first_hex, second_hex])
-
-        def fake_uuid4():
-            h = next(hex_iter)
-            return type('U', (), {'hex': h})()
-
-        with patch.object(uuid, 'uuid4', fake_uuid4):
-            name = generate_unique_filename(
-                str(self.tmp_path),
-                extension='.gb',
-            )
-        self.assertEqual(name, f"{second_hex}.gb")
 
 
 class TestAnySourceParser(unittest.TestCase):

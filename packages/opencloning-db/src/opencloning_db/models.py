@@ -3,8 +3,6 @@ SQLAlchemy ORM models for the OpenCloning database.
 """
 
 import enum
-import os
-import uuid
 from datetime import datetime
 from typing import List, Optional, TypeVar, Union, get_args, Self
 
@@ -39,8 +37,8 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydna.readers import read
 import re
 
-from opencloning_db.config import get_config
 from opencloning_db.context import WriteContext
+from opencloning_db.storage import get_storage
 
 # Source type union from CloningStrategy.sources (list[Union[Source, ...]])
 AnySource = get_args(opencloning_models.CloningStrategy.model_fields['sources'].annotation)[0]
@@ -79,14 +77,6 @@ class AnySourceParser(PydanticBaseModel):
     @classmethod
     def from_kwargs(cls, **kwargs):
         return cls(source=kwargs).source
-
-
-def generate_unique_filename(directory, extension='.gb'):
-    while True:
-        filename = f"{uuid.uuid4().hex}{extension}"
-        full_path = os.path.join(directory, filename)
-        if not os.path.exists(full_path):
-            return filename
 
 
 class Base(DeclarativeBase):
@@ -263,9 +253,7 @@ class Sequence(BaseSequence):
     }
 
     def to_pydantic_sequence(self) -> opencloning_models.TextFileSequence:
-        path = os.path.join(get_config().sequence_files_dir, self.file_path)
-        with open(path, 'r', encoding='utf-8') as f:
-            file_content = f.read()
+        file_content = get_storage().read_text(self.file_path)
 
         # We do the renaming here when returning the sequence to prevent editing the original sequence file.
         seqrecord = read(file_content)
@@ -312,15 +300,13 @@ class Sequence(BaseSequence):
     ) -> Self:
         """
         Create a database sequence from a pydantic sequence. It does not persist the sequence to the database.
-        It writes the sequence to a file in the sequence files directory as the file_path is required.
+        It writes the sequence to object storage as the ``file_path`` key is required.
         """
         seqrecord = read_dsrecord_from_json(pydantic_sequence)
         seguid = seqrecord.seq.seguid()
-        seq_files = get_config().sequence_files_dir
-        sequence_file = generate_unique_filename(seq_files, '.gb')
-        path = os.path.join(seq_files, sequence_file)
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(pydantic_sequence.file_content)
+        storage = get_storage()
+        sequence_file = storage.new_sequence_key('.gb')
+        storage.write_text(sequence_file, pydantic_sequence.file_content, content_type='text/plain; charset=utf-8')
         return cls.from_create(
             name=seqrecord.name,
             file_path=sequence_file,

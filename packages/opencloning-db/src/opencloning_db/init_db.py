@@ -29,14 +29,15 @@ from opencloning_db.models import (
     WorkspaceRole,
 )
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, get_engine
+from opencloning_db.storage import ObjectStorage
 
 
 def init_db(config: Config):
     engine = get_engine(config)
     Base.metadata.drop_all(engine)
 
-    os.makedirs(config.sequence_files_dir, exist_ok=True)
-    os.makedirs(config.sequencing_files_dir, exist_ok=True)
+    storage = ObjectStorage(config)
+    storage.ensure_bucket_exists()
 
     Base.metadata.create_all(engine)
 

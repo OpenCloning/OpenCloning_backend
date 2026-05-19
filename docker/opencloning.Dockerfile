@@ -85,11 +85,6 @@ ENV USE_HTTPS=false
 # Worker processes per container
 ENV WEB_CONCURRENCY=2
 
-# db image only: backend-owned upload dirs (copied into empty named volumes on first mount).
-RUN if [ "$APP_TARGET" = "db" ]; then \
-        mkdir -p file_storage/sequence_files file_storage/sequencing_files; \
-    fi
-
 COPY ./docker/docker_entrypoint.sh ./docker_entrypoint.sh
 
 CMD ["bash", "./docker_entrypoint.sh"]

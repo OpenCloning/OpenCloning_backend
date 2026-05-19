@@ -11,16 +11,18 @@ import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from opencloning_db.config import Config, get_config
+from opencloning_db.config import Config
 from opencloning_db.context import WriteContext
 from opencloning_db.models import (
     Primer,
     Sequence,
     Source,
     SequencingFile,
-    generate_unique_filename,
+    WorkspaceRole,
 )
+from opencloning_db.storage import get_storage
 from opencloning_db.utils import guess_sequence_type
+
 
 _engine = None
 _bound_database_url: str | None = None
@@ -40,14 +42,13 @@ def create_sequencing_file(
     sequence: 'Sequence',
     file_content: bytes,
     original_name: str,
+    content_type: str | None = None,
 ) -> SequencingFile:
-    """Create SequencingFile; write content to a unique path on disk."""
+    """Create SequencingFile; write content to a unique object key."""
     ext = os.path.splitext(original_name)[1]
-    seq_dir = get_config().sequencing_files_dir
-    storage_filename = generate_unique_filename(seq_dir, ext)
-    full_path = os.path.join(seq_dir, storage_filename)
-    with open(full_path, 'wb') as f:
-        f.write(file_content)
+    storage = get_storage()
+    storage_filename = storage.new_sequencing_key(ext)
+    storage.write_bytes(storage_filename, file_content, content_type=content_type or 'application/octet-stream')
     return SequencingFile(
         sequence=sequence,
         original_name=original_name,
@@ -102,6 +103,8 @@ def cloning_strategy_to_db(
     *,
     ctx: WriteContext,
 ) -> tuple[list[Sequence], dict[int, int]]:
+    from opencloning_db.workspace_deps import get_sequence_in_workspace_for_user
+
     sequences = []
     entity_mapping = {}  # Combined mapping for sequences and primers (by id)
 
@@ -110,13 +113,13 @@ def cloning_strategy_to_db(
         parent_source = next((s for s in cloning_strategy.sources if s.id == sequence.id), None)
         if parent_source is None:
             raise ValueError(f"No source produces sequence {sequence.id}")
-        db_sequence = (
-            Sequence.from_pydantic_sequence(sequence, ctx=ctx)
-            if parent_source.database_id is None
-            else session.get(Sequence, parent_source.database_id)
-        )
         if parent_source.database_id is None:
+            db_sequence = Sequence.from_pydantic_sequence(sequence, ctx=ctx)
             db_sequence.sequence_type = guess_sequence_type(sequence, parent_source)
+        else:
+            db_sequence = get_sequence_in_workspace_for_user(
+                session, ctx.user, ctx.workspace_id, parent_source.database_id, WorkspaceRole.editor
+            )
         sequences.append(db_sequence)
         entity_mapping[sequence.id] = db_sequence
 

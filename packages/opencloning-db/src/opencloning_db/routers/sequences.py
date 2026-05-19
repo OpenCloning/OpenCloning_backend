@@ -2,6 +2,7 @@
 
 from collections import Counter
 from typing import Annotated, List, TypeVar
+from urllib.parse import quote
 
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
@@ -9,14 +10,14 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, 
 from fastapi import status
 
 from opencloning_db.models import BaseSequence
+from botocore.exceptions import ClientError
 from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload
 from sqlalchemy import and_, exists, select, Select
 from sqlalchemy.exc import IntegrityError
-from pathlib import Path
 
 from pydantic import create_model
 from pydna.parsers import parse as pydna_parse
@@ -36,7 +37,6 @@ from opencloning_db.apimodels import (
     primer_ref,
     sequence_ref,
 )
-from opencloning_db.config import Config, get_config
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
 from opencloning_db.models import (
     InputEntity,
@@ -51,10 +51,10 @@ from opencloning_db.models import (
     SourceInput,
     User,
     WorkspaceRole,
-    generate_unique_filename,
 )
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
+from opencloning_db.storage import get_storage, is_missing_object_error
 from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
@@ -203,6 +203,7 @@ def delete_sequence(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
+    storage_keys: list[str] = []
 
     if isinstance(db_sequence, Sequence):
         if db_sequence.source_inputs:
@@ -211,10 +212,7 @@ def delete_sequence(
         if any(isinstance(instance, SequenceInLine) for instance in db_sequence.instances):
             raise HTTPException(status_code=409, detail='Cannot delete sequence: it is present in a line.')
 
-        seq_files_dir = Path(get_config().sequence_files_dir)
-        sequencing_files_dir = Path(get_config().sequencing_files_dir)
-        sequence_file_path = seq_files_dir / db_sequence.file_path
-        sequencing_file_paths = [sequencing_files_dir / sf.storage_path for sf in db_sequence.sequencing_files]
+        storage_keys = [db_sequence.file_path, *(sf.storage_path for sf in db_sequence.sequencing_files)]
 
         for source_input in list(parent_source.input):
             session.delete(source_input)
@@ -222,47 +220,39 @@ def delete_sequence(
     session.delete(db_sequence)
     session.commit()
 
-    for path in [sequence_file_path, *sequencing_file_paths]:
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
+    get_storage().delete_objects(storage_keys)
 
     return DeletedResponse(deleted=sequence_id)
 
 
 def _replace_sequence_file(session: Session, db_sequence: Sequence, file_content: str):
 
-    seq_files_dir = Path(get_config().sequence_files_dir)
-    old_relative = db_sequence.file_path
-    old_path = seq_files_dir / old_relative
-    new_filename = generate_unique_filename(str(seq_files_dir), '.gb')
-    new_path = seq_files_dir / new_filename
+    storage = get_storage()
+    old_key = db_sequence.file_path
+    new_key = storage.new_sequence_key('.gb')
 
     try:
-        new_path.write_text(file_content, encoding='utf-8')
-    except OSError as e:
+        storage.write_text(new_key, file_content, content_type='text/plain; charset=utf-8')
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to write sequence file: {e}') from e
 
-    db_sequence.file_path = new_filename
+    db_sequence.file_path = new_key
 
     try:
         session.commit()
     except Exception:
         session.rollback()
         try:
-            new_path.unlink(missing_ok=True)
-        except OSError:
+            storage.delete_object(new_key)
+        except Exception:
             pass
         raise
 
     session.refresh(db_sequence)
 
     try:
-        old_path.unlink()
-    except FileNotFoundError:
-        pass
-    except OSError as e:
+        storage.delete_object(old_key)
+    except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f'Committed new sequence file but failed to remove old file: {e}',
@@ -703,6 +693,7 @@ async def post_sequence_sequencing_files(
             sequence=db_sequence,
             file_content=content,
             original_name=upload.filename or 'unnamed',
+            content_type=upload.content_type,
         )
         session.add(sf)
         session.flush()
@@ -725,8 +716,10 @@ def delete_sequence_sequencing_file(
     )
     if db_file is None:
         raise HTTPException(status_code=404, detail='Sequencing file not found')
+    storage_key = db_file.storage_path
     session.delete(db_file)
     session.commit()
+    get_storage().delete_object(storage_key)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -734,7 +727,6 @@ def delete_sequence_sequencing_file(
 def download_sequencing_file(
     file_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
-    config: Annotated[Config, Depends(get_config)],
 ):
     """Download a sequencing file by ID."""
     current_user, session, workspace_id = ctx.destructure()
@@ -745,14 +737,17 @@ def download_sequencing_file(
     storage_path = db_file.storage_path
     original_name = db_file.original_name
 
-    file_path = Path(config.sequencing_files_dir) / storage_path
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail='File not found on disk')
+    try:
+        body_iterator, content_type = get_storage().open_bytes(storage_path)
+    except ClientError as exc:
+        if is_missing_object_error(exc):
+            raise HTTPException(status_code=404, detail='File not found in object storage') from exc
+        raise
 
-    return FileResponse(
-        path=str(file_path),
-        filename=original_name,
-        media_type='application/octet-stream',
+    return StreamingResponse(
+        body_iterator,
+        media_type=content_type or 'application/octet-stream',
+        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(original_name)}"},
     )
 
 
