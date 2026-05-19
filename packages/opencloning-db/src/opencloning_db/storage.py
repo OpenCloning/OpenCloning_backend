@@ -46,22 +46,6 @@ class ObjectStorage:
     def client(self) -> BaseClient:
         return self._client
 
-    def ensure_bucket_exists(self) -> None:
-        try:
-            self.client.head_bucket(Bucket=self.bucket)
-            return
-        except ClientError as exc:
-            error_code = exc.response.get('Error', {}).get('Code')
-            if error_code not in {'404', 'NoSuchBucket'}:
-                raise
-
-        create_kwargs: dict[str, object] = {'Bucket': self.bucket}
-        if self.config.object_storage_region != 'us-east-1':
-            create_kwargs['CreateBucketConfiguration'] = {
-                'LocationConstraint': self.config.object_storage_region,
-            }
-        self.client.create_bucket(**create_kwargs)
-
     def validate_bucket_exists(self) -> None:
         self.client.head_bucket(Bucket=self.bucket)
 
