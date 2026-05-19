@@ -54,7 +54,7 @@ def _dispose_engine() -> None:
 def _reset_storage(config: Config) -> None:
     """Clear the configured object-storage prefixes."""
     storage = ObjectStorage(config)
-    storage.ensure_bucket_exists()
+    storage.validate_bucket_exists()
     storage.clear_prefix(config.sequence_objects_prefix)
     storage.clear_prefix(config.sequencing_objects_prefix)
 

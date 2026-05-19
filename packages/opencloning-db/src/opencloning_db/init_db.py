@@ -37,7 +37,7 @@ def init_db(config: Config):
     Base.metadata.drop_all(engine)
 
     storage = ObjectStorage(config)
-    storage.ensure_bucket_exists()
+    storage.validate_bucket_exists()
 
     Base.metadata.create_all(engine)
 
