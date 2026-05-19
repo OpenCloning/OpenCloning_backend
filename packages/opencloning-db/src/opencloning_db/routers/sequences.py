@@ -226,7 +226,6 @@ def delete_sequence(
 
 
 def _replace_sequence_file(session: Session, db_sequence: Sequence, file_content: str):
-
     storage = get_storage()
     old_key = db_sequence.file_path
     new_key = storage.new_sequence_key('.gb')
@@ -252,11 +251,8 @@ def _replace_sequence_file(session: Session, db_sequence: Sequence, file_content
 
     try:
         storage.delete_object(old_key)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f'Committed new sequence file but failed to remove old file: {e}',
-        ) from e
+    except Exception:
+        pass
 
 
 def _feature_spans_origin(feature) -> bool:

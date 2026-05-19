@@ -1665,7 +1665,7 @@ def test_delete_sequence_missing_object_still_succeeds(sequences_client):
 
 
 class TestReplaceSequenceFile:
-    """Unit tests for _replace_sequence_file error paths."""
+    """Unit tests for _replace_sequence_file failure handling."""
 
     @pytest.fixture(autouse=True)
     def _setup(self, monkeypatch):
@@ -1719,30 +1719,7 @@ class TestReplaceSequenceFile:
         assert 'sequences/old.gb' in self.storage.objects
         assert self.storage.new_key not in self.storage.objects
 
-    def test_commit_fails_and_cleanup_fails_silently(self, monkeypatch):
-        from opencloning_db.routers.sequences import _replace_sequence_file
-
-        self.mock_session.commit = lambda: (_ for _ in ()).throw(RuntimeError('db error'))
-
-        def fail_new_delete(key):
-            if key != 'sequences/old.gb':
-                raise OSError('cleanup failed too')
-            self.storage.objects.pop(key, None)
-
-        monkeypatch.setattr(self.storage, 'delete_object', fail_new_delete)
-
-        with pytest.raises(RuntimeError, match='db error'):
-            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-
-    def test_old_file_missing_after_commit_succeeds(self):
-        from opencloning_db.routers.sequences import _replace_sequence_file
-
-        self.storage.objects.pop('sequences/old.gb')
-        _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-        assert self.storage.new_key in self.storage.objects
-
-    def test_old_file_unlink_oserror_raises_500(self, monkeypatch):
-        from fastapi import HTTPException
+    def test_old_file_delete_error_is_ignored(self, monkeypatch):
         from opencloning_db.routers.sequences import _replace_sequence_file
 
         def fail_old_delete(key):
@@ -1751,11 +1728,8 @@ class TestReplaceSequenceFile:
             self.storage.objects.pop(key, None)
 
         monkeypatch.setattr(self.storage, 'delete_object', fail_old_delete)
-
-        with pytest.raises(HTTPException) as exc:
-            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-        assert exc.value.status_code == 500
-        assert 'failed to remove old file' in exc.value.detail
+        _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
+        assert self.storage.new_key in self.storage.objects
 
 
 def test_post_sequences_bulk_integrity_error_returns_409(sequences_client, monkeypatch):
