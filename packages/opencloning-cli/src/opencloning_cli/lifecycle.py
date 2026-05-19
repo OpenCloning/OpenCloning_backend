@@ -59,17 +59,18 @@ def _reset_storage(config: Config) -> None:
     storage.clear_prefix(config.sequencing_objects_prefix)
 
 
-def seed(config: Config) -> None:
+def seed() -> None:
     """Run ``opencloning_db.init_db.init_db`` against *config*.
 
     Recreates a deterministic database baseline plus fresh sequence and
     sequencing object prefixes for the configured backend.
     """
+    config = get_config()
     _dispose_engine()
     _reset_storage(config)
     # ``init_db`` prints a success message; keep CLI successful runs silent.
     with redirect_stdout(io.StringIO()):
-        _init_db(config)
+        _init_db()
     # Dispose again so the next caller sees a fresh engine bound to the
     # newly-created DB rather than a stale handle from init_db.
     _dispose_engine()
@@ -187,8 +188,7 @@ def _default_auth_headers(test_client: Any) -> dict[str, str]:
 def write_stubs(output_dir: Path):
     """Generate and persist one predefined DB test stub JSON."""
 
-    config = get_config()
-    seed(config)
+    seed()
 
     target_dir = Path(output_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -216,4 +216,4 @@ def write_stubs(output_dir: Path):
             handle.write('\n')
         print('Stub written to', output_file)
         if stub.reset_db:
-            seed(config)
+            seed()

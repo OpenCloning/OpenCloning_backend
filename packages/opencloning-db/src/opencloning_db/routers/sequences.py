@@ -216,7 +216,8 @@ def delete_sequence(
 
         for source_input in list(parent_source.input):
             session.delete(source_input)
-    session.delete(parent_source)
+        session.delete(parent_source)
+
     session.delete(db_sequence)
     session.commit()
 
