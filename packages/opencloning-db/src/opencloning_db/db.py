@@ -11,7 +11,7 @@ import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from opencloning_db.config import Config
+from opencloning_db.config import Config, set_config
 from opencloning_db.context import WriteContext
 from opencloning_db.models import (
     Primer,
@@ -20,12 +20,22 @@ from opencloning_db.models import (
     SequencingFile,
     WorkspaceRole,
 )
-from opencloning_db.storage import get_storage
+from opencloning_db.storage import get_storage, set_storage
 from opencloning_db.utils import guess_sequence_type
 
 
 _engine = None
 _bound_database_url: str | None = None
+
+
+def reset_runtime_state(config: Config | None = None) -> None:
+    global _engine, _bound_database_url
+    if _engine is not None:
+        _engine.dispose()
+    _engine = None
+    _bound_database_url = None
+    set_storage(None)
+    set_config(config)
 
 
 def get_engine(config: Config):

@@ -41,6 +41,7 @@ test = [
     "pytest-cov>=4.1.0",
     "pytest-rerunfailures>=14.0",
     "respx>=0.22.0",
+    "moto>=5.2.1",
 ]
 
 # This is needed for the notebooks in the docs

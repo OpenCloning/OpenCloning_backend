@@ -5,7 +5,6 @@ from __future__ import annotations
 from copy import deepcopy
 import os
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 import opencloning_linkml.datamodel.models as opencloning_models
@@ -38,10 +37,13 @@ from opencloning_db.models import (
     TemplateSequence,
     User,
     Workspace,
+    WorkspaceMembership,
+    WorkspaceRole,
     _to_db_input,
     _require_value,
     _require_row,
 )
+from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
 
 _TEST_DATABASE_URL = os.environ.get(
@@ -82,8 +84,10 @@ class TestConfig(unittest.TestCase):
             os.environ,
             {
                 'OPENCLONING_DATABASE_URL': 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev',
-                'OPENCLONING_SEQUENCE_FILES_DIR': '/tmp/sequence-files',
-                'OPENCLONING_SEQUENCING_FILES_DIR': '/tmp/sequencing-files',
+                'OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL': 'https://s3.amazonaws.com',
+                'OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID': 'test-access-key',
+                'OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY': 'test-secret-key',
+                'OPENCLONING_OBJECT_STORAGE_BUCKET': 'opencloning-test',
                 'OPENCLONING_JWT_SECRET': 'test-secret',
             },
             clear=True,
@@ -92,8 +96,14 @@ class TestConfig(unittest.TestCase):
             cfg = app_config.get_config()
         app_config.set_config(previous_config)
         self.assertEqual(cfg.database_url, 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev')
-        self.assertEqual(cfg.sequence_files_dir, '/tmp/sequence-files')
-        self.assertEqual(cfg.sequencing_files_dir, '/tmp/sequencing-files')
+        self.assertEqual(cfg.object_storage_endpoint_url, 'https://s3.amazonaws.com')
+        self.assertEqual(cfg.object_storage_access_key_id, 'test-access-key')
+        self.assertEqual(cfg.object_storage_secret_access_key, 'test-secret-key')
+        self.assertEqual(cfg.object_storage_bucket, 'opencloning-test')
+        self.assertEqual(cfg.object_storage_region, 'us-east-1')
+        self.assertTrue(cfg.object_storage_force_path_style)
+        self.assertEqual(cfg.sequence_objects_prefix, 'sequences/')
+        self.assertEqual(cfg.sequencing_objects_prefix, 'sequencing-files/')
         self.assertEqual(cfg.jwt_secret, 'test-secret')
 
     def test_get_config_requires_runtime_env_vars(self):
@@ -107,8 +117,10 @@ class TestConfig(unittest.TestCase):
 
         message = str(exc_info.exception)
         self.assertIn('OPENCLONING_DATABASE_URL', message)
-        self.assertIn('OPENCLONING_SEQUENCE_FILES_DIR', message)
-        self.assertIn('OPENCLONING_SEQUENCING_FILES_DIR', message)
+        self.assertIn('OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL', message)
+        self.assertIn('OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID', message)
+        self.assertIn('OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY', message)
+        self.assertIn('OPENCLONING_OBJECT_STORAGE_BUCKET', message)
         self.assertIn('OPENCLONING_JWT_SECRET', message)
         self.assertIn('.env.dev', message)
 
@@ -117,8 +129,10 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Config(
                 database_url='sqlite:///tmp/test.db',
-                sequence_files_dir='/tmp/sequence-files',
-                sequencing_files_dir='/tmp/sequencing-files',
+                object_storage_endpoint_url='https://s3.amazonaws.com',
+                object_storage_access_key_id='test-access-key',
+                object_storage_secret_access_key='test-secret-key',
+                object_storage_bucket='opencloning-test',
                 jwt_secret='test-secret',
             )
 
@@ -127,8 +141,10 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(ValidationError) as exc_info:
             Config(
                 database_url='postgresql://postgres:postgres@localhost:5432/opencloning_dev',
-                sequence_files_dir='/tmp/sequence-files',
-                sequencing_files_dir='/tmp/sequencing-files',
+                object_storage_endpoint_url='https://s3.amazonaws.com',
+                object_storage_access_key_id='test-access-key',
+                object_storage_secret_access_key='test-secret-key',
+                object_storage_bucket='opencloning-test',
                 jwt_secret='test-secret',
             )
         self.assertIn('postgresql+psycopg', str(exc_info.exception))
@@ -270,12 +286,9 @@ class TestSequence(_MemoryDbTestCase):
         assert isinstance(linked_sequence, TemplateSequence)
 
     def test_to_pydantic_sequence_reads_genbank_file(self):
-        """Reads GenBank file text from configured sequence directory."""
+        """Reads GenBank file text from configured object storage."""
         rel = 'sub/test.gb'
-        seq_root = Path(app_config.get_config().sequence_files_dir)
-        full = seq_root / rel
-        full.parent.mkdir(parents=True)
-        full.write_text(pcr_product.format('genbank'), encoding='utf-8')
+        ObjectStorage(app_config.get_config()).write_text(rel, pcr_product.format('genbank'))
 
         with Session(self.engine) as session:
             ws = Workspace(name='W')
@@ -586,6 +599,8 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
         with Session(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
+            session.flush()
+            session.add(WorkspaceMembership(user_id=1, workspace_id=ws.id, role=WorkspaceRole.owner))
             session.flush()
             # First, commit some sequences
             _, id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))
