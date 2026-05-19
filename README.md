@@ -33,7 +33,7 @@ source .env.dev
 # If you are using mac, you may have to stop any local Postgres instances running on port 5432
 brew services stop postgresql
 # Start local Postgres with dev/test/e2e databases
-docker compose -f docker/docker-compose.db.yml up -d
+docker compose -f docker/docker-compose.postgres.yml up -d
 # Seed the local database
 uv run opencloning-cli db seed
 # Run the database API

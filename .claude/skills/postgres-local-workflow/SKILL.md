@@ -9,7 +9,7 @@ Use this skill when you need the repo-specific local database workflow for OpenC
 
 ## Source Of Truth
 
-- Docker DB service: `docker/docker-compose.db.yml`
+- Docker DB service: `docker/docker-compose.postgres.yml`
 - Extra local databases: `docker/postgres/init-multiple-databases.sql`
 - Required local env exports: `.env.dev`
 - DB/API quickstart: `packages/opencloning-db/README.md`
@@ -29,7 +29,7 @@ Run from the repository root:
 
 ```bash
 uv sync
-docker compose -f docker/docker-compose.db.yml up -d
+docker compose -f docker/docker-compose.postgres.yml up -d
 source .env.dev
 uv run opencloning-cli db seed
 uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'

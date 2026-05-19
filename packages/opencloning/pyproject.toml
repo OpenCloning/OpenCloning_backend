@@ -28,6 +28,7 @@ dependencies = [
     "pairwise-alignments-to-msa>=0.1.1",
     "pydna>=5.5.11",
     "starlette>=1.0.0",
+    "gunicorn>=26.0.0",
 ]
 
 [project.urls]
@@ -45,4 +46,4 @@ allow-direct-references = true
 
 [tool.deptry]
 known_first_party = ["opencloning"]
-per_rule_ignores = { DEP002 = ["python-multipart", "uvicorn", "openpyxl"] }
+per_rule_ignores = { DEP002 = ["python-multipart", "gunicorn", "uvicorn", "openpyxl"] }

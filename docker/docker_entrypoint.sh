@@ -1,8 +1,9 @@
-# Only add --root-path if ROOT_PATH is not empty, otherwise uvicorn will throw an error
-#
 # APP_TARGET: which app to run — must be exactly one of:
 #   cloning  -> opencloning.main:app
 #   db       -> opencloning_db.combined:app
+#
+# WEB_CONCURRENCY: Gunicorn worker processes (default: 2).
+# WORKER_TIMEOUT: the timeout for each worker process (default: 20).
 
 case "${APP_TARGET}" in
     cloning) APP_MODULE=opencloning.main ;;
@@ -13,14 +14,27 @@ case "${APP_TARGET}" in
         ;;
 esac
 
+echo "WEB_CONCURRENCY: $WEB_CONCURRENCY"
+echo "APP_MODULE: $APP_MODULE"
+
+GUNICORN_ARGS=(
+    -k uvicorn.workers.UvicornWorker
+    -w "${WEB_CONCURRENCY:-2}"
+    --bind 0.0.0.0:8000
+    --timeout "${WORKER_TIMEOUT:-20}"
+    --access-logfile -
+    --error-logfile -
+    "${APP_MODULE}:app"
+)
+
 if [ "$USE_HTTPS" = "true" ]; then
     echo "Using HTTPS"
     if [ ! -f "/certs/key.pem" ] || [ ! -f "/certs/cert.pem" ] || [ ! -r "/certs/key.pem" ] || [ ! -r "/certs/cert.pem" ]; then
         echo "Error: TLS certificate files /certs/key.pem and /certs/cert.pem must both exist and be readable"
         exit 1
     fi
-    uvicorn "${APP_MODULE}:app" --host 0.0.0.0 --port 8000 --ssl-keyfile /certs/key.pem --ssl-certfile /certs/cert.pem ${ROOT_PATH:+--root-path ${ROOT_PATH}}
+    exec gunicorn "${GUNICORN_ARGS[@]}" --keyfile /certs/key.pem --certfile /certs/cert.pem
 else
     echo "Using HTTP"
-    uvicorn "${APP_MODULE}:app" --host 0.0.0.0 --port 8000 ${ROOT_PATH:+--root-path ${ROOT_PATH}}
+    exec gunicorn "${GUNICORN_ARGS[@]}"
 fi

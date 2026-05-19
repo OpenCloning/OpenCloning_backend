@@ -14,7 +14,7 @@ uv sync
 brew services stop postgresql
 
 # Start local Postgres with dev/test/e2e databases
-docker compose -f docker/docker-compose.db.yml up -d
+docker compose -f docker/docker-compose.postgres.yml up -d
 
 # Load required local runtime config
 source .env.dev
@@ -52,7 +52,7 @@ Frontend testing using the database requires reseting after tests that modify th
 The Dockerfile is shared with the cloning app, and the build arg `APP_TARGET` determines which app to build. So you can build the image by running:
 
 ```bash
-docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloning-db .
+docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloningbackend-db .
 ```
 
 Then run it for development:
@@ -63,7 +63,7 @@ mkdir -p docker/file_storage/sequence_files docker/file_storage/sequencing_files
 
 # Run the containers
 docker compose \
-    -f docker/docker-compose.db.yml \
+    -f docker/docker-compose.postgres.yml \
     -f docker/docker-compose.opencloning-db.yml \
     up -d
 ```

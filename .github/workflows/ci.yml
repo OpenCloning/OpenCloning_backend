@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
       - name: Start Postgres (Compose)
-        run: docker compose -f docker/docker-compose.db.yml up -d --wait postgres
+        run: docker compose -f docker/docker-compose.postgres.yml up -d --wait postgres
       - name: Run tests
         env:
           PYTHONUNBUFFERED: "1"
@@ -64,7 +64,7 @@ jobs:
 
       - name: Stop Postgres (Compose)
         if: always()
-        run: docker compose -f docker/docker-compose.db.yml down -v
+        run: docker compose -f docker/docker-compose.postgres.yml down -v
 
       - name: Stop workflow if mode is fresh
         if: ${{ matrix.mode == 'fresh' }}
@@ -119,7 +119,7 @@ jobs:
           ADDGENE_PASSWORD: ${{ secrets.ADDGENE_PASSWORD }}
         run: |
           docker compose \
-            -f docker/docker-compose.db.yml \
+            -f docker/docker-compose.postgres.yml \
             -f docker/docker-compose.ci-tests.yml \
             run --rm tests \
             python -m pytest -vs -o cache_dir=/tmp/pytest-cache
@@ -128,7 +128,7 @@ jobs:
         if: always()
         run: |
           docker compose \
-            -f docker/docker-compose.db.yml \
+            -f docker/docker-compose.postgres.yml \
             -f docker/docker-compose.ci-tests.yml \
             down -v
 
