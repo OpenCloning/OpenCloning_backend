@@ -84,6 +84,7 @@ ENV USE_HTTPS=false
 
 # Worker processes per container
 ENV WEB_CONCURRENCY=2
+ENV WORKER_TIMEOUT=20
 
 COPY ./docker/docker_entrypoint.sh ./docker_entrypoint.sh
 
