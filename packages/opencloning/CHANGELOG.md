@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.5.0...opencloning-v1.5.1) (2026-05-20)
+
+
+### Bug Fixes
+
+* rename gunicorn env vars ([#468](https://github.com/OpenCloning/OpenCloning_backend/issues/468)) ([0f6f737](https://github.com/OpenCloning/OpenCloning_backend/commit/0f6f737b77bc6206cd69851be5674b8e3d3e9533))
+
 ## [1.5.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.4.0...opencloning-v1.5.0) (2026-05-20)
 
 
