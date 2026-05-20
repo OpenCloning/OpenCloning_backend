@@ -83,8 +83,8 @@ ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 ENV USE_HTTPS=false
 
 # Worker processes per container
-ENV WEB_CONCURRENCY=2
-ENV WORKER_TIMEOUT=20
+ENV GUNICORN_WORKERS=2
+ENV GUNICORN_TIMEOUT=20
 
 COPY ./docker/docker_entrypoint.sh ./docker_entrypoint.sh
 
