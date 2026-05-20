@@ -22,6 +22,7 @@ from opencloning_db.models import (
     User,
     TemplateSequence,
     SequenceType,
+    BaseSequence,
 )
 from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
@@ -157,8 +158,8 @@ def sequences_client(engine_client_config):
 
         session.commit()
 
-        w1_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w1)).all())
-        w2_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w2)).all())
+        w1_ids = set(session.scalars(select(BaseSequence.id).where(BaseSequence.workspace_id == w1)).all())
+        w2_ids = set(session.scalars(select(BaseSequence.id).where(BaseSequence.workspace_id == w2)).all())
 
         ctx.update(
             {
