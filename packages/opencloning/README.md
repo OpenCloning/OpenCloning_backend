@@ -14,6 +14,8 @@ You can also install it and use some of the exported functions, in particular fo
 
 If you want to quickly set up a local instance of the frontend and backend of the application, check [getting started in 5 minutes](https://github.com/OpenCloning/OpenCloning#timer_clock-getting-started-in-5-minutes) in the main repository.
 
+For the configuration of the container via env variables, check the docker-compose file in [the main repository](https://github.com/OpenCloning/OpenCloning).
+
 ### Running locally
 
 You can install this as a python package:
