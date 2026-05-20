@@ -129,9 +129,6 @@ def sequences_client(engine_client_config):
         dseqr_rc.source = None
         seq_with_origin_spanning_feature_rc = dseqrecord_to_db(dseqr_rc, session, ctx=w1_ctx)
 
-        w1_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w1)).all())
-        w2_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w2)).all())
-
         seq_with_sequencing_file = dseqrecord_to_db(
             Dseqrecord('AAAAAA', name='seq_with_sequencing_file'), session, ctx=w1_ctx
         )
@@ -141,6 +138,9 @@ def sequences_client(engine_client_config):
         session.add(sequencing_file)
 
         session.commit()
+
+        w1_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w1)).all())
+        w2_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w2)).all())
 
         ctx.update(
             {
@@ -1406,6 +1406,7 @@ def test_download_sequencing_file_object_storage_error_500(sequences_client):
         f'/sequencing_files/{sequences_client["sequencing_file_id"]}/download',
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
+    monkeypatch.undo()
     assert r.status_code == 500
     assert 'MockText' in str(r.json()['detail'])
 
