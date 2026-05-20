@@ -11,7 +11,19 @@ from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, dseqrecord_to_db
-from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag, Primer, User
+from opencloning_db.models import (
+    Line,
+    Sequence,
+    SequenceInLine,
+    SequenceSample,
+    SequencingFile,
+    Tag,
+    Primer,
+    User,
+    TemplateSequence,
+    SequenceType,
+    BaseSequence,
+)
 from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
 from .helpers import (
@@ -137,10 +149,17 @@ def sequences_client(engine_client_config):
         sequencing_file = create_sequencing_file(seq_with_sequencing_file, b'hello_world', 'hello_world.txt')
         session.add(sequencing_file)
 
+        template_sequence = TemplateSequence.from_create(
+            name='template_sequence', sequence_type=SequenceType.plasmid, ctx=w1_ctx
+        )
+        session.add(template_sequence)
+        session.flush()
+        template_sequence_id = template_sequence.id
+
         session.commit()
 
-        w1_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w1)).all())
-        w2_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w2)).all())
+        w1_ids = set(session.scalars(select(BaseSequence.id).where(BaseSequence.workspace_id == w1)).all())
+        w2_ids = set(session.scalars(select(BaseSequence.id).where(BaseSequence.workspace_id == w2)).all())
 
         ctx.update(
             {
@@ -167,6 +186,7 @@ def sequences_client(engine_client_config):
                 'seq_with_origin_spanning_feature_rc_id': seq_with_origin_spanning_feature_rc.id,
                 'seq_with_sequencing_file_id': seq_with_sequencing_file.id,
                 'sequencing_file_id': sequencing_file.id,
+                'template_sequence_id': template_sequence_id,
             }
         )
 
@@ -431,6 +451,23 @@ def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
     with Session(sequences_client['engine']) as session:
         assert session.scalar(select(SequenceSample).where(SequenceSample.sequence_id == sid)) is None
         assert session.get(SequencingFile, sequencing_file_id) is None
+
+
+def test_delete_template_sequence_owner_ok(sequences_client):
+    c = sequences_client['client']
+    sid = sequences_client['template_sequence_id']
+    r = c.delete(
+        f"/sequences/{sid}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    assert r.json()['deleted'] == sid
+    assert (
+        c.get(
+            f"/sequences/{sid}", headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+        ).status_code
+        == 404
+    )
 
 
 def test_delete_sequence_rejects_when_has_children(sequences_client):
