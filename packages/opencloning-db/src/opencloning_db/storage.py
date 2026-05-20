@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
 from contextlib import closing
 
 import boto3
@@ -65,23 +64,13 @@ class ObjectStorage:
         return self.read_bytes(key).decode('utf-8')
 
     def read_bytes(self, key: str) -> bytes:
+        data, _ = self.read_bytes_with_content_type(key)
+        return data
+
+    def read_bytes_with_content_type(self, key: str) -> tuple[bytes, str | None]:
         response = self.client.get_object(Bucket=self.bucket, Key=key)
         with closing(response['Body']) as body:
-            return body.read()
-
-    def open_bytes(self, key: str) -> tuple[Iterator[bytes], str | None]:
-        response = self.client.get_object(Bucket=self.bucket, Key=key)
-        body = response['Body']
-
-        def iterator() -> Iterator[bytes]:
-            with closing(body):
-                while True:
-                    chunk = body.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    yield chunk
-
-        return iterator(), response.get('ContentType')
+            return body.read(), response.get('ContentType')
 
     def delete_object(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)

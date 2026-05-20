@@ -5,6 +5,7 @@ Database engine and conversion logic (Pydantic <-> ORM).
 import os
 from typing import List
 
+from opencloning_db.workspace_deps import require_real_sequence
 import opencloning_linkml.datamodel.models as opencloning_models
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
@@ -129,6 +130,11 @@ def cloning_strategy_to_db(
         else:
             db_sequence = get_sequence_in_workspace_for_user(
                 session, ctx.user, ctx.workspace_id, parent_source.database_id, WorkspaceRole.editor
+            )
+            require_real_sequence(
+                db_sequence,
+                detail=f'Parent sequence {parent_source.database_id} is a template. Please contact support.',
+                status_code=400,
             )
         sequences.append(db_sequence)
         entity_mapping[sequence.id] = db_sequence

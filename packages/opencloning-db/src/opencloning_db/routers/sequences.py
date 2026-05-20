@@ -13,7 +13,7 @@ from opencloning_db.models import BaseSequence
 from botocore.exceptions import ClientError
 from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload
 from sqlalchemy import and_, exists, select, Select
@@ -735,16 +735,16 @@ def download_sequencing_file(
     original_name = db_file.original_name
 
     try:
-        body_iterator, content_type = get_storage().open_bytes(storage_path)
+        content, content_type = get_storage().read_bytes_with_content_type(storage_path)
     except ClientError as exc:
         if is_missing_object_error(exc):
             raise HTTPException(status_code=404, detail='File not found in object storage') from exc
         raise
 
-    return StreamingResponse(
-        body_iterator,
+    return Response(
+        content=content,
         media_type=content_type or 'application/octet-stream',
-        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(original_name)}"},
+        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(original_name, safe='')}"},
     )
 
 
