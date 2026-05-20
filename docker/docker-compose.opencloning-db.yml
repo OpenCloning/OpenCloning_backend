@@ -1,6 +1,6 @@
 services:
   opencloning-db:
-    image: manulera/opencloningbackend-db:local
+    image: manulera/opencloning-db-backend:local
     container_name: opencloning-db
     depends_on:
       postgres:
