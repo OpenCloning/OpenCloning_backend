@@ -2,6 +2,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
 from opencloning_db.api import app as db_app
 from opencloning_db.combined import create_app
@@ -31,6 +32,25 @@ def test_combined_cloning_openapi_requires_auth(combined_client: TestClient):
     assert unauthenticated_response.status_code == 401
     assert unauthenticated_response.json() == {'detail': 'Could not validate credentials'}
     assert unauthenticated_response.headers.get('www-authenticate') == 'Bearer'
+
+
+def test_combined_app_uses_injected_cloning_verifier(engine_client_config):
+    def allow_all(_headers) -> None:
+        return None
+
+    with TestClient(create_app(db_app=db_app, cloning_verifier=allow_all)) as client:
+        response = client.get('/cloning/openapi.json')
+
+    assert response.status_code == 200
+
+    def reject_all(_headers) -> None:
+        raise HTTPException(status_code=401, detail='Could not validate credentials')
+
+    with TestClient(create_app(db_app=db_app, cloning_verifier=reject_all)) as client:
+        response = client.get('/cloning/openapi.json')
+
+    assert response.status_code == 401
+    assert response.json() == {'detail': 'Could not validate credentials'}
 
 
 def test_combined_openapi_exposes_cloning_and_db_apps_for_authenticated_user(combined_client: TestClient):
