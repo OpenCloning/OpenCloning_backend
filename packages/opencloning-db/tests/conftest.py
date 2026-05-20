@@ -1,15 +1,17 @@
 import os
 from typing import Generator
+
+import boto3
+from moto import mock_aws
 from sqlalchemy.orm import Session
 
-from opencloning_db.config import Config, _peek_config, set_config
+from opencloning_db.config import Config, _peek_config
 import opencloning_db.db as db_module
 from fastapi.testclient import TestClient
 from opencloning_db.api import app, fastapi_app
 from opencloning_db.deps import get_db
 from opencloning_db.models import Base
 from sqlalchemy.engine import Engine
-import tempfile
 import pytest
 
 _JWT_SECRET = 'test-jwt-secret-not-for-production'
@@ -17,42 +19,37 @@ _TEST_DATABASE_URL = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
     'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test',
 )
-
-
-def _reset_engine_cache() -> None:
-    if db_module._engine is not None:
-        db_module._engine.dispose()
-    db_module._engine = None
-    db_module._bound_database_url = None
-
-
-def _restore_runtime_state(default_config: Config | None) -> None:
-    """Clear engine cache and restore config.
-
-    Do not reattach a pre-fixture ``db_module._engine`` reference: setup may have
-    disposed that engine via ``_reset_engine_cache()``; leave cache empty so the
-    next ``get_engine()`` builds a fresh engine for ``default_config``.
-    """
-    _reset_engine_cache()
-    set_config(default_config)
+_TEST_BUCKET = 'opencloning-test'
+_TEST_REGION = 'us-east-1'
+_TEST_ENDPOINT_URL = 'https://s3.amazonaws.com'
 
 
 @pytest.fixture
 def postgres_test_config() -> Generator[Config, None, None]:
-    """Postgres test config with isolated sequence and sequencing directories."""
+    """Postgres test config backed by a Moto S3 bucket."""
     default_config = _peek_config()
-    with tempfile.TemporaryDirectory() as tmp_dir_sequences:
-        with tempfile.TemporaryDirectory() as tmp_dir_sequencing:
-            test_config = Config(
-                database_url=_TEST_DATABASE_URL,
-                jwt_secret=_JWT_SECRET,
-                sequence_files_dir=tmp_dir_sequences,
-                sequencing_files_dir=tmp_dir_sequencing,
-            )
-            _reset_engine_cache()
-            set_config(test_config)
-            yield test_config
-    _restore_runtime_state(default_config)
+    with mock_aws():
+        boto3.client(
+            's3',
+            region_name=_TEST_REGION,
+            aws_access_key_id='test-access-key',
+            aws_secret_access_key='test-secret-key',
+        ).create_bucket(Bucket=_TEST_BUCKET)
+        test_config = Config(
+            database_url=_TEST_DATABASE_URL,
+            object_storage_endpoint_url=_TEST_ENDPOINT_URL,
+            object_storage_access_key_id='test-access-key',
+            object_storage_secret_access_key='test-secret-key',
+            object_storage_bucket=_TEST_BUCKET,
+            object_storage_region=_TEST_REGION,
+            object_storage_force_path_style=True,
+            sequence_objects_prefix='sequences/',
+            sequencing_objects_prefix='sequencing-files/',
+            jwt_secret=_JWT_SECRET,
+        )
+        db_module.reset_runtime_state(test_config)
+        yield test_config
+    db_module.reset_runtime_state(default_config)
 
 
 @pytest.fixture

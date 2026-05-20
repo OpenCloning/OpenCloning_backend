@@ -13,8 +13,11 @@ uv sync
 # If you are using mac, you may have to stop any local Postgres instances running on port 5432
 brew services stop postgresql
 
-# Start local Postgres with dev/test/e2e databases
-docker compose -f docker/docker-compose.postgres.yml up -d
+# Start local Postgres with dev/test/e2e databases plus Garage for object storage
+docker compose \
+    -f docker/docker-compose.postgres.yml \
+    -f docker/docker-compose.garage.yml \
+    up -d postgres garage
 
 # Load required local runtime config
 source .env.dev
@@ -58,12 +61,12 @@ docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manul
 Then run it for development:
 
 ```bash
-# Create the file storage directories
-mkdir -p docker/file_storage/sequence_files docker/file_storage/sequencing_files
-
-# Run the containers
+# Run the containers (Postgres + Garage + db API)
 docker compose \
     -f docker/docker-compose.postgres.yml \
+    -f docker/docker-compose.garage.yml \
     -f docker/docker-compose.opencloning-db.yml \
     up -d
 ```
+
+That stack exposes Garage's S3-compatible API at [http://127.0.0.1:9000](http://127.0.0.1:9000). Garage does not provide a MinIO-style browser console in this setup, so use an S3 client such as `awscli` or `mc` if you need to inspect the local bucket. The local defaults in `.env.dev` point host-side `uv run ...` commands at the same Garage bucket used by the containerized db API.

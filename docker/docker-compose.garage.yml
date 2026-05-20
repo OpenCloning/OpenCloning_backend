@@ -1,0 +1,26 @@
+services:
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: opencloning-garage-dev
+    command: /garage server --single-node --default-bucket
+    ports:
+      - "9000:3900"
+    environment:
+      GARAGE_CONFIG_FILE: /etc/garage.toml
+      GARAGE_DEFAULT_ACCESS_KEY: opencloning-dev
+      GARAGE_DEFAULT_SECRET_KEY: opencloning-dev-secret
+      GARAGE_DEFAULT_BUCKET: opencloning-dev
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - opencloning_garage_meta:/var/lib/garage/meta
+      - opencloning_garage_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  opencloning_garage_meta:
+  opencloning_garage_data:

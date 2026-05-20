@@ -12,8 +12,10 @@ from sqlalchemy.engine import make_url
 
 _ENV_TO_FIELD = {
     'OPENCLONING_DATABASE_URL': 'database_url',
-    'OPENCLONING_SEQUENCE_FILES_DIR': 'sequence_files_dir',
-    'OPENCLONING_SEQUENCING_FILES_DIR': 'sequencing_files_dir',
+    'OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL': 'object_storage_endpoint_url',
+    'OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID': 'object_storage_access_key_id',
+    'OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY': 'object_storage_secret_access_key',
+    'OPENCLONING_OBJECT_STORAGE_BUCKET': 'object_storage_bucket',
     'OPENCLONING_JWT_SECRET': 'jwt_secret',
 }
 
@@ -32,8 +34,14 @@ def _load_config_from_env() -> 'Config':
 
     return Config(
         database_url=os.environ['OPENCLONING_DATABASE_URL'],
-        sequence_files_dir=os.environ['OPENCLONING_SEQUENCE_FILES_DIR'],
-        sequencing_files_dir=os.environ['OPENCLONING_SEQUENCING_FILES_DIR'],
+        object_storage_endpoint_url=os.environ['OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL'],
+        object_storage_access_key_id=os.environ['OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID'],
+        object_storage_secret_access_key=os.environ['OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY'],
+        object_storage_bucket=os.environ['OPENCLONING_OBJECT_STORAGE_BUCKET'],
+        object_storage_region=os.environ.get('OPENCLONING_OBJECT_STORAGE_REGION', 'us-east-1'),
+        object_storage_force_path_style=parse_bool(os.environ.get('OPENCLONING_OBJECT_STORAGE_FORCE_PATH_STYLE', '1')),
+        sequence_objects_prefix=os.environ.get('OPENCLONING_SEQUENCE_OBJECTS_PREFIX', 'sequences/'),
+        sequencing_objects_prefix=os.environ.get('OPENCLONING_SEQUENCING_OBJECTS_PREFIX', 'sequencing-files/'),
         jwt_secret=os.environ['OPENCLONING_JWT_SECRET'],
     )
 
@@ -53,14 +61,45 @@ class Config(BaseModel):
             )
         return value
 
+    @field_validator('sequence_objects_prefix', 'sequencing_objects_prefix')
+    @classmethod
+    def _normalize_object_prefix(cls, value: str) -> str:
+        normalized = value.strip('/')
+        if not normalized:
+            raise ValueError('Object storage prefixes must not be empty.')
+        return f'{normalized}/'
+
     database_url: str = Field(
         description='SQLAlchemy PostgreSQL URL using the psycopg (v3) driver (postgresql+psycopg://...)',
     )
-    sequence_files_dir: str = Field(
-        description='Directory for storing sequence GenBank files',
+    object_storage_endpoint_url: str = Field(
+        description='S3-compatible endpoint URL used for object storage operations',
+        pattern=r'^https?://',
     )
-    sequencing_files_dir: str = Field(
-        description='Directory for storing uploaded sequencing files (ab1, fasta, etc.)',
+    object_storage_access_key_id: str = Field(
+        description='Access key ID for the configured S3-compatible object storage',
+    )
+    object_storage_secret_access_key: str = Field(
+        description='Secret access key for the configured S3-compatible object storage',
+    )
+    object_storage_bucket: str = Field(
+        description='Bucket name used for both sequence and sequencing-file objects',
+    )
+    object_storage_region: str = Field(
+        default='us-east-1',
+        description='Region name for the configured S3-compatible object storage',
+    )
+    object_storage_force_path_style: bool = Field(
+        default=True,
+        description='Whether to force path-style S3 addressing (typically required for local S3-compatible endpoints)',
+    )
+    sequence_objects_prefix: str = Field(
+        default='sequences/',
+        description='Object-key prefix for sequence GenBank files',
+    )
+    sequencing_objects_prefix: str = Field(
+        default='sequencing-files/',
+        description='Object-key prefix for uploaded sequencing files',
     )
     jwt_secret: str = Field(
         description='HS256 signing key for JWT access tokens',

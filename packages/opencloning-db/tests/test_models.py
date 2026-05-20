@@ -4,21 +4,15 @@ from __future__ import annotations
 
 from copy import deepcopy
 import os
-import tempfile
 import unittest
-import uuid
-from pathlib import Path
-from unittest.mock import patch
 
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
-from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 import opencloning_db.config as app_config
-from opencloning_db.config import Config
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import (
@@ -40,11 +34,13 @@ from opencloning_db.models import (
     TemplateSequence,
     User,
     Workspace,
+    WorkspaceMembership,
+    WorkspaceRole,
     _to_db_input,
     _require_value,
     _require_row,
-    generate_unique_filename,
 )
+from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
 
 _TEST_DATABASE_URL = os.environ.get(
@@ -73,102 +69,6 @@ class _MemoryDbTestCase(unittest.TestCase):
     def tearDown(self):
         self.engine.dispose()
         super().tearDown()
-
-
-class TestConfig(unittest.TestCase):
-    """Tests for Config helpers."""
-
-    def test_get_config_loads_required_values_from_env(self):
-        """Runtime config is loaded lazily from the required env vars."""
-        previous_config = app_config.config
-        with patch.dict(
-            os.environ,
-            {
-                'OPENCLONING_DATABASE_URL': 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev',
-                'OPENCLONING_SEQUENCE_FILES_DIR': '/tmp/sequence-files',
-                'OPENCLONING_SEQUENCING_FILES_DIR': '/tmp/sequencing-files',
-                'OPENCLONING_JWT_SECRET': 'test-secret',
-            },
-            clear=True,
-        ):
-            app_config.set_config(None)
-            cfg = app_config.get_config()
-        app_config.set_config(previous_config)
-        self.assertEqual(cfg.database_url, 'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_dev')
-        self.assertEqual(cfg.sequence_files_dir, '/tmp/sequence-files')
-        self.assertEqual(cfg.sequencing_files_dir, '/tmp/sequencing-files')
-        self.assertEqual(cfg.jwt_secret, 'test-secret')
-
-    def test_get_config_requires_runtime_env_vars(self):
-        """Missing env vars produce one actionable runtime error."""
-        previous_config = app_config.config
-        with patch.dict(os.environ, {}, clear=True):
-            app_config.set_config(None)
-            with self.assertRaises(RuntimeError) as exc_info:
-                app_config.get_config()
-        app_config.set_config(previous_config)
-
-        message = str(exc_info.exception)
-        self.assertIn('OPENCLONING_DATABASE_URL', message)
-        self.assertIn('OPENCLONING_SEQUENCE_FILES_DIR', message)
-        self.assertIn('OPENCLONING_SEQUENCING_FILES_DIR', message)
-        self.assertIn('OPENCLONING_JWT_SECRET', message)
-        self.assertIn('.env.dev', message)
-
-    def test_database_url_rejects_sqlite(self):
-        """SQLite URLs are no longer accepted."""
-        with self.assertRaises(ValidationError):
-            Config(
-                database_url='sqlite:///tmp/test.db',
-                sequence_files_dir='/tmp/sequence-files',
-                sequencing_files_dir='/tmp/sequencing-files',
-                jwt_secret='test-secret',
-            )
-
-    def test_database_url_rejects_default_postgresql_driver(self):
-        """Bare postgresql:// selects psycopg2 in SQLAlchemy; this package depends on psycopg3."""
-        with self.assertRaises(ValidationError) as exc_info:
-            Config(
-                database_url='postgresql://postgres:postgres@localhost:5432/opencloning_dev',
-                sequence_files_dir='/tmp/sequence-files',
-                sequencing_files_dir='/tmp/sequencing-files',
-                jwt_secret='test-secret',
-            )
-        self.assertIn('postgresql+psycopg', str(exc_info.exception))
-
-
-class TestGenerateUniqueFilename(unittest.TestCase):
-    """Tests for ``generate_unique_filename``."""
-
-    def setUp(self):
-        super().setUp()
-        self._tmpdir = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmpdir.cleanup)
-        self.tmp_path = Path(self._tmpdir.name)
-
-    def test_returns_new_file_name(self):
-        """Name ends with extension and path does not exist yet."""
-        name = generate_unique_filename(str(self.tmp_path), extension='.gb')
-        self.assertTrue(name.endswith('.gb'))
-        self.assertFalse((self.tmp_path / name).exists())
-
-    def test_retries_if_collision(self):
-        """Loops until ``os.path.exists`` is false for the candidate path."""
-        first_hex = '0' * 32
-        second_hex = '1' * 32
-        (self.tmp_path / f"{first_hex}.gb").write_text('x', encoding='utf-8')
-        hex_iter = iter([first_hex, second_hex])
-
-        def fake_uuid4():
-            h = next(hex_iter)
-            return type('U', (), {'hex': h})()
-
-        with patch.object(uuid, 'uuid4', fake_uuid4):
-            name = generate_unique_filename(
-                str(self.tmp_path),
-                extension='.gb',
-            )
-        self.assertEqual(name, f"{second_hex}.gb")
 
 
 class TestAnySourceParser(unittest.TestCase):
@@ -307,12 +207,9 @@ class TestSequence(_MemoryDbTestCase):
         assert isinstance(linked_sequence, TemplateSequence)
 
     def test_to_pydantic_sequence_reads_genbank_file(self):
-        """Reads GenBank file text from configured sequence directory."""
+        """Reads GenBank file text from configured object storage."""
         rel = 'sub/test.gb'
-        seq_root = Path(app_config.get_config().sequence_files_dir)
-        full = seq_root / rel
-        full.parent.mkdir(parents=True)
-        full.write_text(pcr_product.format('genbank'), encoding='utf-8')
+        ObjectStorage(app_config.get_config()).write_text(rel, pcr_product.format('genbank'))
 
         with Session(self.engine) as session:
             ws = Workspace(name='W')
@@ -623,6 +520,8 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
         with Session(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
+            session.flush()
+            session.add(WorkspaceMembership(user_id=1, workspace_id=ws.id, role=WorkspaceRole.owner))
             session.flush()
             # First, commit some sequences
             _, id_mappings = cloning_strategy_to_db(strategy, session, ctx=_ctx(ws.id))

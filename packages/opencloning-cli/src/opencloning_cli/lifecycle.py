@@ -17,6 +17,7 @@ from typing import Any
 import opencloning_db.db as _db_module
 from opencloning_db.config import Config, get_config
 from opencloning_db.init_db import init_db as _init_db
+from opencloning_db.storage import ObjectStorage
 from opencloning_db.combined import app
 from fastapi.testclient import TestClient
 from .stubs import stubs, RecordedStub, StubRequest, StubResponse
@@ -50,27 +51,26 @@ def _dispose_engine() -> None:
         _db_module._bound_database_url = None
 
 
-def _reset_tree(path: Path) -> None:
-    """Replace *path* with an empty directory."""
-    if path.exists():
-        import shutil
+def _reset_storage(config: Config) -> None:
+    """Clear the configured object-storage prefixes."""
+    storage = ObjectStorage(config)
+    storage.validate_bucket_exists()
+    storage.clear_prefix(config.sequence_objects_prefix)
+    storage.clear_prefix(config.sequencing_objects_prefix)
 
-        shutil.rmtree(path)
-    path.mkdir(parents=True, exist_ok=True)
 
-
-def seed(config: Config) -> None:
+def seed() -> None:
     """Run ``opencloning_db.init_db.init_db`` against *config*.
 
     Recreates a deterministic database baseline plus fresh sequence and
-    sequencing file directories for the configured backend.
+    sequencing object prefixes for the configured backend.
     """
+    config = get_config()
     _dispose_engine()
-    _reset_tree(Path(config.sequence_files_dir))
-    _reset_tree(Path(config.sequencing_files_dir))
+    _reset_storage(config)
     # ``init_db`` prints a success message; keep CLI successful runs silent.
     with redirect_stdout(io.StringIO()):
-        _init_db(config)
+        _init_db()
     # Dispose again so the next caller sees a fresh engine bound to the
     # newly-created DB rather than a stale handle from init_db.
     _dispose_engine()
@@ -188,8 +188,7 @@ def _default_auth_headers(test_client: Any) -> dict[str, str]:
 def write_stubs(output_dir: Path):
     """Generate and persist one predefined DB test stub JSON."""
 
-    config = get_config()
-    seed(config)
+    seed()
 
     target_dir = Path(output_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -217,4 +216,4 @@ def write_stubs(output_dir: Path):
             handle.write('\n')
         print('Stub written to', output_file)
         if stub.reset_db:
-            seed(config)
+            seed()

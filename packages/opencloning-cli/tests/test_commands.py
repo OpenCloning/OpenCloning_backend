@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from opencloning_cli.stubs import RecordedStub
 import os
-from pathlib import Path
 
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
 import opencloning_db.db as db_module
 from opencloning_db.models import User
+from opencloning_db.storage import ObjectStorage
 from opencloning_cli.main import app
 
 runner = CliRunner()
@@ -49,8 +49,9 @@ class TestSeedCommand:
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''
         assert _count_users(config) > 0
-        assert len(list(Path(config.sequence_files_dir).iterdir())) == 48
-        assert len(list(Path(config.sequencing_files_dir).iterdir())) == 3
+        storage = ObjectStorage(config)
+        assert len(storage.list_keys(config.sequence_objects_prefix)) == 48
+        assert len(storage.list_keys(config.sequencing_objects_prefix)) == 3
 
 
 class TestStubCommand:

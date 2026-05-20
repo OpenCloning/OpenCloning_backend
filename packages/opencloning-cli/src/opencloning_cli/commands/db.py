@@ -16,8 +16,6 @@ from typing import Annotated
 
 import typer
 
-from opencloning_db.config import get_config
-
 from .. import lifecycle
 
 db_app = typer.Typer(no_args_is_help=True, help='Database management commands.')
@@ -34,8 +32,7 @@ StubOutputDirOption = Annotated[
 @db_app.command('seed')
 def seed_command() -> None:
     """Run ``init_db`` against the current config."""
-    config = get_config()
-    lifecycle.seed(config)
+    lifecycle.seed()
 
 
 @db_app.command('stubs')

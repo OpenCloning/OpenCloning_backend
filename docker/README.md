@@ -9,7 +9,8 @@ This folder contains docker files for the OpenCloning backend.
 ## Docker compose files
 
 * [docker-compose.dev.yml](docker-compose.dev.yml): Docker compose file to run the backend in development mode in a container.
-* [docker-compose.opencloning-db.yml](docker-compose.opencloning-db.yml): Docker compose file to run the database API in a container (see [opencloning-db](../packages/opencloning-db/README.md) for more details).
+* [docker-compose.garage.yml](docker-compose.garage.yml): Docker compose file to run the local Garage single-node S3-compatible object-storage service used by OpenCloning.
+* [docker-compose.opencloning-db.yml](docker-compose.opencloning-db.yml): Docker compose file to run the database API container. Merge it with `docker-compose.postgres.yml` and `docker-compose.garage.yml` when you want a fully containerized local stack.
 * [docker-compose.postgres.yml](docker-compose.postgres.yml): Docker compose file to run the local Postgres dev server for opencloning-db.
 * [docker-compose.local-cloning-proxy.yml](docker-compose.local-cloning-proxy.yml): Nginx proxy configuration to run the cloning API with `SERVE_FRONTEND=1` at a a subpath (`localhost:3000/cloning`).
 * [docker-compose.ci-tests.yml](docker-compose.ci-tests.yml): Docker compose file to run pytest in Docker against Postgres from docker-compose.postgres.yml.

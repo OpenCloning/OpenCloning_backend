@@ -11,7 +11,7 @@ import opencloning_linkml.datamodel.models as opencloning_models
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from opencloning_db.auth.security import get_password_hash
-from opencloning_db.config import Config, get_config
+from opencloning_db.config import get_config
 from opencloning_db.context import WriteContext
 from opencloning_db.models import (
     Base,
@@ -31,13 +31,10 @@ from opencloning_db.models import (
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, get_engine
 
 
-def init_db(config: Config):
+def init_db():
+    config = get_config()
     engine = get_engine(config)
     Base.metadata.drop_all(engine)
-
-    os.makedirs(config.sequence_files_dir, exist_ok=True)
-    os.makedirs(config.sequencing_files_dir, exist_ok=True)
-
     Base.metadata.create_all(engine)
 
     cloning_strategies = []
@@ -195,5 +192,4 @@ def init_db(config: Config):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    config = get_config()
-    init_db(config)
+    init_db()
