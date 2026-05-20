@@ -39,6 +39,7 @@ import re
 
 from opencloning_db.context import WriteContext
 from opencloning_db.storage import get_storage
+from fastapi import HTTPException
 
 # Source type union from CloningStrategy.sources (list[Union[Source, ...]])
 AnySource = get_args(opencloning_models.CloningStrategy.model_fields['sources'].annotation)[0]
@@ -815,3 +816,14 @@ def _validate_cross_workspace_invariants(session, *_):
     _validate_sequence_in_line_workspace(session)
     _validate_source_input_workspace(session)
     _validate_tag_links_workspace(session)
+
+
+def require_real_sequence(
+    sequence: BaseSequence,
+    *,
+    detail: str = 'Sequence not found',
+    status_code: int = 404,
+) -> Sequence:
+    if not isinstance(sequence, Sequence):
+        raise HTTPException(status_code=status_code, detail=detail)
+    return sequence

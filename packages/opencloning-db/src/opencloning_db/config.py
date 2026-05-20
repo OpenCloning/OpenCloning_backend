@@ -91,7 +91,7 @@ class Config(BaseModel):
     )
     object_storage_force_path_style: bool = Field(
         default=True,
-        description='Whether to force path-style S3 addressing (typically required for local MinIO)',
+        description='Whether to force path-style S3 addressing (typically required for local S3-compatible endpoints)',
     )
     sequence_objects_prefix: str = Field(
         default='sequences/',

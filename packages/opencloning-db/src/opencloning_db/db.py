@@ -5,7 +5,6 @@ Database engine and conversion logic (Pydantic <-> ORM).
 import os
 from typing import List
 
-from opencloning_db.workspace_deps import require_real_sequence
 import opencloning_linkml.datamodel.models as opencloning_models
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
@@ -23,7 +22,7 @@ from opencloning_db.models import (
 )
 from opencloning_db.storage import get_storage, set_storage
 from opencloning_db.utils import guess_sequence_type
-
+from opencloning_db.models import require_real_sequence
 
 _engine = None
 _bound_database_url: str | None = None

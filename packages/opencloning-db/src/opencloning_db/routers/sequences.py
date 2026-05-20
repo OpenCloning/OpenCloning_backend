@@ -51,6 +51,7 @@ from opencloning_db.models import (
     SourceInput,
     User,
     WorkspaceRole,
+    require_real_sequence,
 )
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -60,7 +61,6 @@ from opencloning_db.workspace_deps import (
     get_editor_workspace_ctx,
     get_sequence_in_workspace_for_user,
     get_viewer_workspace_ctx,
-    require_real_sequence,
 )
 
 from pydna.dseq import Dseq

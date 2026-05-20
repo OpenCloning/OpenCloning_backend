@@ -5,14 +5,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio-bootstrap:
-        condition: service_completed_successfully
+      garage:
+        condition: service_healthy
     ports:
       - "8000:8000"
     environment:
       USE_HTTPS: "false"
       OPENCLONING_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/opencloning_dev
-      OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL: http://minio:9000
+      OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL: http://garage:3900
       OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID: opencloning-dev
       OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY: opencloning-dev-secret
       OPENCLONING_OBJECT_STORAGE_BUCKET: opencloning-dev

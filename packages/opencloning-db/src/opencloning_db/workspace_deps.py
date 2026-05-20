@@ -121,17 +121,6 @@ def get_sequence_in_workspace_for_user(
     return seq
 
 
-def require_real_sequence(
-    sequence: BaseSequence,
-    *,
-    detail: str = 'Sequence not found',
-    status_code: int = status.HTTP_404_NOT_FOUND,
-) -> Sequence:
-    if not isinstance(sequence, Sequence):
-        raise HTTPException(status_code=status_code, detail=detail)
-    return sequence
-
-
 def get_line_in_workspace_for_user(
     session: Session, user: User, workspace_id: int, line_id: int, min_role: WorkspaceRole
 ) -> Line:
