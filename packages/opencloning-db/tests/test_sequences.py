@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
-from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
+from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, dseqrecord_to_db
 from opencloning_db.models import Line, Sequence, SequenceInLine, SequenceSample, SequencingFile, Tag, Primer, User
 from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
@@ -129,10 +129,18 @@ def sequences_client(engine_client_config):
         dseqr_rc.source = None
         seq_with_origin_spanning_feature_rc = dseqrecord_to_db(dseqr_rc, session, ctx=w1_ctx)
 
-        session.commit()
-
         w1_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w1)).all())
         w2_ids = set(session.scalars(select(Sequence.id).where(Sequence.workspace_id == w2)).all())
+
+        seq_with_sequencing_file = dseqrecord_to_db(
+            Dseqrecord('AAAAAA', name='seq_with_sequencing_file'), session, ctx=w1_ctx
+        )
+        session.add(seq_with_sequencing_file)
+        session.flush()
+        sequencing_file = create_sequencing_file(seq_with_sequencing_file, b'hello_world', 'hello_world.txt')
+        session.add(sequencing_file)
+
+        session.commit()
 
         ctx.update(
             {
@@ -157,6 +165,8 @@ def sequences_client(engine_client_config):
                 'seq_with_overhangs_id': seq_with_overhangs.id,
                 'seq_with_origin_spanning_feature_id': seq_with_origin_spanning_feature.id,
                 'seq_with_origin_spanning_feature_rc_id': seq_with_origin_spanning_feature_rc.id,
+                'seq_with_sequencing_file_id': seq_with_sequencing_file.id,
+                'sequencing_file_id': sequencing_file.id,
             }
         )
 
@@ -1382,6 +1392,24 @@ def test_download_sequencing_file_ok_then_missing_on_disk_404(sequences_client):
     assert missing.json()['detail'] == 'File not found in object storage'
 
 
+def test_download_sequencing_file_object_storage_error_500(sequences_client):
+    from botocore.exceptions import ClientError
+
+    c = sequences_client['client']
+
+    def raise_value_error():
+        raise ClientError(error_response={'Error': {'Code': 'MockText'}}, operation_name='get_object')
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr('opencloning_db.routers.sequences.get_storage', raise_value_error)
+    r = c.get(
+        f'/sequencing_files/{sequences_client["sequencing_file_id"]}/download',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 500
+    assert 'MockText' in str(r.json()['detail'])
+
+
 def test_download_sequencing_file_unknown_id_404(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1729,6 +1757,24 @@ class TestReplaceSequenceFile:
 
         monkeypatch.setattr(self.storage, 'delete_object', fail_old_delete)
         _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
+        assert self.storage.new_key in self.storage.objects
+
+    def test_new_file_delete_error_on_cleanup_is_logged_but_ignored(self, monkeypatch):
+        from opencloning_db.routers.sequences import _replace_sequence_file
+
+        self.mock_session.commit = lambda: (_ for _ in ()).throw(RuntimeError('db error'))
+
+        def fail_new_delete(key):
+            if key == 'sequences/new.gb':
+                raise OSError('permission denied')
+            self.storage.objects.pop(key, None)
+
+        monkeypatch.setattr(self.storage, 'delete_object', fail_new_delete)
+
+        with pytest.raises(RuntimeError, match='db error'):
+            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
+
+        assert 'sequences/old.gb' in self.storage.objects
         assert self.storage.new_key in self.storage.objects
 
 

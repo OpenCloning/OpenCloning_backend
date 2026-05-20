@@ -96,10 +96,6 @@ class ObjectStorage:
         self.delete_objects(self.list_keys(prefix))
 
 
-def _peek_storage() -> ObjectStorage | None:
-    return _storage
-
-
 def get_storage() -> ObjectStorage:
     global _storage
     if _storage is None or _storage.config != get_config():

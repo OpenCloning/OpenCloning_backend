@@ -739,7 +739,7 @@ def download_sequencing_file(
     except ClientError as exc:
         if is_missing_object_error(exc):
             raise HTTPException(status_code=404, detail='File not found in object storage') from exc
-        raise
+        raise HTTPException(status_code=500, detail=f'Error reading file from object storage: {exc}') from exc
 
     return Response(
         content=content,
