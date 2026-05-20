@@ -34,6 +34,33 @@ def test_combined_cloning_openapi_requires_auth(combined_client: TestClient):
     assert unauthenticated_response.headers.get('www-authenticate') == 'Bearer'
 
 
+def test_options_request_is_not_authenticated(combined_client: TestClient):
+    response = combined_client.options(
+        '/cloning/version',
+        headers={
+            'Origin': 'http://localhost:3000',
+            'Access-Control-Request-Method': 'GET',
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_wrong_auth_header_is_rejected(combined_client: TestClient):
+    response = combined_client.get('/cloning/openapi.json', headers={'Authorization': 'Bearer wrong-token'})
+
+    assert response.status_code == 401
+    assert response.json() == {'detail': 'Could not validate credentials'}
+    assert response.headers.get('www-authenticate') == 'Bearer'
+
+
+def test_invalid_auth_header_is_rejected(combined_client: TestClient):
+    response = combined_client.get('/cloning/openapi.json', headers={'Authorization': 'Basic invalid-token'})
+
+    assert response.status_code == 401
+    assert response.json() == {'detail': 'Could not validate credentials'}
+    assert response.headers.get('www-authenticate') == 'Bearer'
+
+
 def test_combined_app_uses_injected_cloning_verifier(engine_client_config):
     def allow_all(_headers) -> None:
         return None
