@@ -34,6 +34,8 @@ uv run uvicorn opencloning_db.api:app --reload --reload-exclude='.venv'
 
 That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.0.1:8000/cloning) and the database API at [http://127.0.0.1:8001/db](http://127.0.0.1:8001/db). That's what the OpenCloningDB frontend expects.
 
+When the cloning app is served through `opencloning_db.combined`, the entire `/cloning` mount is protected by the same bearer-token authentication used by the db API.
+
 ## Running tests locally
 
 From the repository root:
