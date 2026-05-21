@@ -101,7 +101,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
-    display_name: Mapped[Optional[str]] = mapped_column(nullable=True, default=None)
+    display_name: Mapped[str] = mapped_column(nullable=False)
     password_hash: Mapped[Optional[str]] = mapped_column(nullable=True, default=None)
     is_instance_admin: Mapped[bool] = mapped_column(nullable=False, default=False)
 

@@ -69,6 +69,7 @@ def _load_config_from_env() -> 'Config':
         sequence_objects_prefix=os.environ.get('OPENCLONING_SEQUENCE_OBJECTS_PREFIX', 'sequences/'),
         sequencing_objects_prefix=os.environ.get('OPENCLONING_SEQUENCING_OBJECTS_PREFIX', 'sequencing-files/'),
         jwt_secret=os.environ['OPENCLONING_JWT_SECRET'],
+        registration_invites_object_key=os.environ.get('OPENCLONING_REGISTRATION_INVITES_OBJECT_KEY', '').strip(),
     )
 
 
@@ -135,6 +136,10 @@ class Config(BaseModel):
         default=60,
         ge=1,
         description='Access token lifetime in minutes',
+    )
+    registration_invites_object_key: str = Field(
+        default='',
+        description='S3 object key for signup allowlist (one email per line). Empty disables invite checks.',
     )
 
 

@@ -23,7 +23,7 @@ class Token(ApiModel):
 class UserPublic(ApiModel):
     id: int
     email: str
-    display_name: str | None
+    display_name: str
     is_instance_admin: bool
 
 
@@ -31,7 +31,7 @@ class UserRef(ApiModel):
     """Minimal user reference for embedding in resource responses."""
 
     id: int
-    display_name: str | None
+    display_name: str
 
 
 class WorkspaceRef(ApiModel):
@@ -51,7 +51,7 @@ class WorkspaceRename(ApiModel):
 class RegisterBody(ApiModel):
     email: EmailStr
     password: str = Field(min_length=1)
-    display_name: str | None = None
+    display_name: str
 
 
 # --- Sequence sample ---
