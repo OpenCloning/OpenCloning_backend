@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 import opencloning_linkml.datamodel.models as opencloning_models
 from opencloning_db.models import (
     DISPLAY_NAME_MIN_LENGTH,
+    PASSWORD_MIN_LENGTH,
     BaseSequence,
     SequenceType,
     Sequence,
@@ -58,7 +59,7 @@ class WorkspaceRename(ApiModel):
 
 class RegisterBody(ApiModel):
     email: EmailStr
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH)
     display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
 
 

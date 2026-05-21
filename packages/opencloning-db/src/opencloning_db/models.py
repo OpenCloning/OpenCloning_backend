@@ -97,6 +97,7 @@ class Base(DeclarativeBase):
 
 
 DISPLAY_NAME_MIN_LENGTH = 4
+PASSWORD_MIN_LENGTH = 8
 
 
 class User(Base):
