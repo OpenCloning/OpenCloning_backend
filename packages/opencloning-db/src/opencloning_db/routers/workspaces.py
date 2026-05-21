@@ -10,15 +10,9 @@ from opencloning_db.apimodels import WorkspaceCreate, WorkspaceRef, WorkspaceRen
 from opencloning_db.deps import get_current_user, get_db
 from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
 from opencloning_db.workspace_auth import assert_workspace_access
+from opencloning_db.db_utils import get_workspace_or_404
 
 router = APIRouter(tags=['workspaces'])
-
-
-def _get_workspace(session: Session, workspace_id: int) -> Workspace:
-    workspace = session.get(Workspace, workspace_id)
-    if workspace is None:
-        raise HTTPException(status_code=404, detail='Workspace not found')
-    return workspace
 
 
 @router.post('/workspaces', response_model=WorkspaceRef)
@@ -77,7 +71,7 @@ def get_workspace(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_db)],
 ) -> WorkspaceRef:
-    workspace = _get_workspace(session, workspace_id)
+    workspace = get_workspace_or_404(session, workspace_id)
     membership = assert_workspace_access(
         session,
         current_user.id,
@@ -98,7 +92,7 @@ def rename_workspace(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_db)],
 ) -> WorkspaceRef:
-    workspace = _get_workspace(session, workspace_id)
+    workspace = get_workspace_or_404(session, workspace_id)
     membership = assert_workspace_access(
         session,
         current_user.id,

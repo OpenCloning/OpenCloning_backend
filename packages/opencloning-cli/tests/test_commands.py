@@ -32,6 +32,7 @@ class TestHelpAndTree:
         result = _invoke('--help')
         assert result.exit_code == 0
         assert 'db' in result.output
+        assert 'admin' in result.output
 
     def test_top_level_db_help(self):
         result = _invoke('db', '--help')
@@ -39,6 +40,13 @@ class TestHelpAndTree:
         assert 'init' in result.output
         assert 'seed' in result.output
         assert 'stubs' in result.output
+
+    def test_top_level_admin_help(self):
+        result = _invoke('admin', '--help')
+        assert result.exit_code == 0
+        assert 'list-users' in result.output
+        assert 'list-workspaces' in result.output
+        assert 'assign-user' in result.output
 
 
 class TestInitCommand:

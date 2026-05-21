@@ -38,7 +38,6 @@ def require_invited_email(email: str, config: Config) -> None:
     """When an invite file path is configured, email must appear on a line in that object."""
     if not registration_invites_enabled(config):
         return
-    print(f"registration_invites_enabled(config): {load_invited_emails(config)}")
     normalized = normalize_email(email)
     if normalized not in load_invited_emails(config):
         raise HTTPException(

@@ -1,0 +1,94 @@
+"""Unit tests for direct-database admin helpers."""
+
+from __future__ import annotations
+
+import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+import opencloning_db.db as db_module
+from opencloning_db.auth.security import get_password_hash
+from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
+from opencloning_cli import admin_db
+
+from .db_reset import reset_database
+
+
+@pytest.fixture
+def admin_db_session(temp_workspace):
+    _, config = temp_workspace
+    engine = db_module.get_engine(config)
+    reset_database(engine)
+    with Session(engine) as session:
+        user = User(
+            email='alice@example.com',
+            display_name='Alice',
+            password_hash=get_password_hash('pw'),
+        )
+        workspace = Workspace(name='Lab')
+        session.add_all([user, workspace])
+        session.flush()
+        session.add(
+            WorkspaceMembership(
+                user_id=user.id,
+                workspace_id=workspace.id,
+                role=WorkspaceRole.owner,
+            )
+        )
+        session.commit()
+        yield session, user, workspace
+
+
+def test_list_user_emails(admin_db_session):
+    emails = admin_db.list_user_emails()
+    assert emails == ['alice@example.com']
+
+
+def test_list_workspaces(admin_db_session):
+    _, _, workspace = admin_db_session
+    workspaces = admin_db.list_workspaces()
+    assert workspaces == [{'id': workspace.id, 'name': 'Lab'}]
+
+
+def test_assign_user_creates_membership(admin_db_session):
+    session, _, workspace = admin_db_session
+    other = User(
+        email='bob@example.com',
+        display_name='Bob',
+        password_hash=get_password_hash('pw'),
+    )
+    session.add(other)
+    session.commit()
+
+    result = admin_db.assign_user_to_workspace('bob@example.com', workspace.id, 'editor')
+    assert result == {
+        'user_id': other.id,
+        'workspace_id': workspace.id,
+        'role': 'editor',
+    }
+
+    membership = session.scalar(
+        select(WorkspaceMembership).where(
+            WorkspaceMembership.user_id == other.id,
+            WorkspaceMembership.workspace_id == workspace.id,
+        )
+    )
+    assert membership is not None
+    assert membership.role == WorkspaceRole.editor
+
+
+def test_assign_user_not_found(admin_db_session):
+    _, _, workspace = admin_db_session
+    with pytest.raises(RuntimeError, match='User not found'):
+        admin_db.assign_user_to_workspace('missing@example.com', workspace.id, 'viewer')
+
+
+def test_assign_user_workspace_not_found(admin_db_session):
+    with pytest.raises(RuntimeError, match='Workspace not found'):
+        admin_db.assign_user_to_workspace('alice@example.com', 999999, 'viewer')
+
+
+def test_assign_user_invalid_role(admin_db_session):
+    _, _, workspace = admin_db_session
+    with pytest.raises(RuntimeError, match='Invalid role'):
+        admin_db.assign_user_to_workspace('alice@example.com', workspace.id, 'superuser')

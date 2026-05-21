@@ -33,6 +33,17 @@ source .env.dev
 OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 ```
 
+## Admin Commands
+
+Admin commands read and write the configured database directly (same env as `db init`). Load `.env.dev` first.
+
+```bash
+source .env.dev
+uv run opencloning-cli admin list-users
+uv run opencloning-cli admin list-workspaces
+uv run opencloning-cli admin assign-user view-only-user@example.com 1 --role editor
+```
+
 ## Generate DB Stubs
 
  Use `db stubs` to generate JSON stubs for frontend testing. By default it writes one JSON file per yielded stub request into `./stubs/db` (for example, `get_primers.json`, `get_sequences.json`, and similar request-specific files).
