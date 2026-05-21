@@ -29,10 +29,20 @@ StubOutputDirOption = Annotated[
 ]
 
 
+@db_app.command('init')
+def init_command() -> None:
+    """Create the configured schema if it does not already exist."""
+    lifecycle.init()
+
+
 @db_app.command('seed')
 def seed_command() -> None:
-    """Run ``init_db`` against the current config."""
-    lifecycle.seed()
+    """Recreate the local test baseline. Requires ``OPENCLONING_TESTING=1``."""
+    try:
+        lifecycle.seed()
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
 
 
 @db_app.command('stubs')
@@ -40,7 +50,11 @@ def stubs_command(
     output_dir: StubOutputDirOption = Path('stubs/db'),
 ) -> None:
     """Generate stubs for DB/frontend testing."""
-    lifecycle.write_stubs(output_dir)
+    try:
+        lifecycle.write_stubs(output_dir)
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
 
 
 __all__ = ['db_app']
