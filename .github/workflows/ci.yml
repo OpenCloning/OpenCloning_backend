@@ -55,7 +55,7 @@ jobs:
       - name: Run tests
         env:
           PYTHONUNBUFFERED: "1"
-          OPENCLONING_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test
+          OPENCLONING_TEST_DATABASE_URL: postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           ADDGENE_USERNAME: ${{ secrets.ADDGENE_USERNAME }}
           ADDGENE_PASSWORD: ${{ secrets.ADDGENE_PASSWORD }}

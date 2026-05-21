@@ -11,7 +11,11 @@ services:
       - "8000:8000"
     environment:
       USE_HTTPS: "false"
-      OPENCLONING_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/opencloning_dev
+      OPENCLONING_DB_USER: dbuser
+      OPENCLONING_DB_PASSWORD: dbpassword
+      OPENCLONING_DB_HOST: postgres
+      OPENCLONING_DB_PORT: "5432"
+      OPENCLONING_DB_NAME: opencloning_dev
       OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL: http://garage:3900
       OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID: opencloning-dev
       OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY: opencloning-dev-secret

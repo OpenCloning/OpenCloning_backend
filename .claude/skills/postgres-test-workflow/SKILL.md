@@ -24,7 +24,7 @@ Use this skill when you need the repo-specific test workflow for Postgres-backed
 Example:
 
 ```bash
-export OPENCLONING_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test
+export OPENCLONING_TEST_DATABASE_URL=postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test
 ```
 
 ## How Fixtures Work

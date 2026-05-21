@@ -16,7 +16,7 @@ import opencloning_db.db as db_module
 
 _TEST_DATABASE_URL = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
-    'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test',
+    'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test',
 )
 _TEST_BUCKET = 'opencloning-cli-test'
 _TEST_REGION = 'us-east-1'
