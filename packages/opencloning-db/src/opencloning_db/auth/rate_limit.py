@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import threading
 import time
 from dataclasses import dataclass
@@ -41,19 +40,16 @@ def _client_ip(request: Request) -> str:
     return request.client.host
 
 
-def _check_bucket(*, key: str, limit: int, window_seconds: int) -> int | None:
-    """Record one attempt; return Retry-After seconds when limited, else None."""
+def _is_limited(*, key: str, limit: int, window_seconds: int) -> bool:
     now = time.monotonic()
     cutoff = now - window_seconds
     with _lock:
         timestamps = [t for t in _hits.get(key, []) if t >= cutoff]
         if len(timestamps) >= limit:
-            oldest = min(timestamps)
-            retry_after = max(1, math.ceil(oldest + window_seconds - now))
-            return retry_after
+            return True
         timestamps.append(now)
         _hits[key] = timestamps
-    return None
+    return False
 
 
 def check_login_rate_limit(
@@ -65,30 +61,24 @@ def check_login_rate_limit(
     if not limits.enabled:
         return
 
-    ip_key = f'login:ip:{_client_ip(request)}'
-    retry_after = _check_bucket(
-        key=ip_key,
+    if _is_limited(
+        key=f'login:ip:{_client_ip(request)}',
         limit=limits.per_ip,
         window_seconds=limits.window_seconds,
-    )
-    if retry_after is not None:
-        raise _too_many_requests(retry_after)
+    ):
+        raise _too_many_requests()
 
     email = form_data.username.strip().lower()
-    if email:
-        email_key = f'login:email:{email}'
-        retry_after = _check_bucket(
-            key=email_key,
-            limit=limits.per_email,
-            window_seconds=limits.email_window_seconds,
-        )
-        if retry_after is not None:
-            raise _too_many_requests(retry_after)
+    if email and _is_limited(
+        key=f'login:email:{email}',
+        limit=limits.per_email,
+        window_seconds=limits.email_window_seconds,
+    ):
+        raise _too_many_requests()
 
 
-def _too_many_requests(retry_after: int) -> HTTPException:
+def _too_many_requests() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail='Too many login attempts. Please try again later.',
-        headers={'Retry-After': str(retry_after)},
     )

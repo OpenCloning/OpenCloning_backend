@@ -235,7 +235,6 @@ def test_login_rate_limited_by_ip(auth_client, monkeypatch):
         )
     assert response.status_code == 429
     assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
-    assert int(response.headers.get('retry-after', '0')) >= 1
 
 
 def test_login_rate_limited_by_email(auth_client, monkeypatch):
@@ -259,7 +258,6 @@ def test_login_rate_limited_by_email(auth_client, monkeypatch):
         )
     assert response.status_code == 429
     assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
-    assert int(response.headers.get('retry-after', '0')) >= 1
 
 
 def test_register_weak_password_still_accepted(auth_client):
