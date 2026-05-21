@@ -45,7 +45,7 @@ from tests.cloning_strategy_examples import cs_pcr, pcr_product
 
 _TEST_DATABASE_URL = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
-    'postgresql+psycopg://postgres:postgres@localhost:5432/opencloning_test',
+    'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test',
 )
 
 

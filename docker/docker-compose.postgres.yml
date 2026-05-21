@@ -9,8 +9,8 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpassword
       POSTGRES_DB: opencloning_dev
     volumes:
       - opencloning_postgres_dev_data:/var/lib/postgresql
