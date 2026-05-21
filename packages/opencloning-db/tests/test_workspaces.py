@@ -60,6 +60,18 @@ def test_get_workspace_by_id_member_ok(workspaces_client):
     assert body['role'] == 'owner'
 
 
+def test_get_workspace_by_id_not_found(workspaces_client):
+    """GET unknown workspace id returns 404."""
+    c = workspaces_client['client']
+    tok = workspaces_client['token']
+    response = c.get(
+        '/workspaces/999999',
+        headers=bearer_headers(tok),
+    )
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Workspace not found'
+
+
 def test_get_workspace_by_id_forbidden_non_member(workspaces_client):
     """User with no access to a workspace gets 403 when fetching it by id."""
     c = workspaces_client['client']
@@ -72,10 +84,23 @@ def test_get_workspace_by_id_forbidden_non_member(workspaces_client):
     assert 'Not allowed' in response.json()['detail']
 
 
-def test_create_workspace_creates_owner_membership(workspaces_client):
-    """POST /workspaces creates workspace and caller becomes owner."""
+def test_create_workspace_forbidden_non_admin(workspaces_client):
+    """Non-instance-admin users cannot POST /workspaces."""
     c = workspaces_client['client']
     tok = workspaces_client['token']
+    response = c.post(
+        '/workspaces',
+        headers=bearer_headers(tok),
+        json={'name': 'Should Not Work'},
+    )
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'Only instance admins can create workspaces'
+
+
+def test_create_workspace_creates_owner_membership(workspaces_client):
+    """Instance admin POST /workspaces creates workspace and becomes owner."""
+    c = workspaces_client['client']
+    tok = workspaces_client['token_instance_admin']
     response = c.post(
         '/workspaces',
         headers=bearer_headers(tok),
@@ -93,11 +118,7 @@ def test_create_workspace_creates_owner_membership(workspaces_client):
     )
     assert list_response.status_code == 200
     names = {workspace['name'] for workspace in list_response.json()}
-    assert names == {
-        'Workspace One',
-        'Workspace Two',
-        'My Created Workspace',
-    }
+    assert names == {'My Created Workspace'}
 
 
 def test_patch_workspace_owner_can_rename(workspaces_client):
@@ -136,6 +157,19 @@ def test_patch_workspace_forbidden_for_viewer(workspaces_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+def test_patch_workspace_not_found(workspaces_client):
+    """PATCH unknown workspace id returns 404."""
+    c = workspaces_client['client']
+    tok = workspaces_client['token']
+    response = c.patch(
+        '/workspaces/999999',
+        headers=bearer_headers(tok),
+        json={'name': 'Missing'},
+    )
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'Workspace not found'
+
+
 def test_patch_workspace_forbidden_for_non_member(workspaces_client):
     """User who is not a member cannot PATCH another workspace."""
     c = workspaces_client['client']
@@ -168,7 +202,7 @@ def test_get_workspace_by_id_unauthenticated_401(workspaces_client):
 def test_create_workspace_empty_name_422(workspaces_client):
     """Workspace name must be non-empty (Pydantic min_length=1)."""
     c = workspaces_client['client']
-    tok = workspaces_client['token']
+    tok = workspaces_client['token_instance_admin']
     response = c.post(
         '/workspaces',
         headers=bearer_headers(tok),

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,12 +14,24 @@ from opencloning_db.workspace_auth import assert_workspace_access
 router = APIRouter(tags=['workspaces'])
 
 
+def _get_workspace(session: Session, workspace_id: int) -> Workspace:
+    workspace = session.get(Workspace, workspace_id)
+    if workspace is None:
+        raise HTTPException(status_code=404, detail='Workspace not found')
+    return workspace
+
+
 @router.post('/workspaces', response_model=WorkspaceRef)
 def create_workspace(
     body: WorkspaceCreate,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_db)],
 ) -> WorkspaceRef:
+    if not current_user.is_instance_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Only instance admins can create workspaces',
+        )
     workspace = Workspace(name=body.name)
     session.add(workspace)
     session.flush()
@@ -65,13 +77,13 @@ def get_workspace(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_db)],
 ) -> WorkspaceRef:
+    workspace = _get_workspace(session, workspace_id)
     membership = assert_workspace_access(
         session,
         current_user.id,
         workspace_id,
         WorkspaceRole.viewer,
     )
-    workspace = session.get(Workspace, workspace_id)
     return WorkspaceRef(
         id=workspace.id,
         name=workspace.name,
@@ -86,13 +98,13 @@ def rename_workspace(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_db)],
 ) -> WorkspaceRef:
+    workspace = _get_workspace(session, workspace_id)
     membership = assert_workspace_access(
         session,
         current_user.id,
         workspace_id,
         WorkspaceRole.owner,
     )
-    workspace = session.get(Workspace, workspace_id)
     workspace.name = body.name
     session.commit()
     return WorkspaceRef(
