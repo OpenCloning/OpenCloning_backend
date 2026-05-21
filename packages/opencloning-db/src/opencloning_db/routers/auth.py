@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opencloning_db.apimodels import RegisterBody, Token, UserPublic
+from opencloning_db.auth.rate_limit import check_login_rate_limit
 from opencloning_db.auth.security import (
     create_access_token,
     get_password_hash,
@@ -55,6 +56,7 @@ def register(
 
 @router.post('/token', response_model=Token)
 def login_for_access_token(
+    _rate_limit: Annotated[None, Depends(check_login_rate_limit)],
     session: Annotated[Session, Depends(get_db)],
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     config: Annotated[Config, Depends(get_config)],
