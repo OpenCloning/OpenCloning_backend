@@ -13,6 +13,8 @@ from opencloning_db.deps import get_db
 from sqlalchemy.engine import Engine
 import pytest
 
+import opencloning_db.auth.rate_limit as login_rate_limit
+from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rate_limiter
 from tests.db_reset import reset_database
 
 _JWT_SECRET = 'test-jwt-secret-not-for-production'
@@ -23,6 +25,18 @@ _TEST_DATABASE_URL = os.environ.get(
 _TEST_BUCKET = 'opencloning-test'
 _TEST_REGION = 'us-east-1'
 _TEST_ENDPOINT_URL = 'https://s3.amazonaws.com'
+
+
+@pytest.fixture(autouse=True)
+def _disable_login_rate_limit_for_tests(monkeypatch):
+    reset_login_rate_limiter()
+    monkeypatch.setattr(
+        login_rate_limit,
+        'LOGIN_RATE_LIMIT',
+        LoginRateLimitConfig(enabled=False),
+    )
+    yield
+    reset_login_rate_limiter()
 
 
 @pytest.fixture

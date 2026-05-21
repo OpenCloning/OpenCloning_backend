@@ -1,9 +1,4 @@
-"""Auth register / token / me flow.
-
-Security-related follow-ups not covered here (no app support yet):
-rate limiting, account lockout, and stricter password policy beyond
-RegisterBody validation.
-"""
+"""Auth register / token / me flow."""
 
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -11,6 +6,8 @@ from uuid import uuid4
 import jwt
 import pytest
 
+import opencloning_db.auth.rate_limit as login_rate_limit
+from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rate_limiter
 from opencloning_db.config import get_config
 
 
@@ -215,6 +212,54 @@ def test_me_token_with_nonexistent_user_sub_401(auth_client):
     )
     assert r.status_code == 401
     assert r.json()['detail'] == 'Could not validate credentials'
+
+
+def test_login_rate_limited_by_ip(auth_client, monkeypatch):
+    """Repeated login attempts from one client are rejected with 429."""
+    reset_login_rate_limiter()
+    monkeypatch.setattr(
+        login_rate_limit,
+        'LOGIN_RATE_LIMIT',
+        LoginRateLimitConfig(
+            enabled=True,
+            per_ip=2,
+            window_seconds=60,
+            per_email=100,
+            email_window_seconds=300,
+        ),
+    )
+    for attempt in range(3):
+        response = auth_client.post(
+            '/auth/token',
+            data={'username': f'nobody-{attempt}@example.com', 'password': 'wrong'},
+        )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
+    assert int(response.headers.get('retry-after', '0')) >= 1
+
+
+def test_login_rate_limited_by_email(auth_client, monkeypatch):
+    """Repeated login attempts from one email are rejected with 429."""
+    reset_login_rate_limiter()
+    monkeypatch.setattr(
+        login_rate_limit,
+        'LOGIN_RATE_LIMIT',
+        LoginRateLimitConfig(
+            enabled=True,
+            per_ip=100,
+            window_seconds=60,
+            per_email=2,
+            email_window_seconds=60,
+        ),
+    )
+    for _attempt in range(3):
+        response = auth_client.post(
+            '/auth/token',
+            data={'username': 'nobody@example.com', 'password': 'wrong'},
+        )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
+    assert int(response.headers.get('retry-after', '0')) >= 1
 
 
 def test_register_weak_password_still_accepted(auth_client):
