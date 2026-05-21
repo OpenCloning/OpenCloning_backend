@@ -52,4 +52,23 @@ def assign_user_command(
     )
 
 
+@admin_app.command('set-instance-admin')
+def set_instance_admin_command(
+    email: str = typer.Argument(help='User email.'),
+    grant: bool = typer.Option(
+        True,
+        '--grant/--revoke',
+        help='Grant instance admin (--grant) or revoke it (--revoke).',
+    ),
+) -> None:
+    """Grant or revoke instance-wide admin privileges for a user."""
+    try:
+        result = admin_db.set_user_instance_admin(email, is_instance_admin=grant)
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    typer.echo(
+        f"user_id={result['user_id']} email={result['email']} " f"is_instance_admin={result['is_instance_admin']}"
+    )
+
+
 __all__ = ['admin_app']

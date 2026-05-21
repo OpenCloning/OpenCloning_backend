@@ -92,3 +92,39 @@ def test_assign_user_invalid_role(admin_db_session):
     _, _, workspace = admin_db_session
     with pytest.raises(RuntimeError, match='Invalid role'):
         admin_db.assign_user_to_workspace('alice@example.com', workspace.id, 'superuser')
+
+
+def test_set_user_instance_admin_grant(admin_db_session):
+    session, user, _ = admin_db_session
+    assert user.is_instance_admin is False
+
+    result = admin_db.set_user_instance_admin('alice@example.com', is_instance_admin=True)
+    assert result == {
+        'user_id': user.id,
+        'email': 'alice@example.com',
+        'is_instance_admin': True,
+    }
+
+    session.expire(user)
+    assert user.is_instance_admin is True
+
+
+def test_set_user_instance_admin_revoke(admin_db_session):
+    session, user, _ = admin_db_session
+    user.is_instance_admin = True
+    session.commit()
+
+    result = admin_db.set_user_instance_admin('alice@example.com', is_instance_admin=False)
+    assert result == {
+        'user_id': user.id,
+        'email': 'alice@example.com',
+        'is_instance_admin': False,
+    }
+
+    session.expire(user)
+    assert user.is_instance_admin is False
+
+
+def test_set_user_instance_admin_not_found(admin_db_session):
+    with pytest.raises(RuntimeError, match='User not found'):
+        admin_db.set_user_instance_admin('missing@example.com', is_instance_admin=True)

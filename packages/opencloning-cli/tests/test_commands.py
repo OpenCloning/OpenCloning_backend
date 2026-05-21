@@ -47,6 +47,7 @@ class TestHelpAndTree:
         assert 'list-users' in result.output
         assert 'list-workspaces' in result.output
         assert 'assign-user' in result.output
+        assert 'set-instance-admin' in result.output
 
 
 class TestInitCommand:

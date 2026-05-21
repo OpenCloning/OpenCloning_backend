@@ -42,6 +42,8 @@ source .env.dev
 uv run opencloning-cli admin list-users
 uv run opencloning-cli admin list-workspaces
 uv run opencloning-cli admin assign-user view-only-user@example.com 1 --role editor
+uv run opencloning-cli admin set-instance-admin bootstrap@example.com
+uv run opencloning-cli admin set-instance-admin bootstrap@example.com --revoke
 ```
 
 ## Generate DB Stubs

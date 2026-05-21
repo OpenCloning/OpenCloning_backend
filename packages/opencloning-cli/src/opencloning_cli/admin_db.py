@@ -72,3 +72,21 @@ def assign_user_to_workspace(email: str, workspace_id: int, role: str) -> dict[s
             'workspace_id': workspace_id,
             'role': membership.role.value,
         }
+
+
+def set_user_instance_admin(email: str, *, is_instance_admin: bool) -> dict[str, Any]:
+    config = get_config()
+    normalized_email = normalize_email(email)
+
+    with Session(db_module.get_engine(config)) as session:
+        user = session.scalar(select(User).where(User.email == normalized_email))
+        if user is None:
+            raise RuntimeError('User not found')
+
+        user.is_instance_admin = is_instance_admin
+        session.commit()
+        return {
+            'user_id': user.id,
+            'email': user.email,
+            'is_instance_admin': user.is_instance_admin,
+        }
