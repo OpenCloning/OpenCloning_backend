@@ -22,8 +22,11 @@ docker compose \
 # Load required local runtime config
 source .env.dev
 
-# Seed the local baseline
-uv run opencloning-cli db seed
+# Create the schema safely
+uv run opencloning-cli db init
+
+# Optional: load the deterministic demo/test baseline
+OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 
 # Run both the cloning and the database API - this what the OpenCloningDB frontend expects
 uv run uvicorn opencloning_db.combined:app --reload --reload-exclude='.venv'
@@ -50,7 +53,7 @@ uv run pytest packages/opencloning-db/tests -v -ks
 
 ## Frontend testing
 
-Frontend testing using the database requires reseting after tests that modify the database. You can do this by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`.
+Frontend testing using the database requires reseeding after tests that modify the database. You can do this by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`, and it delegates to the guarded `opencloning-cli db seed` command.
 
 ## Building and running the Docker image
 

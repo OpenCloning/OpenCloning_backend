@@ -7,6 +7,7 @@ import subprocess
 
 from fastapi import APIRouter, Header, HTTPException, Response, status
 import opencloning_db.db as db_module
+from opencloning_db.config import parse_bool
 
 router = APIRouter(prefix='/__test', tags=['test-tools'])
 
@@ -20,9 +21,9 @@ def _dispose_engine() -> None:
 
 @router.post('/reset-db', status_code=status.HTTP_204_NO_CONTENT)
 def reset_db(x_test_reset_token: str | None = Header(default=None)) -> Response:
-    """Reset DB by delegating to ``opencloning-cli db test reset``."""
+    """Reset DB by delegating to ``opencloning-cli db seed``."""
 
-    if not os.getenv('OPENCLONING_TESTING') or x_test_reset_token != 'RESET-TOKEN':
+    if not parse_bool(os.getenv('OPENCLONING_TESTING', False)) or x_test_reset_token != 'RESET-TOKEN':
         raise HTTPException(status_code=403, detail='Forbidden')
 
     _dispose_engine()

@@ -36,13 +36,35 @@ class TestHelpAndTree:
     def test_top_level_db_help(self):
         result = _invoke('db', '--help')
         assert result.exit_code == 0
+        assert 'init' in result.output
         assert 'seed' in result.output
         assert 'stubs' in result.output
 
 
-class TestSeedCommand:
+class TestInitCommand:
     def test_success_human_output(self, temp_workspace):
         _, config = temp_workspace
+
+        result = _invoke('db', 'init')
+
+        assert result.exit_code == 0, result.output
+        assert result.output.strip() == ''
+        assert _count_users(config) == 0
+        storage = ObjectStorage(config)
+        assert len(storage.list_keys(config.sequence_objects_prefix)) == 0
+        assert len(storage.list_keys(config.sequencing_objects_prefix)) == 0
+
+
+class TestSeedCommand:
+    def test_requires_testing_mode(self, temp_workspace):
+        result = _invoke('db', 'seed')
+
+        assert result.exit_code == 1
+        assert 'OPENCLONING_TESTING=1' in result.output
+
+    def test_success_human_output(self, temp_workspace, monkeypatch):
+        _, config = temp_workspace
+        monkeypatch.setenv('OPENCLONING_TESTING', '1')
 
         result = _invoke('db', 'seed')
 
@@ -57,6 +79,7 @@ class TestSeedCommand:
 class TestStubCommand:
     def test_write_stubs(self, temp_workspace, monkeypatch):
         workspace, _ = temp_workspace
+        monkeypatch.setenv('OPENCLONING_TESTING', '1')
         monkeypatch.chdir(workspace)
         result = _invoke('db', 'stubs')
 

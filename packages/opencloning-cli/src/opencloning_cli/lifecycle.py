@@ -10,13 +10,15 @@ from __future__ import annotations
 import io
 import json
 import base64
+import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any
 
 import opencloning_db.db as _db_module
-from opencloning_db.config import Config, get_config
+from opencloning_db.config import Config, get_config, parse_bool
 from opencloning_db.init_db import init_db as _init_db
+from opencloning_db.models import Base
 from opencloning_db.storage import ObjectStorage
 from opencloning_db.combined import app
 from fastapi.testclient import TestClient
@@ -59,12 +61,31 @@ def _reset_storage(config: Config) -> None:
     storage.clear_prefix(config.sequencing_objects_prefix)
 
 
+def _require_testing_seed_enabled() -> None:
+    if not parse_bool(os.getenv('OPENCLONING_TESTING', False)):
+        raise RuntimeError('db seed requires OPENCLONING_TESTING=1')
+
+
+def init() -> None:
+    """Create the configured schema if it does not already exist."""
+    config = get_config()
+    storage = ObjectStorage(config)
+    storage.validate_bucket_exists()
+    _dispose_engine()
+    engine = _db_module.get_engine(config)
+    Base.metadata.create_all(engine)
+    _dispose_engine()
+
+
 def seed() -> None:
     """Run ``opencloning_db.init_db.init_db`` against *config*.
 
     Recreates a deterministic database baseline plus fresh sequence and
     sequencing object prefixes for the configured backend.
+
+    This is destructive and only allowed when ``OPENCLONING_TESTING=1``.
     """
+    _require_testing_seed_enabled()
     config = get_config()
     _dispose_engine()
     _reset_storage(config)
