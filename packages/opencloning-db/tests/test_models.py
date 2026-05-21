@@ -18,7 +18,6 @@ from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import (
     AnySourceParser,
     AssemblyFragment,
-    Base,
     BaseSequence,
     InputEntity,
     Line,
@@ -42,6 +41,7 @@ from opencloning_db.models import (
 )
 from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
+from tests.db_reset import reset_database
 
 _TEST_DATABASE_URL = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
@@ -60,8 +60,7 @@ class _MemoryDbTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.engine = create_engine(_TEST_DATABASE_URL)
-        Base.metadata.drop_all(self.engine)
-        Base.metadata.create_all(self.engine)
+        reset_database(self.engine)
         with Session(self.engine) as session:
             session.add(User(email='test@test.com'))
             session.commit()
