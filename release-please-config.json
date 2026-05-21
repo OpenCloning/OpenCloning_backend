@@ -12,7 +12,7 @@
             "extra-files": [
                 {
                     "type": "generic",
-                    "path": "packages/opencloning-db/pyproject.toml"
+                    "path": "/packages/opencloning-db/pyproject.toml"
                 }
             ]
         },
@@ -23,7 +23,7 @@
             "extra-files": [
                 {
                     "type": "generic",
-                    "path": "packages/opencloning-cli/pyproject.toml"
+                    "path": "/packages/opencloning-cli/pyproject.toml"
                 }
             ]
         },
