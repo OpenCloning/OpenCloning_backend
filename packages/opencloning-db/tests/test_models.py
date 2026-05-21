@@ -62,7 +62,7 @@ class _MemoryDbTestCase(unittest.TestCase):
         self.engine = create_engine(_TEST_DATABASE_URL)
         reset_database(self.engine)
         with Session(self.engine) as session:
-            session.add(User(email='test@test.com'))
+            session.add(User(email='test@test.com', display_name='Test'))
             session.commit()
 
     def tearDown(self):

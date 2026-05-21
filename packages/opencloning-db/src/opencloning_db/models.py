@@ -96,8 +96,17 @@ class Base(DeclarativeBase):
         return out_str
 
 
+DISPLAY_NAME_MIN_LENGTH = 4
+
+
 class User(Base):
     __tablename__ = 'user'
+    __table_args__ = (
+        CheckConstraint(
+            f'char_length(display_name) >= {DISPLAY_NAME_MIN_LENGTH}',
+            name='user_display_name_min_length',
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
@@ -109,6 +118,12 @@ class User(Base):
         back_populates='user',
         cascade='all, delete-orphan',
     )
+
+    @validates('display_name')
+    def validate_display_name(self, _key: str, value: str) -> str:
+        if len(value) < DISPLAY_NAME_MIN_LENGTH:
+            raise ValueError(f'display_name must be at least {DISPLAY_NAME_MIN_LENGTH} characters')
+        return value
 
 
 class Workspace(Base):

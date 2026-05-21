@@ -54,7 +54,7 @@ def test_assign_user_creates_membership(admin_db_session):
     session, _, workspace = admin_db_session
     other = User(
         email='bob@example.com',
-        display_name='Bob',
+        display_name='Bobby',
         password_hash=get_password_hash('pw'),
     )
     session.add(other)

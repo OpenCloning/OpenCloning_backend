@@ -48,7 +48,7 @@ def test_register_rejected_when_not_in_invite_file(auth_client, postgres_test_co
         email = 'uninvited@example.com'
         response = auth_client.post(
             '/auth/register',
-            json={'email': email, 'password': 'secret-password', 'display_name': 'X'},
+            json={'email': email, 'password': 'secret-password', 'display_name': 'User'},
         )
         assert response.status_code == 403
         assert response.json()['detail'] == REGISTRATION_UNAVAILABLE_DETAIL

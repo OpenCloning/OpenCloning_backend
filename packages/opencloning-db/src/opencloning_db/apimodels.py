@@ -5,7 +5,15 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
-from opencloning_db.models import BaseSequence, SequenceType, Sequence, Primer, Line, SequenceInLine
+from opencloning_db.models import (
+    DISPLAY_NAME_MIN_LENGTH,
+    BaseSequence,
+    SequenceType,
+    Sequence,
+    Primer,
+    Line,
+    SequenceInLine,
+)
 
 
 class ApiModel(BaseModel):
@@ -23,7 +31,7 @@ class Token(ApiModel):
 class UserPublic(ApiModel):
     id: int
     email: str
-    display_name: str
+    display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
     is_instance_admin: bool
 
 
@@ -31,7 +39,7 @@ class UserRef(ApiModel):
     """Minimal user reference for embedding in resource responses."""
 
     id: int
-    display_name: str
+    display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
 
 
 class WorkspaceRef(ApiModel):
@@ -51,7 +59,7 @@ class WorkspaceRename(ApiModel):
 class RegisterBody(ApiModel):
     email: EmailStr
     password: str = Field(min_length=1)
-    display_name: str
+    display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
 
 
 # --- Sequence sample ---
