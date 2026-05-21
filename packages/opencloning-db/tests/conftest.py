@@ -10,9 +10,10 @@ import opencloning_db.db as db_module
 from fastapi.testclient import TestClient
 from opencloning_db.api import app, fastapi_app
 from opencloning_db.deps import get_db
-from opencloning_db.models import Base
 from sqlalchemy.engine import Engine
 import pytest
+
+from tests.db_reset import reset_database
 
 _JWT_SECRET = 'test-jwt-secret-not-for-production'
 _TEST_DATABASE_URL = os.environ.get(
@@ -56,8 +57,7 @@ def postgres_test_config() -> Generator[Config, None, None]:
 def postgres_test_engine(postgres_test_config: Config) -> Generator[Engine, None, None]:
     """Fresh schema bound to the shared Postgres test database."""
     engine = db_module.get_engine(postgres_test_config)
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
+    reset_database(engine)
     yield engine
 
 
