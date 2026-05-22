@@ -113,6 +113,15 @@ class TestAnySourceParser(unittest.TestCase):
         self.assertEqual(wrapper.source.id, 10)
 
 
+class TestUser(unittest.TestCase):
+    """Tests for ``User``."""
+
+    def test_display_name_too_short_rejected_on_instantiation(self):
+        """display_name must meet DISPLAY_NAME_MIN_LENGTH (ORM ``@validates``)."""
+        with self.assertRaisesRegex(ValueError, 'display_name must be at least 4 characters'):
+            User(email='u@test.com', display_name='abc')
+
+
 class TestBaseRepr(unittest.TestCase):
     """Tests for ``Base.__repr__``."""
 
