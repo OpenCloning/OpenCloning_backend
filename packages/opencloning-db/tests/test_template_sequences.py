@@ -102,7 +102,7 @@ def test_change_circularity_rejects_template_sequence(template_sequences_client)
     """Endpoints guarded by require_real_sequence return 404 for template sequences."""
     c = template_sequences_client['client']
     headers = workspace_headers(template_sequences_client['token_owner_w1'], template_sequences_client['w1'])
-    create = c.post('/template_sequences', headers=headers, json={'name': 'T', 'sequence_type': 'allele'})
+    create = c.post('/template_sequences', headers=headers, json={'name': 'name', 'sequence_type': 'allele'})
     assert create.status_code == 200
     tid = create.json()['id']
 
