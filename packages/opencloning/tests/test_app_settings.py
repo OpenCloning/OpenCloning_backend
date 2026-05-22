@@ -100,3 +100,13 @@ class TestAppSettings(unittest.TestCase):
         self.assertEqual(app_settings.frontend_config.enableAssembler, False)
         self.assertEqual(app_settings.frontend_config.enablePlannotate, False)
         self.assertEqual(app_settings.frontend_config.staticContentPath, '/tmp/static')
+
+    def test_allowed_origins_empty_string(self):
+        self.monkeypatch2.setenv('ALLOWED_ORIGINS', 'hello,,bye')
+        reload(app_settings)
+        self.assertEqual(app_settings.settings.ALLOWED_ORIGINS, ['hello', 'bye'])
+        self.monkeypatch2.setenv('ALLOWED_ORIGINS', '')
+        reload(app_settings)
+        self.assertEqual(app_settings.settings.ALLOWED_ORIGINS, [])
+        self.monkeypatch2.undo()
+        reload(app_settings)
