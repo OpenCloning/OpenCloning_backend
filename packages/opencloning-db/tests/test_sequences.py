@@ -361,15 +361,14 @@ def test_patch_sequence_owner_rename_ok(sequences_client):
     assert r.json()['name'] == 'renamed-linear'
 
 
-def test_patch_sequence_empty_name_400(sequences_client):
+def test_patch_sequence_empty_name_422(sequences_client):
     c = sequences_client['client']
     r = c.patch(
         f"/sequences/{sequences_client['seq_patch_linear_id']}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
         json={'name': ''},
     )
-    assert r.status_code == 400
-    assert r.json()['detail'] == 'Name cannot be an empty string'
+    assert r.status_code == 422
 
 
 def test_patch_sequence_type_linear_ok(sequences_client):

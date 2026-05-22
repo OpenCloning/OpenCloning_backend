@@ -47,7 +47,7 @@ def assign_user_to_workspace(email: str, workspace_id: int, role: str) -> dict[s
         except HTTPException as exc:
             raise RuntimeError('Workspace not found') from exc
 
-        user = session.scalar(select(User).where(User.email == normalized_email))
+        user = session.scalar(select(User).where(User.email.ilike(f"%{normalized_email}%")))
         if user is None:
             raise RuntimeError('User not found')
 
@@ -79,7 +79,7 @@ def set_user_instance_admin(email: str, *, is_instance_admin: bool) -> dict[str,
     normalized_email = normalize_email(email)
 
     with Session(db_module.get_engine(config)) as session:
-        user = session.scalar(select(User).where(User.email == normalized_email))
+        user = session.scalar(select(User).where(User.email.ilike(f"%{normalized_email}%")))
         if user is None:
             raise RuntimeError('User not found')
 

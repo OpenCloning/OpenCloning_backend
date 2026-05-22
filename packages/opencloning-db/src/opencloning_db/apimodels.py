@@ -1,8 +1,9 @@
 """Shared Pydantic request/response models for the API."""
 
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
 
 import opencloning_linkml.datamodel.models as opencloning_models
 from opencloning_db.models import (
@@ -15,6 +16,15 @@ from opencloning_db.models import (
     Line,
     SequenceInLine,
 )
+
+
+def _strip_str(v: object) -> object:
+    if isinstance(v, str):
+        return v.strip()
+    return v
+
+
+StrippedStr = Annotated[str, BeforeValidator(_strip_str)]
 
 
 class ApiModel(BaseModel):
@@ -50,22 +60,22 @@ class WorkspaceRef(ApiModel):
 
 
 class WorkspaceCreate(ApiModel):
-    name: str = Field(min_length=1)
+    name: StrippedStr = Field(min_length=1)
 
 
 class WorkspaceRename(ApiModel):
-    name: str = Field(min_length=1)
+    name: StrippedStr = Field(min_length=1)
 
 
 class RegisterBody(ApiModel):
     email: EmailStr
     password: str = Field(min_length=PASSWORD_MIN_LENGTH)
-    display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
+    display_name: StrippedStr = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
 
 
 # --- Sequence sample ---
 class SequenceSampleCreate(ApiModel):
-    uid: str
+    uid: StrippedStr
     sequence_id: int
 
 
@@ -86,15 +96,7 @@ class SequenceSampleCreated(ApiModel):
 
 # --- Tags ---
 class TagCreate(ApiModel):
-    name: str = Field(min_length=1)
-
-    @field_validator('name', mode='before')
-    @classmethod
-    def strip_tag_name(cls, v: object) -> object:
-        # We do it before to strip before counting the length of the string
-        if isinstance(v, str):
-            return v.strip()
-        return v
+    name: StrippedStr = Field(min_length=1)
 
 
 class TagRead(ApiModel):
@@ -157,53 +159,29 @@ class SequenceRef(ApiModel):
 
 
 class SequenceUpdate(ApiModel):
-    name: str | None = None
+    name: StrippedStr | None = Field(default=None, min_length=3)
     sequence_type: SequenceType | None = None
 
 
 class TemplateSequenceCreate(ApiModel):
-    name: str = Field(min_length=1)
+    name: StrippedStr = Field(min_length=3)
     sequence_type: SequenceType
-
-    @field_validator('name', mode='before')
-    @classmethod
-    def strip_name(cls, v: object) -> object:
-        if isinstance(v, str):
-            return v.strip()
-        return v
 
 
 class PrimerUpdate(ApiModel):
-    name: str | None = None
-    uid: str | None = None
-
-    @field_validator('uid', mode='before')
-    @classmethod
-    def strip_uid(cls, v: object) -> object:
-        if isinstance(v, str):
-            return v.strip()
-        return v
-
-    @field_validator('name', mode='before')
-    @classmethod
-    def strip_name(cls, v: object) -> object:
-        if isinstance(v, str):
-            stripped_name = v.strip()
-            if len(stripped_name) < 2:
-                raise ValueError('Primer name must be at least 2 characters long')
-            return stripped_name
-        return v
+    name: StrippedStr | None = Field(default=None, min_length=2)
+    uid: StrippedStr | None = None
 
 
 class PrimerCreate(ApiModel):
-    name: str
-    uid: str | None = None
+    name: StrippedStr
+    uid: StrippedStr | None = None
     sequence: str = Field(min_length=2, pattern=r'^[ACGTacgt]+$')
 
 
 class PrimerBulkSubmission(ApiModel):
-    name: str
-    uid: str | None = None
+    name: StrippedStr
+    uid: StrippedStr | None = None
     sequence: str
 
 
@@ -253,14 +231,14 @@ class LineRef(ApiModel):
 
 
 class LineCreate(ApiModel):
-    uid: str
+    uid: StrippedStr
     allele_ids: list[int] = []
     plasmid_ids: list[int] = []
     parent_ids: list[int] = []
 
 
 class LineUpdate(ApiModel):
-    uid: str | None = None
+    uid: StrippedStr | None = None
     allele_ids: list[int] | None = None
     plasmid_ids: list[int] | None = None
     parent_ids: list[int] | None = None

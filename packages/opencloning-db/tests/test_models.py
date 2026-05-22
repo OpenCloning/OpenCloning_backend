@@ -839,7 +839,7 @@ class TestForeignKeysApply(_MemoryDbTestCase):
 
 
 class TestApiModelValidators(unittest.TestCase):
-    """Edge-case branches in Pydantic validators defined in apimodels."""
+    """Edge-case branches in StrippedStr / apimodel validation."""
 
     def test_template_sequence_create_strip_name_non_string(self):
         from pydantic import ValidationError
@@ -860,7 +860,7 @@ class TestApiModelValidators(unittest.TestCase):
 
         from opencloning_db.apimodels import PrimerUpdate
 
-        with pytest.raises(ValidationError, match='at least 2 characters'):
+        with pytest.raises(ValidationError, match='at least 2'):
             PrimerUpdate(name=' a ')
 
     def test_primer_update_strip_name_non_string(self):

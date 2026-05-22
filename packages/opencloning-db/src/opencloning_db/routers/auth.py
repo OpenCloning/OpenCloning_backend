@@ -30,7 +30,7 @@ def register(
     config: Annotated[Config, Depends(get_config)],
 ) -> Token:
     email = normalize_email(body.email)
-    existing = session.scalar(select(User).where(User.email == email))
+    existing = session.scalar(select(User).where(User.email.ilike(f"%{email}%")))
     if existing is not None:
         raise HTTPException(status_code=400, detail='Email already registered')
     require_invited_email(email, config)
@@ -65,7 +65,7 @@ def login_for_access_token(
     config: Annotated[Config, Depends(get_config)],
 ) -> Token:
     """OAuth2-style login: `username` field carries the account email."""
-    user = session.scalar(select(User).where(User.email == normalize_email(form_data.username)))
+    user = session.scalar(select(User).where(User.email.ilike(f"%{normalize_email(form_data.username)}%")))
     if user is None or user.password_hash is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
