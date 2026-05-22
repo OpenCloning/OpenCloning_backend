@@ -17,7 +17,9 @@ RECORD_STUBS = parse_bool(os.environ['RECORD_STUBS']) if 'RECORD_STUBS' in os.en
 ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3002']
 if os.environ.get('ALLOWED_ORIGINS') is not None:
     # Remove trailing slash from each origin if ends with one
-    ALLOWED_ORIGINS = [origin.rstrip('/') for origin in os.environ['ALLOWED_ORIGINS'].split(',')]
+    ALLOWED_ORIGINS = [
+        origin.rstrip('/') for origin in os.environ['ALLOWED_ORIGINS'].split(',') if origin.rstrip('/') != ''
+    ]
 
 
 # External services settings =================================
