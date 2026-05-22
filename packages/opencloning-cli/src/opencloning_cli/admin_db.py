@@ -25,8 +25,7 @@ def _parse_workspace_role(role: str) -> WorkspaceRole:
 def list_user_emails() -> list[str]:
     config = get_config()
     with Session(db_module.get_engine(config)) as session:
-        emails = session.scalars(select(User.email).order_by(User.email.asc())).all()
-        return sorted(emails)
+        return list(session.scalars(select(User.email).order_by(User.email.asc())).all())
 
 
 def list_workspaces() -> list[dict[str, Any]]:

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from botocore.exceptions import ClientError
 from fastapi import HTTPException, status
 
 from opencloning_db.config import Config
-from opencloning_db.storage import get_storage, is_missing_object_error
+from opencloning_db.storage import get_storage
 
 REGISTRATION_UNAVAILABLE_DETAIL = 'Registration is not available for this email.'
 
@@ -25,12 +24,7 @@ def _parse_invite_file(content: str) -> set[str]:
 
 def load_invited_emails(config: Config) -> set[str]:
     key = config.registration_invites_object_key.strip()
-    try:
-        content = get_storage().read_text(key)
-    except ClientError as exc:
-        if is_missing_object_error(exc):
-            return set()
-        raise
+    content = get_storage().read_text(key)
     return _parse_invite_file(content)
 
 
