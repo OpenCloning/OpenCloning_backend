@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.6.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.5.1...opencloning-db-v1.6.0) (2026-05-22)
+
+
+### Features
+
+* improve database settings via env vars ([#473](https://github.com/OpenCloning/OpenCloning_backend/issues/473)) ([60e82cf](https://github.com/OpenCloning/OpenCloning_backend/commit/60e82cf7146d41861de90e8f79c26ee8810ead30))
+
+
+### Bug Fixes
+
+* add init db command ([#471](https://github.com/OpenCloning/OpenCloning_backend/issues/471)) ([064f342](https://github.com/OpenCloning/OpenCloning_backend/commit/064f342cf55765ef366b89b2aa3dde7456e362b3))
+* Admin settings ([#477](https://github.com/OpenCloning/OpenCloning_backend/issues/477)) ([897cd37](https://github.com/OpenCloning/OpenCloning_backend/commit/897cd37475258b1451495b277d9f6ae0752ca773))
+* allow disable rate limit for frontend testing ([#479](https://github.com/OpenCloning/OpenCloning_backend/issues/479)) ([c0c7200](https://github.com/OpenCloning/OpenCloning_backend/commit/c0c720093747397715a2291e734711e73b28e5b7))
+* Rate limit login ([#476](https://github.com/OpenCloning/OpenCloning_backend/issues/476)) ([1ad53d9](https://github.com/OpenCloning/OpenCloning_backend/commit/1ad53d939b7a5ac38c1f08ea3b1adff0afbcd6fe))
+* Switched to single env var for db settings ([#478](https://github.com/OpenCloning/OpenCloning_backend/issues/478)) ([250540a](https://github.com/OpenCloning/OpenCloning_backend/commit/250540a1079e0749d4a7bca7046ec908268411cc))
+
 ## [1.5.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.5.0...opencloning-db-v1.5.1) (2026-05-20)
 
 
