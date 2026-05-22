@@ -9,6 +9,8 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+import os
+from opencloning_db.config import parse_bool
 
 _lock = threading.Lock()
 _hits: dict[str, list[float]] = {}
@@ -18,7 +20,7 @@ _hits: dict[str, list[float]] = {}
 class LoginRateLimitConfig:
     """Hard-coded limits for ``POST /auth/token``."""
 
-    enabled: bool = True
+    enabled: bool = parse_bool(os.environ.get('OPENCLONING_RATE_LIMIT_ENABLED', True))
     per_ip: int = 20
     window_seconds: int = 60
     per_email: int = 10
