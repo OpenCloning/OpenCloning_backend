@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.6.0...opencloning-v1.6.1) (2026-05-22)
+
+
+### Bug Fixes
+
+* setting env var ALLOWED_ORIGINS to empty string results in empty list ([#480](https://github.com/OpenCloning/OpenCloning_backend/issues/480)) ([fb818d4](https://github.com/OpenCloning/OpenCloning_backend/commit/fb818d4f336b0683cf5352dd1dcde4a7c4919158))
+
 ## [1.6.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.5.1...opencloning-v1.6.0) (2026-05-22)
 
 
