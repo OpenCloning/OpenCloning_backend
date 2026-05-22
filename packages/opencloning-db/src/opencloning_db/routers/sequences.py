@@ -49,8 +49,10 @@ from opencloning_db.models import (
     Tag,
     SequenceSample,
     SourceInput,
+    TemplateSequence,
     User,
     WorkspaceRole,
+    assert_template_sequence_name_available,
     require_real_sequence,
 )
 from fastapi_pagination import Page
@@ -165,6 +167,13 @@ def patch_sequence(
     )
 
     if body.name is not None:
+        if isinstance(db_sequence, TemplateSequence):
+            assert_template_sequence_name_available(
+                session,
+                workspace_id=workspace_id,
+                name=body.name,
+                exclude_id=db_sequence.id,
+            )
         db_sequence.name = body.name
 
     if body.sequence_type is not None:
@@ -180,7 +189,16 @@ def patch_sequence(
                 )
         db_sequence.sequence_type = body.sequence_type
 
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        if body.name is not None and isinstance(db_sequence, TemplateSequence):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Template sequence '{body.name}' already exists in this workspace",
+            ) from None
+        raise
     session.refresh(db_sequence)
     return sequence_ref(db_sequence)
 

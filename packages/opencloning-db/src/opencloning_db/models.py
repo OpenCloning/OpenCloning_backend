@@ -14,11 +14,14 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     JSON,
     Table,
     UniqueConstraint,
     event,
+    select,
+    text,
 )
 
 from sqlalchemy.sql import func
@@ -202,6 +205,15 @@ class Tag(Base):
 
 class InputEntity(Base):
     __tablename__ = 'input_entity'
+    __table_args__ = (
+        Index(
+            'uq_input_entity_template_sequence_workspace_name',
+            'workspace_id',
+            text('lower(name)'),
+            unique=True,
+            postgresql_where=text("type = 'template_sequence'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)
@@ -361,6 +373,37 @@ class TemplateSequence(BaseSequence):
         return opencloning_models.TemplateSequence(
             id=self.id,
             circular=self.sequence_type == SequenceType.plasmid,
+        )
+
+
+def template_sequence_name_taken(
+    session: SASession,
+    *,
+    workspace_id: int,
+    name: str,
+    exclude_id: int | None = None,
+) -> bool:
+    """Return whether another template sequence in the workspace already has this name (case-insensitive)."""
+    stmt = select(TemplateSequence.id).where(
+        TemplateSequence.workspace_id == workspace_id,
+        func.lower(TemplateSequence.name) == name.lower(),
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(TemplateSequence.id != exclude_id)
+    return session.scalar(stmt.limit(1)) is not None
+
+
+def assert_template_sequence_name_available(
+    session: SASession,
+    *,
+    workspace_id: int,
+    name: str,
+    exclude_id: int | None = None,
+) -> None:
+    if template_sequence_name_taken(session, workspace_id=workspace_id, name=name, exclude_id=exclude_id):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Template sequence '{name}' already exists in this workspace",
         )
 
 
