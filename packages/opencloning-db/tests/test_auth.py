@@ -70,7 +70,7 @@ def test_login_wrong_password_for_existing_user_401(auth_client):
     email = f"user-{uuid4().hex}@example.com"
     r1 = auth_client.post(
         '/auth/register',
-        json={'email': email, 'password': 'correct-password', 'display_name': 'U'},
+        json={'email': email, 'password': 'correct-password', 'display_name': 'User'},
     )
     assert r1.status_code == 200
 
@@ -88,12 +88,12 @@ def test_register_duplicate_email_returns_400(auth_client):
     email = f"dup-{uuid4().hex}@example.com"
     r1 = auth_client.post(
         '/auth/register',
-        json={'email': email, 'password': 'p1', 'display_name': 'A'},
+        json={'email': email, 'password': 'password1a', 'display_name': 'User A'},
     )
     assert r1.status_code == 200
     r2 = auth_client.post(
         '/auth/register',
-        json={'email': email, 'password': 'p2', 'display_name': 'B'},
+        json={'email': email, 'password': 'password2b', 'display_name': 'User B'},
     )
     assert r2.status_code == 400
     assert r2.json()['detail'] == 'Email already registered'
@@ -105,8 +105,40 @@ def test_register_invalid_email_422(auth_client):
         '/auth/register',
         json={
             'email': 'not-an-email',
-            'password': 'secret',
-            'display_name': 'X',
+            'password': 'secret-pass',
+            'display_name': 'User',
+        },
+    )
+    assert r.status_code == 422
+    detail = r.json()['detail']
+    assert isinstance(detail, list)
+    assert detail
+
+
+def test_register_short_display_name_422(auth_client):
+    """display_name must satisfy RegisterBody min_length=4."""
+    r = auth_client.post(
+        '/auth/register',
+        json={
+            'email': f"u-{uuid4().hex}@example.com",
+            'password': 'secret-pass',
+            'display_name': 'abc',
+        },
+    )
+    assert r.status_code == 422
+    detail = r.json()['detail']
+    assert isinstance(detail, list)
+    assert detail
+
+
+def test_register_short_password_422(auth_client):
+    """Password must satisfy RegisterBody min_length=8."""
+    r = auth_client.post(
+        '/auth/register',
+        json={
+            'email': f"u-{uuid4().hex}@example.com",
+            'password': 'short',
+            'display_name': 'User',
         },
     )
     assert r.status_code == 422
@@ -116,13 +148,13 @@ def test_register_invalid_email_422(auth_client):
 
 
 def test_register_empty_password_422(auth_client):
-    """Password must satisfy RegisterBody min_length=1."""
+    """Password must satisfy RegisterBody min_length=8."""
     r = auth_client.post(
         '/auth/register',
         json={
             'email': f"u-{uuid4().hex}@example.com",
             'password': '',
-            'display_name': 'X',
+            'display_name': 'User',
         },
     )
     assert r.status_code == 422
@@ -258,17 +290,3 @@ def test_login_rate_limited_by_email(auth_client, monkeypatch):
         )
     assert response.status_code == 429
     assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
-
-
-def test_register_weak_password_still_accepted(auth_client):
-    """Single-character password is allowed today (RegisterBody)."""
-    email = f"weak-{uuid4().hex}@example.com"
-    r = auth_client.post(
-        '/auth/register',
-        json={'email': email, 'password': 'a', 'display_name': 'W'},
-    )
-    assert r.status_code == 200
-    body = r.json()
-    assert set(body) == {'access_token', 'token_type'}
-    assert body['token_type'] == 'bearer'
-    assert body['access_token']

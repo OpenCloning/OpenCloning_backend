@@ -165,8 +165,6 @@ def patch_sequence(
     )
 
     if body.name is not None:
-        if body.name == '':
-            raise HTTPException(status_code=400, detail='Name cannot be an empty string')
         db_sequence.name = body.name
 
     if body.sequence_type is not None:

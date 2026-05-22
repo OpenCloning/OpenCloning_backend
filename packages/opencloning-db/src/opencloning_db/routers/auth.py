@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from opencloning_db.apimodels import RegisterBody, Token, UserPublic
 from opencloning_db.auth.rate_limit import check_login_rate_limit
+from opencloning_db.auth.invites import normalize_email, require_invited_email
 from opencloning_db.auth.security import (
     create_access_token,
     get_password_hash,
@@ -28,16 +29,18 @@ def register(
     session: Annotated[Session, Depends(get_db)],
     config: Annotated[Config, Depends(get_config)],
 ) -> Token:
-    existing = session.scalar(select(User).where(User.email == body.email))
+    email = normalize_email(body.email)
+    existing = session.scalar(select(User).where(User.email.ilike(f"%{email}%")))
     if existing is not None:
         raise HTTPException(status_code=400, detail='Email already registered')
+    require_invited_email(email, config)
     user = User(
-        email=body.email,
+        email=email,
         display_name=body.display_name,
         password_hash=get_password_hash(body.password),
     )
-    label = body.display_name or body.email.split('@')[0]
-    workspace = Workspace(name=f"{label}'s workspace")
+
+    workspace = Workspace(name=f"{body.display_name}'s workspace")
     session.add(user)
     session.add(workspace)
     session.flush()
@@ -62,7 +65,7 @@ def login_for_access_token(
     config: Annotated[Config, Depends(get_config)],
 ) -> Token:
     """OAuth2-style login: `username` field carries the account email."""
-    user = session.scalar(select(User).where(User.email == form_data.username))
+    user = session.scalar(select(User).where(User.email.ilike(f"%{normalize_email(form_data.username)}%")))
     if user is None or user.password_hash is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

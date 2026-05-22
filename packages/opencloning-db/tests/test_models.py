@@ -62,7 +62,7 @@ class _MemoryDbTestCase(unittest.TestCase):
         self.engine = create_engine(_TEST_DATABASE_URL)
         reset_database(self.engine)
         with Session(self.engine) as session:
-            session.add(User(email='test@test.com'))
+            session.add(User(email='test@test.com', display_name='Test'))
             session.commit()
 
     def tearDown(self):
@@ -111,6 +111,15 @@ class TestAnySourceParser(unittest.TestCase):
             opencloning_models.ManuallyTypedSource,
         )
         self.assertEqual(wrapper.source.id, 10)
+
+
+class TestUser(unittest.TestCase):
+    """Tests for ``User``."""
+
+    def test_display_name_too_short_rejected_on_instantiation(self):
+        """display_name must meet DISPLAY_NAME_MIN_LENGTH (ORM ``@validates``)."""
+        with self.assertRaisesRegex(ValueError, 'display_name must be at least 4 characters'):
+            User(email='u@test.com', display_name='abc')
 
 
 class TestBaseRepr(unittest.TestCase):
@@ -830,7 +839,7 @@ class TestForeignKeysApply(_MemoryDbTestCase):
 
 
 class TestApiModelValidators(unittest.TestCase):
-    """Edge-case branches in Pydantic validators defined in apimodels."""
+    """Edge-case branches in StrippedStr / apimodel validation."""
 
     def test_template_sequence_create_strip_name_non_string(self):
         from pydantic import ValidationError
@@ -851,7 +860,7 @@ class TestApiModelValidators(unittest.TestCase):
 
         from opencloning_db.apimodels import PrimerUpdate
 
-        with pytest.raises(ValidationError, match='at least 2 characters'):
+        with pytest.raises(ValidationError, match='at least 2'):
             PrimerUpdate(name=' a ')
 
     def test_primer_update_strip_name_non_string(self):

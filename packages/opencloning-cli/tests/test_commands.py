@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from opencloning_cli.stubs import RecordedStub
 import os
-
+import pytest
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
@@ -12,6 +12,7 @@ import opencloning_db.db as db_module
 from opencloning_db.models import User
 from opencloning_db.storage import ObjectStorage
 from opencloning_cli.main import app
+from .db_reset import reset_database
 
 runner = CliRunner()
 
@@ -27,11 +28,20 @@ def _count_users(config) -> int:
         return session.query(User).count()
 
 
+@pytest.fixture
+def db_fixture(temp_workspace):
+    _, config = temp_workspace
+    engine = db_module.get_engine(config)
+    reset_database(engine)
+    return temp_workspace
+
+
 class TestHelpAndTree:
     def test_root_help(self):
         result = _invoke('--help')
         assert result.exit_code == 0
         assert 'db' in result.output
+        assert 'admin' in result.output
 
     def test_top_level_db_help(self):
         result = _invoke('db', '--help')
@@ -40,10 +50,19 @@ class TestHelpAndTree:
         assert 'seed' in result.output
         assert 'stubs' in result.output
 
+    def test_top_level_admin_help(self):
+        result = _invoke('admin', '--help')
+        assert result.exit_code == 0
+        assert 'list-users' in result.output
+        assert 'list-workspaces' in result.output
+        assert 'assign-user' in result.output
+        assert 'set-instance-admin' in result.output
+
 
 class TestInitCommand:
-    def test_success_human_output(self, temp_workspace):
-        _, config = temp_workspace
+
+    def test_success_human_output(self, db_fixture):
+        _, config = db_fixture
 
         result = _invoke('db', 'init')
 
@@ -62,8 +81,8 @@ class TestSeedCommand:
         assert result.exit_code == 1
         assert 'OPENCLONING_TESTING=1' in result.output
 
-    def test_success_human_output(self, temp_workspace, monkeypatch):
-        _, config = temp_workspace
+    def test_success_human_output(self, db_fixture, monkeypatch):
+        _, config = db_fixture
         monkeypatch.setenv('OPENCLONING_TESTING', '1')
 
         result = _invoke('db', 'seed')
@@ -77,8 +96,9 @@ class TestSeedCommand:
 
 
 class TestStubCommand:
-    def test_write_stubs(self, temp_workspace, monkeypatch):
-        workspace, _ = temp_workspace
+
+    def test_write_stubs(self, db_fixture, monkeypatch):
+        workspace, _ = db_fixture
         monkeypatch.setenv('OPENCLONING_TESTING', '1')
         monkeypatch.chdir(workspace)
         result = _invoke('db', 'stubs')
