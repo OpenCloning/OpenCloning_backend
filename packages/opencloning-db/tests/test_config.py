@@ -2,16 +2,9 @@ import unittest
 from unittest.mock import patch
 import os
 from pydantic import ValidationError
-from opencloning_db.config import Config, build_database_url
+from opencloning_db.config import Config
 import opencloning_db.config as app_config
 
-_db_env = {
-    'OPENCLONING_DB_USER': 'dbuser',
-    'OPENCLONING_DB_PASSWORD': 'dbpassword',
-    'OPENCLONING_DB_HOST': 'localhost',
-    'OPENCLONING_DB_PORT': '5432',
-    'OPENCLONING_DB_NAME': 'opencloning_dev',
-}
 
 common_args = {
     'database_url': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
@@ -32,7 +25,7 @@ class TestConfig(unittest.TestCase):
         with patch.dict(
             os.environ,
             {
-                **_db_env,
+                'OPENCLONING_DB_URL': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
                 'OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL': 'https://s3.amazonaws.com',
                 'OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID': 'test-access-key',
                 'OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY': 'test-secret-key',
@@ -65,30 +58,13 @@ class TestConfig(unittest.TestCase):
         app_config.set_config(previous_config)
 
         message = str(exc_info.exception)
-        self.assertIn('OPENCLONING_DB_USER', message)
-        self.assertIn('OPENCLONING_DB_NAME', message)
-        self.assertIn('OPENCLONING_DB_HOST', message)
-        self.assertIn('OPENCLONING_DB_PORT', message)
-        self.assertIn('OPENCLONING_DB_PASSWORD', message)
+        self.assertIn('OPENCLONING_DB_URL', message)
         self.assertIn('OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL', message)
         self.assertIn('OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID', message)
         self.assertIn('OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY', message)
         self.assertIn('OPENCLONING_OBJECT_STORAGE_BUCKET', message)
         self.assertIn('OPENCLONING_JWT_SECRET', message)
         self.assertIn('.env.dev', message)
-
-    def test_build_database_url_uses_psycopg_driver(self):
-        """Database URL is assembled from discrete connection settings."""
-        self.assertEqual(
-            build_database_url(
-                user='dbuser',
-                password='dbpassword',
-                host='localhost',
-                port='5432',
-                database='opencloning_dev',
-            ),
-            'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
-        )
 
     def test_database_url_rejects_sqlite(self):
         """SQLite URLs are no longer accepted."""

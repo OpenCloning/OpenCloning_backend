@@ -8,18 +8,10 @@ Tests and other callers can still instantiate ``Config`` directly.
 import os
 
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.engine import URL, make_url
-
-_DB_ENV_VARS = (
-    'OPENCLONING_DB_USER',
-    'OPENCLONING_DB_PASSWORD',
-    'OPENCLONING_DB_HOST',
-    'OPENCLONING_DB_PORT',
-    'OPENCLONING_DB_NAME',
-)
+from sqlalchemy.engine import make_url
 
 _REQUIRED_ENV_VARS = (
-    *_DB_ENV_VARS,
+    'OPENCLONING_DB_URL',
     'OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL',
     'OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID',
     'OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY',
@@ -32,18 +24,6 @@ def parse_bool(value: str | bool) -> bool:
     return value in {'1', 'TRUE', 'true', 'True', True}
 
 
-def build_database_url(*, user: str, password: str, host: str, port: str | int, database: str) -> str:
-    """Build a SQLAlchemy PostgreSQL URL using the psycopg (v3) driver."""
-    return URL.create(
-        drivername='postgresql+psycopg',
-        username=user,
-        password=password,
-        host=host,
-        port=int(port),
-        database=database,
-    ).render_as_string(hide_password=False)
-
-
 def _load_config_from_env() -> 'Config':
     missing_vars = [env_name for env_name in _REQUIRED_ENV_VARS if not os.environ.get(env_name)]
     if missing_vars:
@@ -53,13 +33,7 @@ def _load_config_from_env() -> 'Config':
         )
 
     return Config(
-        database_url=build_database_url(
-            user=os.environ['OPENCLONING_DB_USER'],
-            password=os.environ['OPENCLONING_DB_PASSWORD'],
-            host=os.environ['OPENCLONING_DB_HOST'],
-            port=os.environ['OPENCLONING_DB_PORT'],
-            database=os.environ['OPENCLONING_DB_NAME'],
-        ),
+        database_url=os.environ['OPENCLONING_DB_URL'],
         object_storage_endpoint_url=os.environ['OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL'],
         object_storage_access_key_id=os.environ['OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID'],
         object_storage_secret_access_key=os.environ['OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY'],
