@@ -1,6 +1,6 @@
 [project]
 name = "opencloning-cli"
-version = "1.5.1"
+version = "1.6.0"
 description = "Command-line tools for OpenCloning."
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,7 @@ authors = [
 ]
 requires-python = ">=3.11,<4"
 dependencies = [
-    "opencloning-db==1.5.1",  # x-release-please-version
+    "opencloning-db==1.6.0",  # x-release-please-version
     "typer>=0.12.0",
 ]
 
