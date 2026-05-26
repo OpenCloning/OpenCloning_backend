@@ -98,6 +98,33 @@ def test_post_template_sequence_persists_template_subtype(template_sequences_cli
     assert stored.name == 'Template Allele'
 
 
+def test_post_template_sequence_integrity_error_returns_409(template_sequences_client, monkeypatch):
+    """IntegrityError during commit (race after name check) returns 409."""
+    from sqlalchemy.exc import IntegrityError
+
+    c = template_sequences_client['client']
+    headers = workspace_headers(template_sequences_client['token_owner_w1'], template_sequences_client['w1'])
+
+    original_commit = Session.commit
+    call_count = [0]
+
+    def commit_raising_once(self):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            raise IntegrityError('mock', {}, Exception())
+        return original_commit(self)
+
+    monkeypatch.setattr(Session, 'commit', commit_raising_once)
+
+    response = c.post(
+        '/template_sequences',
+        headers=headers,
+        json={'name': 'Race Template', 'sequence_type': 'allele'},
+    )
+    assert response.status_code == 409
+    assert response.json()['detail'] == "Template sequence 'Race Template' already exists in this workspace"
+
+
 def test_post_template_sequence_duplicate_name_409(template_sequences_client):
     c = template_sequences_client['client']
     headers = workspace_headers(template_sequences_client['token_owner_w1'], template_sequences_client['w1'])

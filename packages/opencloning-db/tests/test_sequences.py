@@ -349,6 +349,34 @@ def test_get_sequence_workspace_mismatch_404(sequences_client):
     assert response.json()['detail'] == 'BaseSequence not found'
 
 
+def test_patch_template_sequence_integrity_error_returns_409(sequences_client, monkeypatch):
+    """IntegrityError during PATCH commit (race after name check) returns 409 for templates."""
+    from sqlalchemy.exc import IntegrityError
+
+    c = sequences_client['client']
+    headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
+    sid = sequences_client['template_sequence_id']
+
+    original_commit = Session.commit
+    call_count = [0]
+
+    def commit_raising_once(self):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            raise IntegrityError('mock', {}, Exception())
+        return original_commit(self)
+
+    monkeypatch.setattr(Session, 'commit', commit_raising_once)
+
+    response = c.patch(
+        f'/sequences/{sid}',
+        headers=headers,
+        json={'name': 'race-rename'},
+    )
+    assert response.status_code == 409
+    assert response.json()['detail'] == "Template sequence 'race-rename' already exists in this workspace"
+
+
 def test_patch_sequence_owner_rename_ok(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
