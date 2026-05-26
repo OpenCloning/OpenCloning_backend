@@ -7,6 +7,7 @@ dependencies = [
     "opencloning-db",
     "opencloning-cli",
     "python-multipart>=0.0.27",
+    "alembic>=1.18.4",
 ]
 
 [tool.uv]
@@ -15,8 +16,8 @@ default-groups = ["dev", "test", "ipython"]
 
 [tool.uv.sources]
 opencloning = { workspace = true }
-opencloning-db = { workspace = true }
 opencloning-cli = { workspace = true }
+opencloning-db = { workspace = true }
 
 [tool.uv.workspace]
 members = [
