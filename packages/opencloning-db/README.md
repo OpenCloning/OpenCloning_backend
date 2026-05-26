@@ -39,6 +39,62 @@ That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.
 
 When the cloning app is served through `opencloning_db.combined`, the entire `/cloning` mount is protected by the same bearer-token authentication used by the db API.
 
+## Database migrations (Alembic)
+
+Schema changes are defined in **`opencloning_db.models`** and applied with **Alembic** at the repository root (`alembic/`, `alembic.ini`). Edit the models first, add or adjust a revision under `alembic/versions/`, then run migrations against each database.
+
+Alembic reads the database URL from **`OPENCLONING_DB_URL`** (same as the app; load `.env.dev` for local work). Revision history is stored in the database table `alembic_version`, not in git.
+
+### Autogenerate a migration
+
+From the repository root, with Postgres running and `.env.dev` loaded:
+
+```bash
+source .env.dev
+
+# Optional: see which revision the database is at
+uv run alembic current
+
+# 1. Change opencloning_db/models.py first (desired end state).
+# 2. Generate a revision by diffing models against the live database:
+uv run alembic revision --autogenerate -m "short description of the change"
+
+# 3. Open the new file under alembic/versions/ and review it.
+#    Autogenerate can miss or mis-handle partial indexes, renames, and data backfills.
+```
+
+The database you point at must reflect the **previous** migration state (run `alembic upgrade head` first, or use a fresh DB). If the schema already matches your models but `alembic_version` is empty, stamp instead of upgrading (see below).
+
+### Run migrations
+
+```bash
+source .env.dev
+
+# Apply all pending revisions
+uv run alembic upgrade head
+
+# Confirm
+uv run alembic current
+```
+
+To migrate a different database (for example the test DB), set `OPENCLONING_DB_URL` to that database before running Alembic.
+
+**Schema already up to date?** If the live database already has the objects a migration would add (for example after a manual change or an older deploy), `upgrade` may fail with “already exists”. Mark the database as migrated without running SQL:
+
+```bash
+uv run alembic stamp head
+```
+
+Use `stamp` only when you are sure the live schema matches the migration chain at `head`.
+
+### Useful commands
+
+| Command | Purpose |
+| --- | --- |
+| `uv run alembic history` | List revisions |
+| `uv run alembic downgrade -1` | Revert the last revision |
+| `uv run alembic upgrade head --sql` | Print SQL without executing (offline preview) |
+
 ## Running tests locally
 
 From the repository root:
