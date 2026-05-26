@@ -31,7 +31,8 @@ Run from the repository root:
 uv sync
 docker compose -f docker/docker-compose.postgres.yml up -d
 source .env.dev
-uv run opencloning-cli db seed
+uv run opencloning-cli db migrate
+OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
 ```
 

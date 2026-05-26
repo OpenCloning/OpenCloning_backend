@@ -50,6 +50,8 @@ RUN uv sync --frozen --no-default-groups --no-editable --group test
 
 ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 
+COPY alembic.ini alembic.ini
+COPY alembic alembic
 COPY packages/opencloning-db/tests packages/opencloning-db/tests
 COPY packages/opencloning/tests packages/opencloning/tests
 

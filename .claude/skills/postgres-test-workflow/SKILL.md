@@ -27,13 +27,17 @@ Example:
 export OPENCLONING_TEST_DATABASE_URL=postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test
 ```
 
+## Migrations in CI
+
+Host CI runs `uv run alembic upgrade head` against `opencloning_test` before pytest. Tests also call `opencloning_db.migrations.ensure_schema` via `reset_database`.
+
 ## How Fixtures Work
 
 `packages/opencloning-db/tests/conftest.py`:
 
 - builds a `Config(...)` explicitly for tests instead of depending on ambient runtime env
 - uses temporary directories for `sequence_files_dir` and `sequencing_files_dir`
-- resets the shared Postgres test schema with `drop_all/create_all`
+- ensures schema at Alembic head via `opencloning_db.migrations.reset_database`, then truncates tables between tests
 - overrides FastAPI `get_db` for integration-style API tests
 
 `packages/opencloning-cli/tests/conftest.py`:

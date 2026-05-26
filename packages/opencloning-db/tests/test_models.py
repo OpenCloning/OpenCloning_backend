@@ -41,7 +41,7 @@ from opencloning_db.models import (
 )
 from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
-from tests.db_reset import reset_database
+from opencloning_db.migrations import reset_database
 
 _TEST_DATABASE_URL = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',

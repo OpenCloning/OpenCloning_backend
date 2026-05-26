@@ -1469,6 +1469,7 @@ name = "opencloning-db"
 version = "1.6.1"
 source = { editable = "packages/opencloning-db" }
 dependencies = [
+    { name = "alembic" },
     { name = "boto3" },
     { name = "botocore" },
     { name = "fastapi" },
@@ -1487,6 +1488,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "alembic", specifier = ">=1.18.4" },
     { name = "boto3", specifier = ">=1.43.10,<2" },
     { name = "botocore", specifier = ">=1.43.10,<2" },
     { name = "fastapi", specifier = ">=0.135.3" },

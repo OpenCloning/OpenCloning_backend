@@ -15,7 +15,7 @@ import pytest
 
 import opencloning_db.auth.rate_limit as login_rate_limit
 from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rate_limiter
-from tests.db_reset import reset_database
+from opencloning_db.migrations import reset_database
 
 _JWT_SECRET = 'test-jwt-secret-not-for-production'
 _TEST_DATABASE_URL = os.environ.get(

@@ -12,7 +12,7 @@ import opencloning_db.db as db_module
 from opencloning_db.models import User
 from opencloning_db.storage import ObjectStorage
 from opencloning_cli.main import app
-from .db_reset import reset_database
+from opencloning_db.migrations import reset_database
 
 runner = CliRunner()
 
@@ -46,7 +46,7 @@ class TestHelpAndTree:
     def test_top_level_db_help(self):
         result = _invoke('db', '--help')
         assert result.exit_code == 0
-        assert 'init' in result.output
+        assert 'migrate' in result.output
         assert 'seed' in result.output
         assert 'stubs' in result.output
 
@@ -59,12 +59,12 @@ class TestHelpAndTree:
         assert 'set-instance-admin' in result.output
 
 
-class TestInitCommand:
+class TestMigrateCommand:
 
     def test_success_human_output(self, db_fixture):
         _, config = db_fixture
 
-        result = _invoke('db', 'init')
+        result = _invoke('db', 'migrate')
 
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''

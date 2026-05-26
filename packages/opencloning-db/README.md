@@ -22,8 +22,8 @@ docker compose \
 # Load required local runtime config
 source .env.dev
 
-# Create the schema safely
-uv run opencloning-cli db init
+# Apply schema migrations (creates tables on an empty database)
+uv run opencloning-cli db migrate
 
 # Optional: load the deterministic demo/test baseline
 OPENCLONING_TESTING=1 uv run opencloning-cli db seed
@@ -70,8 +70,9 @@ The database you point at must reflect the **previous** migration state (run `al
 ```bash
 source .env.dev
 
-# Apply all pending revisions
-uv run alembic upgrade head
+# Apply all pending revisions (CLI wrapper or Alembic directly)
+uv run opencloning-cli db migrate
+# uv run alembic upgrade head
 
 # Confirm
 uv run alembic current

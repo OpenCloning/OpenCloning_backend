@@ -7,18 +7,20 @@ workspace.
 
 from __future__ import annotations
 
-import io
 import json
 import base64
 import os
-from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any
 
 import opencloning_db.db as _db_module
 from opencloning_db.config import Config, get_config, parse_bool
-from opencloning_db.init_db import init_db as _init_db
-from opencloning_db.models import Base
+from opencloning_db.init_db import load_seed_data
+from opencloning_db.migrations import (
+    recreate_public_schema,
+    truncate_application_tables,
+    upgrade_head,
+)
 from opencloning_db.storage import ObjectStorage
 from opencloning_db.combined import app
 from fastapi.testclient import TestClient
@@ -66,22 +68,16 @@ def _require_testing_seed_enabled() -> None:
         raise RuntimeError('db seed requires OPENCLONING_TESTING=1')
 
 
-def init() -> None:
-    """Create the configured schema if it does not already exist."""
+def migrate() -> None:
+    """Apply Alembic migrations to the configured database."""
     config = get_config()
-    storage = ObjectStorage(config)
-    storage.validate_bucket_exists()
     _dispose_engine()
-    engine = _db_module.get_engine(config)
-    Base.metadata.create_all(engine)
+    upgrade_head(config.database_url)
     _dispose_engine()
 
 
-def seed() -> None:
-    """Run ``opencloning_db.init_db.init_db`` against *config*.
-
-    Recreates a deterministic database baseline plus fresh sequence and
-    sequencing object prefixes for the configured backend.
+def seed(*, recreate_schema: bool = False) -> None:
+    """Recreate deterministic database baseline and object-storage prefixes.
 
     This is destructive and only allowed when ``OPENCLONING_TESTING=1``.
     """
@@ -89,11 +85,25 @@ def seed() -> None:
     config = get_config()
     _dispose_engine()
     _reset_storage(config)
-    # ``init_db`` prints a success message; keep CLI successful runs silent.
-    with redirect_stdout(io.StringIO()):
-        _init_db()
-    # Dispose again so the next caller sees a fresh engine bound to the
-    # newly-created DB rather than a stale handle from init_db.
+
+    database_url = config.database_url
+    if recreate_schema:
+        engine = _db_module.get_engine(config)
+        try:
+            recreate_public_schema(engine)
+        finally:
+            engine.dispose()
+        upgrade_head(database_url)
+    else:
+        upgrade_head(database_url)
+
+    engine = _db_module.get_engine(config)
+    try:
+        truncate_application_tables(engine)
+        load_seed_data(engine)
+    finally:
+        engine.dispose()
+
     _dispose_engine()
 
 

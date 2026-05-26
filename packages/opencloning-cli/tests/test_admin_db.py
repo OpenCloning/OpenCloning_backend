@@ -11,7 +11,7 @@ from opencloning_db.auth.security import get_password_hash
 from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
 from opencloning_cli import admin_db
 
-from .db_reset import reset_database
+from opencloning_db.migrations import reset_database
 
 
 @pytest.fixture

@@ -15,10 +15,14 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
+    """Prefer an explicit config URL (programmatic API), then OPENCLONING_DB_URL."""
+    url = config.get_main_option('sqlalchemy.url')
+    if url and not url.startswith('driver://'):
+        return url
     url = os.environ.get('OPENCLONING_DB_URL')
-    if not url:
-        raise RuntimeError('OPENCLONING_DB_URL is required for Alembic. For local development load .env.dev')
-    return url
+    if url:
+        return url
+    raise RuntimeError('OPENCLONING_DB_URL is required for Alembic. For local development load .env.dev')
 
 
 def _configure_context(**kwargs) -> None:

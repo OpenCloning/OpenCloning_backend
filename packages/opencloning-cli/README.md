@@ -1,8 +1,6 @@
 # opencloning-cli
 
-`opencloning-cli` is the command-line companion to the OpenCloning backend. It provides safe schema initialization plus guarded local seeding and stub workflows for `opencloning-db`.
-
-The CLI is intentionally narrow. It focuses on schema initialization plus deterministic local/test DB state and stub generation.
+`opencloning-cli` is the command-line companion to the OpenCloning backend. It provides Alembic-backed schema management, guarded local seeding, stub workflows and admin commands for `opencloning-db`.
 
 ## Install
 
@@ -13,29 +11,31 @@ uv sync
 uv run opencloning-cli --help
 ```
 
-## Initialize Schema
+## Apply schema migrations
 
-Use `db init` to create the configured schema without dropping existing tables or rewriting object storage.
+Use `db migrate` to bring the configured database to Alembic head. On an empty database this creates all tables (starts from baseline revision `faa1e883e333`).
 
 ```bash
 source .env.dev
-uv run opencloning-cli db init
+uv run opencloning-cli db migrate
 ```
 
-## Seed Local DB State
+Equivalent to `uv run alembic upgrade head` with `OPENCLONING_DB_URL` set. See [opencloning-db/README.md](../opencloning-db/README.md) for autogenerate workflow.
 
-`db seed` is destructive. It recreates the Postgres baseline and rebuilds the `sequence_files` and `sequencing_files` directories from scratch. To make accidental data loss harder, it only runs when `OPENCLONING_TESTING=1`.
+## Seed local DB state
 
-Use it explicitly when you want the deterministic demo/test baseline:
+`db seed` clears object-storage prefixes, ensures schema at head, truncates application tables, and loads the deterministic demo/test baseline. It only runs when `OPENCLONING_TESTING=1`.
 
 ```bash
 source .env.dev
 OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 ```
 
-## Admin Commands
+Use `--recreate-schema` to drop and recreate the `public` schema before migrating (for broken mid-dev states).
 
-Admin commands read and write the configured database directly (same env as `db init`). Load `.env.dev` first.
+## Admin commands
+
+Admin commands read and write the configured database directly. Load `.env.dev` first.
 
 ```bash
 source .env.dev
@@ -43,21 +43,17 @@ uv run opencloning-cli admin list-users
 uv run opencloning-cli admin list-workspaces
 uv run opencloning-cli admin assign-user view-only-user@example.com 1 --role editor
 uv run opencloning-cli admin set-instance-admin bootstrap@example.com
-uv run opencloning-cli admin set-instance-admin bootstrap@example.com --revoke
 ```
 
 ## Generate DB Stubs
 
  Use `db stubs` to generate JSON stubs for frontend testing. By default it writes one JSON file per yielded stub request into `./stubs/db` (for example, `get_primers.json`, `get_sequences.json`, and similar request-specific files).
 
- The command reseeds the database to the default baseline between stub cases and records the yielded stub requests as separate files in the output directory. Like `db seed`, it requires `OPENCLONING_TESTING=1`.
+`db stubs` writes JSON request/response fixtures for frontend or integration tests. It requires `OPENCLONING_TESTING=1` because it calls `db seed` between cases.
 
 ```bash
-OPENCLONING_TESTING=1 uv run opencloning-cli db stubs
+source .env.dev
+OPENCLONING_TESTING=1 uv run opencloning-cli db stubs --output-dir ./stubs/db
 ```
 
-Use `--output-dir` to override the destination folder:
-
-```bash
-uv run opencloning-cli db stubs --output-dir ./tmp/stubs
-```
+The command reseeds the database to the default baseline between stub cases and records the yielded stub requests as separate files in the output directory.

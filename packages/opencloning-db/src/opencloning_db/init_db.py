@@ -1,20 +1,25 @@
 """
-Initialize the database: create tables and seed from cloning_strategy.json.
-Run this script manually when you need to (re)create the database.
+Load deterministic development/test data into an existing database schema.
+
+Schema must already exist (via Alembic). Use ``opencloning-cli db seed`` for a full
+destructive reset including storage prefixes.
 """
 
 import json
 import os
 import glob
 from pathlib import Path
+
 import opencloning_linkml.datamodel.models as opencloning_models
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
+
 from opencloning_db.auth.security import get_password_hash
 from opencloning_db.config import get_config
 from opencloning_db.context import WriteContext
+from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, get_engine
 from opencloning_db.models import (
-    Base,
     Line,
     Primer,
     Sequence,
@@ -28,14 +33,12 @@ from opencloning_db.models import (
     WorkspaceMembership,
     WorkspaceRole,
 )
-from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, get_engine
 
 
-def init_db():
-    config = get_config()
-    engine = get_engine(config)
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
+def load_seed_data(engine: Engine | None = None) -> None:
+    """Insert the deterministic demo/test baseline into *engine* (or configured default)."""
+    if engine is None:
+        engine = get_engine(get_config())
 
     cloning_strategies = []
     file_names = []
@@ -65,7 +68,6 @@ def init_db():
             is_instance_admin=False,
         )
 
-        # Dev-only: replace with env-driven or unset password before production.
         bootstrap_user = User(
             email='bootstrap@example.com',
             display_name='Bootstrap User',
@@ -176,20 +178,3 @@ def init_db():
         )
         session.add(template_plasmid)
         session.commit()
-
-    print('Database initialized successfully.')
-
-    # from sqlalchemy.schema import CreateTable
-    # from sqlalchemy.dialects import postgresql
-    # sql_file_content = ''
-
-    # # Print DDL for all tables in the database
-    # for table in Base.metadata.tables.values():
-    #     sql_file_content += str(CreateTable(table).compile(dialect=postgresql.dialect()))
-
-    # with open('postgres_ddl.sql', 'w') as f:
-    #     f.write(sql_file_content)
-
-
-if __name__ == '__main__':  # pragma: no cover
-    init_db()

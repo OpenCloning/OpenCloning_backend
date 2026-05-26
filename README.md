@@ -34,8 +34,8 @@ source .env.dev
 brew services stop postgresql
 # Start local Postgres with dev/test/e2e databases
 docker compose -f docker/docker-compose.postgres.yml up -d
-# Create the schema safely
-uv run opencloning-cli db init
+# Apply schema migrations (creates tables on an empty database)
+uv run opencloning-cli db migrate
 # Optional: load the deterministic demo/test baseline
 OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 # Run the database API
