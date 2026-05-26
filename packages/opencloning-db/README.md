@@ -48,7 +48,9 @@ Alembic reads the database URL from **`OPENCLONING_DB_URL`** (same as the app; l
 From the repository root, pass the config file explicitly (or `cd packages/opencloning-db` and omit `-c`):
 
 ```bash
-ALEMBIC="-c packages/opencloning-db/alembic.ini"
+ALEMBIC_CFG=packages/opencloning-db/alembic.ini
+# Use -c "$ALEMBIC_CFG" (quoted). Do not put -c inside the variable: zsh does not
+# split $ALEMBIC on spaces, so `ALEMBIC="-c …"; alembic $ALEMBIC` breaks.
 ```
 
 ### Autogenerate a migration
@@ -57,14 +59,14 @@ With Postgres running and `.env.dev` loaded:
 
 ```bash
 source .env.dev
-ALEMBIC="-c packages/opencloning-db/alembic.ini"
+ALEMBIC_CFG=packages/opencloning-db/alembic.ini
 
 # Optional: see which revision the database is at
-uv run alembic $ALEMBIC current
+uv run alembic -c "$ALEMBIC_CFG" current
 
 # 1. Change src/opencloning_db/models.py first (desired end state).
 # 2. Generate a revision by diffing models against the live database:
-uv run alembic $ALEMBIC revision --autogenerate -m "short description of the change"
+uv run alembic -c "$ALEMBIC_CFG" revision --autogenerate -m "short description of the change"
 
 # 3. Open the new file under packages/opencloning-db/alembic/versions/ and review it.
 #    Autogenerate can miss or mis-handle partial indexes, renames, and data backfills.
@@ -76,14 +78,14 @@ The database you point at must reflect the **previous** migration state (run `al
 
 ```bash
 source .env.dev
-ALEMBIC="-c packages/opencloning-db/alembic.ini"
+ALEMBIC_CFG=packages/opencloning-db/alembic.ini
 
 # Apply all pending revisions (CLI wrapper or Alembic directly)
 uv run opencloning-cli db migrate
-# uv run alembic $ALEMBIC upgrade head
+# uv run alembic -c "$ALEMBIC_CFG" upgrade head
 
 # Confirm
-uv run alembic $ALEMBIC current
+uv run alembic -c "$ALEMBIC_CFG" current
 ```
 
 To migrate a different database (for example the test DB), set `OPENCLONING_DB_URL` to that database before running Alembic.
@@ -91,7 +93,7 @@ To migrate a different database (for example the test DB), set `OPENCLONING_DB_U
 **Schema already up to date?** If the live database already has the objects a migration would add (for example after a manual change or an older deploy), `upgrade` may fail with “already exists”. Mark the database as migrated without running SQL:
 
 ```bash
-uv run alembic $ALEMBIC stamp head
+uv run alembic -c "$ALEMBIC_CFG" stamp head
 ```
 
 Use `stamp` only when you are sure the live schema matches the migration chain at `head`.
@@ -100,9 +102,9 @@ Use `stamp` only when you are sure the live schema matches the migration chain a
 
 | Command | Purpose |
 | --- | --- |
-| `uv run alembic $ALEMBIC history` | List revisions |
-| `uv run alembic $ALEMBIC downgrade -1` | Revert the last revision |
-| `uv run alembic $ALEMBIC upgrade head --sql` | Print SQL without executing (offline preview) |
+| `uv run alembic -c "$ALEMBIC_CFG" history` | List revisions |
+| `uv run alembic -c "$ALEMBIC_CFG" downgrade -1` | Revert the last revision |
+| `uv run alembic -c "$ALEMBIC_CFG" upgrade head --sql` | Print SQL without executing (offline preview) |
 
 ## Running tests locally
 
