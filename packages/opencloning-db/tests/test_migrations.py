@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session
 
 from opencloning_db.init_db import load_seed_data
 from opencloning_db.models import Base, User
-from opencloning_db.migrations import truncate_application_tables
+from opencloning_db.migrations import _alembic_root, truncate_application_tables
+
+
+def test_alembic_root_finds_ini_and_versions():
+    root = _alembic_root()
+    assert (root / 'alembic.ini').is_file()
+    assert (root / 'alembic' / 'versions').is_dir()
 
 
 def test_truncate_application_tables_preserves_alembic_version(postgres_test_engine):

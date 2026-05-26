@@ -20,7 +20,7 @@ source .env.dev
 uv run opencloning-cli db migrate
 ```
 
-Equivalent to `uv run alembic upgrade head` with `OPENCLONING_DB_URL` set. See [opencloning-db/README.md](../opencloning-db/README.md) for autogenerate workflow.
+Equivalent to `uv run alembic -c packages/opencloning-db/alembic.ini upgrade head` with `OPENCLONING_DB_URL` set. See [opencloning-db/README.md](../opencloning-db/README.md) for autogenerate workflow.
 
 ## Seed local DB state
 

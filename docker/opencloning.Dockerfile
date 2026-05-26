@@ -39,8 +39,10 @@ RUN uv sync --frozen --package opencloning --no-default-groups --no-editable
 # Workspace + opencloning-db (for CI / full workspace test sync)
 FROM workspace-opencloning AS workspace-full
 
-COPY packages/opencloning-db/pyproject.toml packages/opencloning-db/
+COPY packages/opencloning-db packages/opencloning-db/
 COPY packages/opencloning-db/README.md packages/opencloning-db/
+COPY packages/opencloning-db/alembic.ini packages/opencloning-db/
+COPY packages/opencloning-db/alembic packages/opencloning-db/alembic
 COPY packages/opencloning-db/src packages/opencloning-db/src
 COPY packages/opencloning-cli packages/opencloning-cli
 
@@ -50,8 +52,6 @@ RUN uv sync --frozen --no-default-groups --no-editable --group test
 
 ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 
-COPY alembic.ini alembic.ini
-COPY alembic alembic
 COPY packages/opencloning-db/tests packages/opencloning-db/tests
 COPY packages/opencloning/tests packages/opencloning/tests
 

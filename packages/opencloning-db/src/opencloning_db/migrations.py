@@ -14,11 +14,13 @@ from sqlalchemy.engine import Engine
 from opencloning_db.models import Base
 
 
-def _repo_root() -> Path:
-    root = Path(__file__).resolve().parents[4]
-    if not (root / 'alembic.ini').is_file():
-        raise RuntimeError(f'Could not locate alembic.ini from package path (tried {root})')
-    return root
+def _alembic_root() -> Path:
+    """Directory containing ``alembic.ini`` (package root in dev, site-packages when bundled)."""
+    here = Path(__file__).resolve()
+    for root in (here.parents[2], here.parents[1]):
+        if (root / 'alembic.ini').is_file():
+            return root
+    raise RuntimeError('Could not locate alembic.ini next to opencloning-db package')
 
 
 def _database_url(database_url: str | None = None) -> str:
@@ -29,7 +31,7 @@ def _database_url(database_url: str | None = None) -> str:
 
 
 def _alembic_config(database_url: str) -> AlembicConfig:
-    cfg = AlembicConfig(str(_repo_root() / 'alembic.ini'))
+    cfg = AlembicConfig(str(_alembic_root() / 'alembic.ini'))
     cfg.set_main_option('sqlalchemy.url', database_url)
     return cfg
 
