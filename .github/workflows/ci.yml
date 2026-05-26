@@ -55,7 +55,7 @@ jobs:
       - name: Apply database migrations
         env:
           OPENCLONING_DB_URL: postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test
-        run: uv run opencloning-cli db migrate
+        run: uv run alembic -c packages/opencloning-db/alembic.ini upgrade head
       - name: Run tests
         env:
           PYTHONUNBUFFERED: "1"
@@ -126,7 +126,7 @@ jobs:
             -f docker/docker-compose.postgres.yml \
             -f docker/docker-compose.ci-tests.yml \
             run --rm tests \
-            sh -c 'uv run opencloning-cli db migrate && python -m pytest -vs -o cache_dir=/tmp/pytest-cache'
+            sh -c 'uv run alembic -c packages/opencloning-db/alembic.ini upgrade head && python -m pytest -vs -o cache_dir=/tmp/pytest-cache'
 
       - name: Tear down Compose (Docker tests)
         if: always()
