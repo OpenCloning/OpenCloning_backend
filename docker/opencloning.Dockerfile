@@ -39,7 +39,7 @@ RUN uv sync --frozen --package opencloning --no-default-groups --no-editable
 # Workspace + opencloning-db (for CI / full workspace test sync)
 FROM workspace-opencloning AS workspace-full
 
-COPY packages/opencloning-db packages/opencloning-db/
+COPY packages/opencloning-db/pyproject.toml packages/opencloning-db/
 COPY packages/opencloning-db/README.md packages/opencloning-db/
 COPY packages/opencloning-db/alembic.ini packages/opencloning-db/
 COPY packages/opencloning-db/alembic packages/opencloning-db/alembic

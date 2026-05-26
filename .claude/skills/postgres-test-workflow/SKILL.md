@@ -29,7 +29,7 @@ export OPENCLONING_TEST_DATABASE_URL=postgresql+psycopg://dbuser:dbpassword@loca
 
 ## Migrations in CI
 
-Host CI runs `uv run opencloning-cli db migrate` against `opencloning_test` before pytest. Tests also call `opencloning_db.migrations.ensure_schema` via `reset_database`.
+Host CI applies migrations against `opencloning_test` before pytest with `uv run alembic -c packages/opencloning-db/alembic.ini upgrade head`. The Docker-compose test job likewise runs `alembic ... upgrade head`. Tests also call `opencloning_db.migrations.ensure_schema` via `reset_database`.
 
 ## How Fixtures Work
 
