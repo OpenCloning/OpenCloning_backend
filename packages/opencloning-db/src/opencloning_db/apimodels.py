@@ -157,6 +157,9 @@ class SequenceRef(ApiModel):
     created_at: datetime
     created_by: UserRef
 
+    def __hash__(self):
+        return hash(self.id)
+
 
 class SequenceUpdate(ApiModel):
     name: StrippedStr | None = Field(default=None, min_length=3)

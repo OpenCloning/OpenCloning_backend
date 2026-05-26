@@ -616,7 +616,8 @@ def get_sequence_children(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
-    return [sequence_ref(s.source.output_sequence) for s in db_sequence.source_inputs]
+    children = [sequence_ref(s.source.output_sequence) for s in db_sequence.source_inputs]
+    return unique_and_sorted(children)
 
 
 @router.get(
