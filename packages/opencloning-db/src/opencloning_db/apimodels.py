@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
 from opencloning_db.models import (
@@ -250,6 +250,43 @@ class LineUpdate(ApiModel):
     allele_ids: list[int] | None = None
     plasmid_ids: list[int] | None = None
     parent_ids: list[int] | None = None
+
+
+class LineBulkSubmission(ApiModel):
+    uid: StrippedStr
+    genotype: list[StrippedStr] = Field(default_factory=list)
+    plasmids: list[StrippedStr] = Field(default_factory=list)
+    parent_uids: list[StrippedStr] = Field(
+        default_factory=list,
+        max_length=2,
+        description='Up to two parent strain UIDs',
+    )
+
+    @field_validator('parent_uids', mode='after')
+    @classmethod
+    def deduplicate_parent_uids(cls, v: list[StrippedStr]) -> list[StrippedStr]:
+        return list(sorted(set(v)))
+
+
+class LineBulkParentUidFlag(ApiModel):
+    uid: str | None
+    line_id: int | None = None
+
+
+class LineBulkSequenceNameFlag(ApiModel):
+    name: str
+    not_found: bool
+    ambiguous: bool
+    duplicated: bool
+    sequence_id: int | None = None
+
+
+class LineBulkRow(LineBulkSubmission):
+    uid_exists: bool
+    uid_duplicated: bool
+    genotype_flags: list[LineBulkSequenceNameFlag]
+    plasmid_flags: list[LineBulkSequenceNameFlag]
+    parent_flags: list[LineBulkParentUidFlag]
 
 
 def _user_ref(user) -> UserRef | None:

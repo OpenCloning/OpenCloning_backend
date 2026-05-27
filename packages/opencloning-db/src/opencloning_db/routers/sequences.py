@@ -1,6 +1,5 @@
 """Sequence, sequencing files, and cloning strategy endpoints."""
 
-from collections import Counter
 from typing import Annotated, List, TypeVar
 from urllib.parse import quote
 
@@ -13,7 +12,7 @@ from opencloning_db.models import BaseSequence
 from botocore.exceptions import ClientError
 from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
-from fastapi.responses import JSONResponse
+from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload
 from sqlalchemy import and_, exists, select, Select
@@ -392,10 +391,6 @@ def _seguid_query(seguid: str, workspace_id: int) -> Select[tuple[Sequence]]:
     )
 
 
-def _frequency_duplicates(values: list[str]) -> set[str]:
-    return {value for value, count in Counter(values).items() if count > 1}
-
-
 def _has_any_sequence_warning(rows: list[SequenceValidationRow], strict: bool) -> bool:
     if not strict:
         return any(row.reading_error for row in rows)
@@ -464,8 +459,8 @@ def _sequence_validation_rows_with_flags(
         except Exception:
             rows.append(SequenceValidationRow(file_name=file_name, reading_error=True))
 
-    duplicate_names = _frequency_duplicates(parsed_names)
-    duplicate_seguids = _frequency_duplicates(parsed_seguids)
+    duplicate_names = frequency_duplicates(parsed_names)
+    duplicate_seguids = frequency_duplicates(parsed_seguids)
 
     db_name_matches = set(
         session.scalars(
@@ -519,7 +514,7 @@ async def post_sequences_bulk(
     loaded_files = await _load_uploaded_files(files)
     validation_rows, records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     if _has_any_sequence_warning(validation_rows, strict):
-        return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in validation_rows])
+        return bulk_conflict_response(validation_rows)
 
     db_sequences = list()
     for record in records:
@@ -533,13 +528,13 @@ async def post_sequences_bulk(
 
     for db_sequence in db_sequences:
         db_sequence.tags.extend(workspace_tags)
-    session.add_all(db_sequences)
-    try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        conflict_rows, _ = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
-        return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in conflict_rows])
+    conflict = bulk_commit_or_conflict(
+        session,
+        db_sequences,
+        lambda: _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)[0],
+    )
+    if conflict is not None:
+        return conflict
 
     for db_sequence in db_sequences:
         session.refresh(db_sequence)

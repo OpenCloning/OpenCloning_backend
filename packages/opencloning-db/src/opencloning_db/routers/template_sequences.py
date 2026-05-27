@@ -1,13 +1,12 @@
 """Template sequence endpoints."""
 
-from collections import Counter
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
 from opencloning_db.apimodels import (
     SequenceRef,
     TemplateSequenceBulkRow,
@@ -25,17 +24,13 @@ from opencloning_db.workspace_deps import (
 router = APIRouter(tags=['template_sequences'])
 
 
-def _frequency_duplicates(values: list[str]) -> set[str]:
-    return {value for value, count in Counter(values).items() if count > 1}
-
-
 def _template_sequence_bulk_rows_with_flags(
     items: list[TemplateSequenceCreate],
     session,
     workspace_id: int,
 ) -> list[TemplateSequenceBulkRow]:
     normalized_names = [item.name.casefold() for item in items]
-    duplicate_names = _frequency_duplicates(normalized_names)
+    duplicate_names = frequency_duplicates(normalized_names)
 
     db_name_matches = set(
         session.scalars(
@@ -110,26 +105,20 @@ def post_template_sequences_bulk(
     ]
     validation_rows = _template_sequence_bulk_rows_with_flags(items, session, workspace_id)
     if _has_any_template_conflict(validation_rows):
-        return JSONResponse(
-            status_code=409,
-            content=[row.model_dump(mode='json') for row in validation_rows],
-        )
+        return bulk_conflict_response(validation_rows)
 
     db_items = [
         TemplateSequence.from_create(name=item.name, sequence_type=item.sequence_type, ctx=ctx) for item in items
     ]
     for db_item in db_items:
         db_item.tags.extend(workspace_tags)
-    session.add_all(db_items)
-    try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        conflict_rows = _template_sequence_bulk_rows_with_flags(items, session, workspace_id)
-        return JSONResponse(
-            status_code=409,
-            content=[row.model_dump(mode='json') for row in conflict_rows],
-        )
+    conflict = bulk_commit_or_conflict(
+        session,
+        db_items,
+        lambda: _template_sequence_bulk_rows_with_flags(items, session, workspace_id),
+    )
+    if conflict is not None:
+        return conflict
 
     for db_item in db_items:
         session.refresh(db_item)
