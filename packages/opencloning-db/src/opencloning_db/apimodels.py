@@ -256,6 +256,16 @@ class LineBulkSubmission(ApiModel):
     uid: StrippedStr
     genotype: list[StrippedStr] = Field(default_factory=list)
     plasmids: list[StrippedStr] = Field(default_factory=list)
+    parent_uids: list[StrippedStr] = Field(
+        default_factory=list,
+        max_length=2,
+        description='Up to two parent strain UIDs',
+    )
+
+
+class LineBulkParentUidFlag(ApiModel):
+    uid: str | None
+    line_id: int | None = None
 
 
 class LineBulkSequenceNameFlag(ApiModel):
@@ -271,6 +281,7 @@ class LineBulkRow(LineBulkSubmission):
     uid_duplicated: bool
     genotype_flags: list[LineBulkSequenceNameFlag]
     plasmid_flags: list[LineBulkSequenceNameFlag]
+    parent_flags: list[LineBulkParentUidFlag]
 
 
 def _user_ref(user) -> UserRef | None:

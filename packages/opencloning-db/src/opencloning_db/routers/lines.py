@@ -10,6 +10,7 @@ from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflic
 
 from opencloning_db.apimodels import (
     DeletedResponse,
+    LineBulkParentUidFlag,
     LineBulkRow,
     LineBulkSequenceNameFlag,
     LineBulkSubmission,
@@ -49,6 +50,34 @@ def _find_base_sequence_ids_by_name_and_type(
             )
         ).all()
     )
+
+
+def _find_line_ids_by_uid(session, workspace_id: int, uid: str) -> list[int]:
+    return list(
+        session.scalars(
+            select(Line.id).where(
+                Line.workspace_id == workspace_id,
+                Line.uid == uid,
+            )
+        ).all()
+    )
+
+
+def _line_bulk_parent_uid_flags(
+    session,
+    workspace_id: int,
+    parent_uids: list[str],
+) -> list[LineBulkParentUidFlag]:
+    flags: list[LineBulkParentUidFlag] = []
+    for uid in parent_uids:
+        matches = _find_line_ids_by_uid(session, workspace_id, uid)
+        flags.append(
+            LineBulkParentUidFlag(
+                uid=uid,
+                line_id=matches[0] if len(matches) == 1 else None,
+            )
+        )
+    return flags
 
 
 def _line_bulk_sequence_name_flags(
@@ -92,11 +121,13 @@ def _line_bulk_rows_with_flags(
 
     rows: list[LineBulkRow] = []
     for item in items:
+        parent_flags = _line_bulk_parent_uid_flags(session, workspace_id, item.parent_uids)
         rows.append(
             LineBulkRow(
                 uid=item.uid,
                 genotype=item.genotype,
                 plasmids=item.plasmids,
+                parent_uids=item.parent_uids,
                 uid_exists=item.uid in db_uid_matches,
                 uid_duplicated=item.uid.casefold() in duplicate_uids,
                 genotype_flags=_line_bulk_sequence_name_flags(
@@ -105,6 +136,7 @@ def _line_bulk_rows_with_flags(
                 plasmid_flags=_line_bulk_sequence_name_flags(
                     session, workspace_id, item.plasmids, SequenceType.plasmid
                 ),
+                parent_flags=parent_flags,
             )
         )
     return rows
@@ -116,6 +148,9 @@ def _has_any_line_conflict(rows: list[LineBulkRow]) -> bool:
             return True
         for flag in row.genotype_flags + row.plasmid_flags:
             if flag.not_found or flag.ambiguous or flag.duplicated:
+                return True
+        for flag in row.parent_flags:
+            if flag.line_id is None:
                 return True
     return False
 
@@ -311,7 +346,13 @@ def post_lines_bulk(
                         expected_type=SequenceType.plasmid,
                     )
                 )
+            parent_ids = [flag.line_id for flag in vrow.parent_flags]
+            parents = [
+                get_line_in_workspace_for_user(session, current_user, workspace_id, parent_id, WorkspaceRole.editor)
+                for parent_id in parent_ids
+            ]
             line = Line.from_create(uid=item.uid, ctx=ctx)
+            line.parents = parents
             line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in sequences_into_line]
             db_lines.append(line)
 
