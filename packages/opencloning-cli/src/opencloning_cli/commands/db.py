@@ -3,6 +3,7 @@
 Nested layout::
 
         db
+            migrate
             seed
             stubs
 
@@ -28,18 +29,28 @@ StubOutputDirOption = Annotated[
     ),
 ]
 
+RecreateSchemaOption = Annotated[
+    bool,
+    typer.Option(
+        '--recreate-schema',
+        help='Drop and recreate the public schema before migrating (destructive).',
+    ),
+]
 
-@db_app.command('init')
-def init_command() -> None:
-    """Create the configured schema if it does not already exist."""
-    lifecycle.init()
+
+@db_app.command('migrate')
+def migrate_command() -> None:
+    """Apply Alembic migrations to the configured database."""
+    lifecycle.migrate()
 
 
 @db_app.command('seed')
-def seed_command() -> None:
+def seed_command(
+    recreate_schema: RecreateSchemaOption = False,
+) -> None:
     """Recreate the local test baseline. Requires ``OPENCLONING_TESTING=1``."""
     try:
-        lifecycle.seed()
+        lifecycle.seed(recreate_schema=recreate_schema)
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc

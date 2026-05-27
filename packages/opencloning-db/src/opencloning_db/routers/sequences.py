@@ -49,8 +49,10 @@ from opencloning_db.models import (
     Tag,
     SequenceSample,
     SourceInput,
+    TemplateSequence,
     User,
     WorkspaceRole,
+    assert_template_sequence_name_available,
     require_real_sequence,
 )
 from fastapi_pagination import Page
@@ -165,6 +167,13 @@ def patch_sequence(
     )
 
     if body.name is not None:
+        if isinstance(db_sequence, TemplateSequence):
+            assert_template_sequence_name_available(
+                session,
+                workspace_id=workspace_id,
+                name=body.name,
+                exclude_id=db_sequence.id,
+            )
         db_sequence.name = body.name
 
     if body.sequence_type is not None:
@@ -180,7 +189,16 @@ def patch_sequence(
                 )
         db_sequence.sequence_type = body.sequence_type
 
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        if body.name is not None and isinstance(db_sequence, TemplateSequence):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Template sequence '{body.name}' already exists in this workspace",
+            ) from None
+        raise  # pragma: no cover
     session.refresh(db_sequence)
     return sequence_ref(db_sequence)
 
@@ -598,7 +616,8 @@ def get_sequence_children(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
-    return [sequence_ref(s.source.output_sequence) for s in db_sequence.source_inputs]
+    children = [sequence_ref(s.source.output_sequence) for s in db_sequence.source_inputs]
+    return unique_and_sorted(children)
 
 
 @router.get(

@@ -22,8 +22,8 @@ docker compose \
 # Load required local runtime config
 source .env.dev
 
-# Create the schema safely
-uv run opencloning-cli db init
+# Apply schema migrations (creates tables on an empty database)
+uv run opencloning-cli db migrate
 
 # Optional: load the deterministic demo/test baseline
 OPENCLONING_TESTING=1 uv run opencloning-cli db seed
@@ -38,6 +38,73 @@ uv run uvicorn opencloning_db.api:app --reload --reload-exclude='.venv'
 That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.0.1:8000/cloning) and the database API at [http://127.0.0.1:8001/db](http://127.0.0.1:8001/db). That's what the OpenCloningDB frontend expects.
 
 When the cloning app is served through `opencloning_db.combined`, the entire `/cloning` mount is protected by the same bearer-token authentication used by the db API.
+
+## Database migrations (Alembic)
+
+Schema changes are defined in **`opencloning_db.models`** and applied with **Alembic** in this package (`alembic/`, `alembic.ini`). Edit the models first, add or adjust a revision under `alembic/versions/`, then run migrations against each database.
+
+Alembic reads the database URL from **`OPENCLONING_DB_URL`** (same as the app; load `.env.dev` for local work). Revision history is stored in the database table `alembic_version`, not in git.
+
+From the repository root, pass the config file explicitly (or `cd packages/opencloning-db` and omit `-c`):
+
+```bash
+ALEMBIC_CFG=packages/opencloning-db/alembic.ini
+# Use -c "$ALEMBIC_CFG" (quoted). Do not put -c inside the variable: zsh does not
+# split $ALEMBIC on spaces, so `ALEMBIC="-c …"; alembic $ALEMBIC` breaks.
+```
+
+### Autogenerate a migration
+
+With Postgres running and `.env.dev` loaded:
+
+```bash
+source .env.dev
+ALEMBIC_CFG=packages/opencloning-db/alembic.ini
+
+# Optional: see which revision the database is at
+uv run alembic -c "$ALEMBIC_CFG" current
+
+# 1. Change src/opencloning_db/models.py first (desired end state).
+# 2. Generate a revision by diffing models against the live database:
+uv run alembic -c "$ALEMBIC_CFG" revision --autogenerate -m "short description of the change"
+
+# 3. Open the new file under packages/opencloning-db/alembic/versions/ and review it.
+#    Autogenerate can miss or mis-handle partial indexes, renames, and data backfills.
+```
+
+The database you point at must reflect the **previous** migration state (run `alembic upgrade head` first, or use a fresh DB). If the schema already matches your models but `alembic_version` is empty, stamp instead of upgrading (see below).
+
+### Run migrations
+
+```bash
+source .env.dev
+ALEMBIC_CFG=packages/opencloning-db/alembic.ini
+
+# Apply all pending revisions (CLI wrapper or Alembic directly)
+uv run opencloning-cli db migrate
+# uv run alembic -c "$ALEMBIC_CFG" upgrade head
+
+# Confirm
+uv run alembic -c "$ALEMBIC_CFG" current
+```
+
+To migrate a different database (for example the test DB), set `OPENCLONING_DB_URL` to that database before running Alembic.
+
+**Schema already up to date?** If the live database already has the objects a migration would add (for example after a manual change or an older deploy), `upgrade` may fail with “already exists”. Mark the database as migrated without running SQL:
+
+```bash
+uv run alembic -c "$ALEMBIC_CFG" stamp head
+```
+
+Use `stamp` only when you are sure the live schema matches the migration chain at `head`.
+
+### Useful commands
+
+| Command | Purpose |
+| --- | --- |
+| `uv run alembic -c "$ALEMBIC_CFG" history` | List revisions |
+| `uv run alembic -c "$ALEMBIC_CFG" downgrade -1` | Revert the last revision |
+| `uv run alembic -c "$ALEMBIC_CFG" upgrade head --sql` | Print SQL without executing (offline preview) |
 
 ## Running tests locally
 

@@ -2,12 +2,7 @@
 name = "opencloning-workspace"
 version = "0.0.0"
 requires-python = ">=3.11,<4"
-dependencies = [
-    "opencloning",
-    "opencloning-db",
-    "opencloning-cli",
-    "python-multipart>=0.0.27",
-]
+dependencies = ["opencloning", "opencloning-db", "opencloning-cli"]
 
 [tool.uv]
 package = false
@@ -15,8 +10,8 @@ default-groups = ["dev", "test", "ipython"]
 
 [tool.uv.sources]
 opencloning = { workspace = true }
-opencloning-db = { workspace = true }
 opencloning-cli = { workspace = true }
+opencloning-db = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -45,10 +40,7 @@ test = [
 ]
 
 # This is needed for the notebooks in the docs
-ipython = [
-    "ipython>=8.20.0",
-    "ipykernel>=6.28.0",
-]
+ipython = ["ipython>=8.20.0", "ipykernel>=6.28.0"]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"

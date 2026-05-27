@@ -41,6 +41,8 @@ FROM workspace-opencloning AS workspace-full
 
 COPY packages/opencloning-db/pyproject.toml packages/opencloning-db/
 COPY packages/opencloning-db/README.md packages/opencloning-db/
+COPY packages/opencloning-db/alembic.ini packages/opencloning-db/
+COPY packages/opencloning-db/alembic packages/opencloning-db/alembic
 COPY packages/opencloning-db/src packages/opencloning-db/src
 COPY packages/opencloning-cli packages/opencloning-cli
 

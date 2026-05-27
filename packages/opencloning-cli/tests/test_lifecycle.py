@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from opencloning_cli.lifecycle import _STUB_CREATED_AT, _replace_created_at_in_json
+import pytest
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+
+import opencloning_db.db as db_module
+from opencloning_db.models import User
+from opencloning_db.migrations import reset_database
+from opencloning_db.storage import ObjectStorage
+from opencloning_cli.lifecycle import _STUB_CREATED_AT, _replace_created_at_in_json, seed
 
 
 def test_replace_created_at_nested_and_lists():
@@ -30,3 +38,29 @@ def test_replace_created_at_scalars_unchanged():
     assert _replace_created_at_in_json('text') == 'text'
     assert _replace_created_at_in_json(3) == 3
     assert _replace_created_at_in_json(None) is None
+
+
+def test_seed_requires_testing_mode(monkeypatch):
+    monkeypatch.delenv('OPENCLONING_TESTING', raising=False)
+    with pytest.raises(RuntimeError, match='OPENCLONING_TESTING=1'):
+        seed(recreate_schema=True)
+
+
+def test_seed_recreate_schema_rebuilds_broken_schema(temp_workspace, monkeypatch):
+    """Dropping an app table is repaired by recreate_schema + migrate + seed."""
+    _, config = temp_workspace
+    monkeypatch.setenv('OPENCLONING_TESTING', '1')
+    engine = db_module.get_engine(config)
+    reset_database(engine)
+
+    with engine.begin() as conn:
+        conn.execute(text('DROP TABLE "user" CASCADE'))
+    engine.dispose()
+
+    seed(recreate_schema=True)
+
+    with Session(db_module.get_engine(config)) as session:
+        assert session.query(User).count() > 0
+    storage = ObjectStorage(config)
+    assert len(storage.list_keys(config.sequence_objects_prefix)) == 48
+    assert len(storage.list_keys(config.sequencing_objects_prefix)) == 3
