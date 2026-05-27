@@ -171,6 +171,11 @@ class TemplateSequenceCreate(ApiModel):
     sequence_type: SequenceType
 
 
+class TemplateSequenceBulkRow(TemplateSequenceCreate):
+    name_exists: bool
+    name_duplicated: bool
+
+
 class PrimerUpdate(ApiModel):
     name: StrippedStr | None = Field(default=None, min_length=1)
     uid: StrippedStr | None = None
