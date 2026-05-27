@@ -1,14 +1,13 @@
 """Primer endpoints."""
 
-from collections import Counter
 import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+
+from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
 
 from opencloning_db.apimodels import (
     DeletedResponse,
@@ -54,10 +53,6 @@ def _normalize_uid(value: str | None) -> str | None:
     return stripped.casefold()
 
 
-def _frequency_duplicates(values: list[str]) -> set[str]:
-    return {value for value, count in Counter(values).items() if count > 1}
-
-
 def _is_invalid_sequence(value: str) -> bool:
     return len(value) <= 2 or re.fullmatch(r'[ACGTacgt]+', value) is None
 
@@ -71,9 +66,9 @@ def _primer_bulk_rows_with_flags(
     normalized_sequences = [_normalize_sequence(primer.sequence) for primer in primers]
     normalized_uids = [_normalize_uid(primer.uid) for primer in primers]
 
-    duplicate_names = _frequency_duplicates(normalized_names)
-    duplicate_sequences = _frequency_duplicates(normalized_sequences)
-    duplicate_uids = _frequency_duplicates([uid for uid in normalized_uids if uid is not None])
+    duplicate_names = frequency_duplicates(normalized_names)
+    duplicate_sequences = frequency_duplicates(normalized_sequences)
+    duplicate_uids = frequency_duplicates([uid for uid in normalized_uids if uid is not None])
 
     db_name_matches = set(
         session.scalars(
@@ -220,27 +215,20 @@ def post_primers_bulk(
     ]
     validation_rows = _primer_bulk_rows_with_flags(primers, session, workspace_id)
     if _has_any_conflict(validation_rows, strict):
-        return JSONResponse(
-            status_code=409,
-            content=[row.model_dump(mode='json') for row in validation_rows],
-        )
+        return bulk_conflict_response(validation_rows)
 
     db_primers: list[Primer] = [
         Primer.from_create(name=primer.name, sequence=primer.sequence, uid=primer.uid, ctx=ctx) for primer in primers
     ]
     for db_primer in db_primers:
         db_primer.tags.extend(workspace_tags)
-    session.add_all(db_primers)
-    try:
-        session.commit()
-    except IntegrityError:
-        # In case someone would have created the primers in the meantime, we need to return the conflict rows
-        session.rollback()
-        conflict_rows = _primer_bulk_rows_with_flags(primers, session, workspace_id)
-        return JSONResponse(
-            status_code=409,
-            content=[row.model_dump(mode='json') for row in conflict_rows],
-        )
+    conflict = bulk_commit_or_conflict(
+        session,
+        db_primers,
+        lambda: _primer_bulk_rows_with_flags(primers, session, workspace_id),
+    )
+    if conflict is not None:
+        return conflict
 
     for db_primer in db_primers:
         session.refresh(db_primer)

@@ -50,6 +50,14 @@ def lines_client(engine_client_config):
             seguid='SEGUID-ALLELE-AUX',
             created_by_id=ctx['owner_w1_id'],
         )
+        allele_w1_duplicate_name = Sequence(
+            workspace_id=ctx['w1'],
+            name='allele-w1',
+            file_path='allele_w1_dup.gb',
+            sequence_type=SequenceType.allele,
+            seguid='SEGUID-ALLELE-W1-DUP',
+            created_by_id=ctx['owner_w1_id'],
+        )
         template_allele_w1 = TemplateSequence(
             workspace_id=ctx['w1'],
             name='template-allele-w1',
@@ -94,6 +102,7 @@ def lines_client(engine_client_config):
                 allele_w1,
                 plasmid_w1,
                 allele_w1_aux,
+                allele_w1_duplicate_name,
                 template_allele_w1,
                 allele_w2,
                 plasmid_w2,
@@ -701,3 +710,210 @@ def test_get_lines_filter_by_created_by(lines_client):
     r = c.get('/lines?created_by=nobody', headers=headers_owner)
     assert r.status_code == 200
     assert r.json()['items'] == []
+
+
+def test_validate_upload_lines_flags(lines_client):
+    c = lines_client['client']
+    owner_headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    viewer_headers = workspace_headers(lines_client['token_viewer_w1'], lines_client['w1'])
+    payload = [
+        {
+            'uid': 'L-W1',
+            'genotype': ['allele-w1'],
+            'plasmids': ['plasmid-w1'],
+        },
+        {
+            'uid': 'L-BULK-DUP',
+            'genotype': ['allele-w1'],
+            'plasmids': [],
+        },
+        {
+            'uid': ' L-BULK-DUP ',
+            'genotype': [],
+            'plasmids': [],
+        },
+        {
+            'uid': 'L-BULK-FRESH',
+            'genotype': ['missing-allele'],
+            'plasmids': ['plasmid-w1'],
+        },
+        {
+            'uid': 'L-BULK-WRONG-TYPE',
+            'genotype': ['plasmid-w1'],
+            'plasmids': [],
+        },
+    ]
+
+    r = c.post('/lines/validate-upload', headers=viewer_headers, json=payload)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 5
+
+    assert rows[0]['uid_exists'] is True
+    assert rows[0]['uid_duplicated'] is False
+    assert rows[0]['genotype_flags'][0]['not_found'] is False
+    assert rows[0]['genotype_flags'][0]['ambiguous'] is True
+    assert rows[0]['genotype_flags'][0]['sequence_id'] is None
+    assert rows[0]['plasmid_flags'][0]['not_found'] is False
+    assert rows[0]['plasmid_flags'][0]['sequence_id'] == lines_client['plasmid_w1_id']
+
+    assert rows[1]['uid_exists'] is False
+    assert rows[1]['uid_duplicated'] is True
+    assert rows[2]['uid_duplicated'] is True
+
+    assert rows[3]['genotype_flags'][0]['not_found'] is True
+    assert rows[3]['genotype_flags'][0]['sequence_id'] is None
+    assert rows[3]['plasmid_flags'][0]['not_found'] is False
+    assert rows[3]['plasmid_flags'][0]['sequence_id'] == lines_client['plasmid_w1_id']
+
+    assert rows[4]['genotype_flags'][0]['not_found'] is True
+    assert rows[4]['genotype_flags'][0]['sequence_id'] is None
+
+    # Seeded line still only one row
+    get_r = c.get(f"/lines/{lines_client['line_w1_id']}", headers=owner_headers)
+    assert get_r.status_code == 200
+
+
+def test_post_lines_bulk_success(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [
+        {
+            'uid': 'L-BULK-NEW-1',
+            'genotype': ['allele-aux'],
+            'plasmids': ['plasmid-w1'],
+        },
+        {
+            'uid': 'L-BULK-NEW-2',
+            'genotype': ['template-allele-w1'],
+            'plasmids': [],
+        },
+    ]
+
+    r = c.post('/lines/bulk', headers=headers, json=payload)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 2
+    expected_keys = {'id', 'uid', 'sequences_in_line', 'parent_ids', 'tags', 'created_at', 'created_by'}
+    assert set(rows[0]) == expected_keys
+    assert rows[0]['uid'] == 'L-BULK-NEW-1'
+    assert rows[1]['uid'] == 'L-BULK-NEW-2'
+    assert len(rows[0]['sequences_in_line']) == 2
+    assert len(rows[1]['sequences_in_line']) == 1
+    assert rows[1]['sequences_in_line'][0]['sequence']['type'] == 'template_sequence'
+
+
+def test_post_lines_bulk_conflict_atomic(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [
+        {'uid': 'L-W1', 'genotype': ['allele-aux'], 'plasmids': []},
+        {'uid': 'L-BULK-NOT-CREATED', 'genotype': ['allele-aux'], 'plasmids': []},
+    ]
+
+    r = c.post('/lines/bulk', headers=headers, json=payload)
+    assert r.status_code == 409
+    rows = r.json()
+    assert len(rows) == 2
+    assert rows[0]['uid_exists'] is True
+    assert rows[1]['uid_exists'] is False
+
+    create_r = c.post(
+        '/lines',
+        headers=headers,
+        json={
+            'uid': 'L-BULK-NOT-CREATED',
+            'allele_ids': [lines_client['allele_w1_aux_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert create_r.status_code == 200
+
+
+def test_post_lines_bulk_viewer_forbidden(lines_client):
+    c = lines_client['client']
+    owner_headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    viewer_headers = workspace_headers(lines_client['token_viewer_w1'], lines_client['w1'])
+    payload = [{'uid': 'L-BULK-VIEWER', 'genotype': ['allele-aux'], 'plasmids': []}]
+
+    validate_r = c.post('/lines/validate-upload', headers=viewer_headers, json=payload)
+    assert validate_r.status_code == 200
+
+    bulk_r = c.post('/lines/bulk', headers=viewer_headers, json=payload)
+    assert bulk_r.status_code == 403
+    assert 'Not allowed' in bulk_r.json()['detail']
+
+    create_r = c.post(
+        '/lines',
+        headers=owner_headers,
+        json={
+            'uid': 'L-BULK-VIEWER',
+            'allele_ids': [lines_client['allele_w1_aux_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert create_r.status_code == 200
+
+
+def test_post_lines_bulk_duplicate_uid_in_batch(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [
+        {'uid': 'L-BULK-UID-DUP', 'genotype': ['allele-aux'], 'plasmids': []},
+        {'uid': 'l-bulk-uid-dup', 'genotype': ['allele-aux'], 'plasmids': []},
+    ]
+
+    r = c.post('/lines/bulk', headers=headers, json=payload)
+    assert r.status_code == 409
+    rows = r.json()
+    assert rows[0]['uid_duplicated'] is True
+    assert rows[1]['uid_duplicated'] is True
+
+    create_r = c.post(
+        '/lines',
+        headers=headers,
+        json={
+            'uid': 'L-BULK-UID-DUP',
+            'allele_ids': [lines_client['allele_w1_aux_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert create_r.status_code == 200
+
+
+def test_post_lines_bulk_genotype_ambiguous(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [{'uid': 'L-BULK-AMBIG', 'genotype': ['allele-w1'], 'plasmids': []}]
+
+    r = c.post('/lines/bulk', headers=headers, json=payload)
+    assert r.status_code == 409
+    rows = r.json()
+    assert rows[0]['genotype_flags'][0]['ambiguous'] is True
+
+    create_r = c.post(
+        '/lines',
+        headers=headers,
+        json={
+            'uid': 'L-BULK-AMBIG',
+            'allele_ids': [lines_client['allele_w1_aux_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert create_r.status_code == 200
+
+
+def test_post_lines_bulk_accepts_template_sequence_name(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [{'uid': 'L-BULK-TEMPLATE', 'genotype': ['template-allele-w1'], 'plasmids': []}]
+
+    r = c.post('/lines/bulk', headers=headers, json=payload)
+    assert r.status_code == 200
+    body = r.json()[0]
+    assert body['uid'] == 'L-BULK-TEMPLATE'
+    assert body['sequences_in_line'][0]['sequence']['type'] == 'template_sequence'

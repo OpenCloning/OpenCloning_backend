@@ -252,6 +252,27 @@ class LineUpdate(ApiModel):
     parent_ids: list[int] | None = None
 
 
+class LineBulkSubmission(ApiModel):
+    uid: StrippedStr
+    genotype: list[StrippedStr] = Field(default_factory=list)
+    plasmids: list[StrippedStr] = Field(default_factory=list)
+
+
+class LineBulkSequenceNameFlag(ApiModel):
+    name: str
+    not_found: bool
+    ambiguous: bool
+    duplicated: bool
+    sequence_id: int | None = None
+
+
+class LineBulkRow(LineBulkSubmission):
+    uid_exists: bool
+    uid_duplicated: bool
+    genotype_flags: list[LineBulkSequenceNameFlag]
+    plasmid_flags: list[LineBulkSequenceNameFlag]
+
+
 def _user_ref(user) -> UserRef | None:
     if user is None:
         return None

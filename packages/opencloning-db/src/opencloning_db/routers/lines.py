@@ -2,12 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import Select, and_, exists, select
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import Select, and_, exists, func, select
 from sqlalchemy.orm import selectinload
+
+from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
 
 from opencloning_db.apimodels import (
     DeletedResponse,
+    LineBulkRow,
+    LineBulkSequenceNameFlag,
+    LineBulkSubmission,
     LineCreate,
     LineRef,
     LineUpdate,
@@ -26,6 +31,93 @@ from opencloning_db.workspace_deps import (
 )
 
 router = APIRouter(tags=['lines'])
+
+
+def _find_base_sequence_ids_by_name_and_type(
+    session,
+    workspace_id: int,
+    name: str,
+    sequence_type: SequenceType,
+) -> list[int]:
+    """IDs of BaseSequence rows in the workspace with this type and display name (case-insensitive equality)."""
+    return list(
+        session.scalars(
+            select(BaseSequence.id).where(
+                BaseSequence.workspace_id == workspace_id,
+                BaseSequence.sequence_type == sequence_type,
+                func.lower(BaseSequence.name) == name.casefold(),
+            )
+        ).all()
+    )
+
+
+def _line_bulk_sequence_name_flags(
+    session,
+    workspace_id: int,
+    names: list[str],
+    sequence_type: SequenceType,
+) -> list[LineBulkSequenceNameFlag]:
+    duplicate_names = frequency_duplicates([n.casefold() for n in names])
+    flags: list[LineBulkSequenceNameFlag] = []
+    for n in names:
+        matches = _find_base_sequence_ids_by_name_and_type(session, workspace_id, n, sequence_type)
+        flags.append(
+            LineBulkSequenceNameFlag(
+                name=n,
+                not_found=len(matches) == 0,
+                ambiguous=len(matches) > 1,
+                duplicated=n.casefold() in duplicate_names,
+                sequence_id=matches[0] if len(matches) == 1 else None,
+            )
+        )
+    return flags
+
+
+def _line_bulk_rows_with_flags(
+    items: list[LineBulkSubmission],
+    session,
+    workspace_id: int,
+) -> list[LineBulkRow]:
+    uids = [item.uid for item in items]
+    duplicate_uids = frequency_duplicates([uid.casefold() for uid in uids])
+
+    db_uid_matches = set(
+        session.scalars(
+            select(Line.uid).where(
+                Line.workspace_id == workspace_id,
+                Line.uid.in_(set(uids)),
+            )
+        ).all()
+    )
+
+    rows: list[LineBulkRow] = []
+    for item in items:
+        rows.append(
+            LineBulkRow(
+                uid=item.uid,
+                genotype=item.genotype,
+                plasmids=item.plasmids,
+                uid_exists=item.uid in db_uid_matches,
+                uid_duplicated=item.uid.casefold() in duplicate_uids,
+                genotype_flags=_line_bulk_sequence_name_flags(
+                    session, workspace_id, item.genotype, SequenceType.allele
+                ),
+                plasmid_flags=_line_bulk_sequence_name_flags(
+                    session, workspace_id, item.plasmids, SequenceType.plasmid
+                ),
+            )
+        )
+    return rows
+
+
+def _has_any_line_conflict(rows: list[LineBulkRow]) -> bool:
+    for row in rows:
+        if row.uid_exists or row.uid_duplicated:
+            return True
+        for flag in row.genotype_flags + row.plasmid_flags:
+            if flag.not_found or flag.ambiguous or flag.duplicated:
+                return True
+    return False
 
 
 def get_line_subquery(line_id_col, sequence_type: SequenceType, name: str) -> Select:
@@ -170,6 +262,70 @@ def post_line(
     session.commit()
     session.refresh(line)
     return line_ref(line)
+
+
+@router.post('/lines/validate-upload', response_model=list[LineBulkRow])
+def validate_upload_lines(
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    items: list[LineBulkSubmission] = Body(..., description='Lines to validate', min_length=1),
+):
+    _, session, workspace_id = ctx.destructure()
+    return _line_bulk_rows_with_flags(items, session, workspace_id)
+
+
+@router.post('/lines/bulk', response_model=list[LineRef])
+def post_lines_bulk(
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+    items: list[LineBulkSubmission] = Body(..., description='Lines to create', min_length=1),
+):
+    current_user, session, workspace_id = ctx.destructure()
+    validation_rows = _line_bulk_rows_with_flags(items, session, workspace_id)
+    if _has_any_line_conflict(validation_rows):
+        return bulk_conflict_response(validation_rows)
+
+    db_lines: list[Line] = []
+    with session.no_autoflush:
+        for item, vrow in zip(items, validation_rows, strict=True):
+            sequences_into_line = []
+            for flag in vrow.genotype_flags:
+                assert flag.sequence_id is not None
+                sequences_into_line.append(
+                    get_sequence_in_workspace_for_user(
+                        session,
+                        current_user,
+                        workspace_id,
+                        flag.sequence_id,
+                        WorkspaceRole.editor,
+                        expected_type=SequenceType.allele,
+                    )
+                )
+            for flag in vrow.plasmid_flags:
+                assert flag.sequence_id is not None
+                sequences_into_line.append(
+                    get_sequence_in_workspace_for_user(
+                        session,
+                        current_user,
+                        workspace_id,
+                        flag.sequence_id,
+                        WorkspaceRole.editor,
+                        expected_type=SequenceType.plasmid,
+                    )
+                )
+            line = Line.from_create(uid=item.uid, ctx=ctx)
+            line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in sequences_into_line]
+            db_lines.append(line)
+
+    conflict = bulk_commit_or_conflict(
+        session,
+        db_lines,
+        lambda: _line_bulk_rows_with_flags(items, session, workspace_id),
+    )
+    if conflict is not None:
+        return conflict
+
+    for line in db_lines:
+        session.refresh(line)
+    return [line_ref(line) for line in db_lines]
 
 
 @router.patch('/lines/{line_id}', response_model=LineRef)
