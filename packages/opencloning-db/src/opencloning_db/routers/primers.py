@@ -30,6 +30,7 @@ from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
     get_primer_in_workspace_for_user,
+    get_tag_in_workspace_for_user,
     get_viewer_workspace_ctx,
 )
 
@@ -210,8 +211,13 @@ def post_primers_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     primers: list[PrimerBulkSubmission],
     strict: bool = Query(description='Fail if duplicate name or sequence exists', default=True),
+    tags: list[int] = Query(description='Tag IDs to apply to all created primers', default_factory=list),
 ):
     current_user, session, workspace_id = ctx.destructure()
+    workspace_tags = [
+        get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
+        for tag_id in sorted(set(tags))
+    ]
     validation_rows = _primer_bulk_rows_with_flags(primers, session, workspace_id)
     if _has_any_conflict(validation_rows, strict):
         return JSONResponse(
@@ -222,6 +228,8 @@ def post_primers_bulk(
     db_primers: list[Primer] = [
         Primer.from_create(name=primer.name, sequence=primer.sequence, uid=primer.uid, ctx=ctx) for primer in primers
     ]
+    for db_primer in db_primers:
+        db_primer.tags.extend(workspace_tags)
     session.add_all(db_primers)
     try:
         session.commit()

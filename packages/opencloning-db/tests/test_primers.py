@@ -35,6 +35,7 @@ def primers_client(engine_client_config):
         primer_w2 = Primer.from_create(name='w2_primer', sequence='GCGC', ctx=w2_ctx)
         primer_w2_b = Primer.from_create(name='w2_primer_b', sequence='ATAT', ctx=w2_ctx)
         tag_w1 = Tag(name='primer-tag-w1', workspace_id=ctx['w1'])
+        tag_w2 = Tag(name='primer-tag-w2', workspace_id=ctx['w2'])
         primer_tagged.tags.append(tag_w1)
         template_seq = Sequence.from_create(
             name='template-seq',
@@ -72,6 +73,7 @@ def primers_client(engine_client_config):
                 primer_w2,
                 primer_w2_b,
                 tag_w1,
+                tag_w2,
                 template_seq,
                 product_seq,
                 template_seq_w2,
@@ -145,6 +147,7 @@ def primers_client(engine_client_config):
                 'primer_tagged_id': primer_tagged.id,
                 'primer_w2_id': primer_w2.id,
                 'tag_w1_id': tag_w1.id,
+                'tag_w2_id': tag_w2.id,
                 'template_seq_id': template_seq.id,
                 'product_seq_id': product_seq.id,
                 'template_seq_w2_id': template_seq_w2.id,
@@ -601,6 +604,58 @@ def test_post_primers_bulk_success_returns_primer_refs(primers_client):
     assert rows[1]['name'] == 'bulk_new_2'
     assert rows[1]['sequence'] == 'GGTT'
     assert rows[1]['uid'] is None
+
+
+def test_post_primers_bulk_applies_tags(primers_client):
+    c = primers_client['client']
+    headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
+    tag_id = primers_client['tag_w1_id']
+    payload = [
+        {'name': 'bulk_tagged_1', 'sequence': 'AACC', 'uid': None},
+        {'name': 'bulk_tagged_2', 'sequence': 'GGTT', 'uid': None},
+    ]
+
+    r = c.post('/primers/bulk', headers=headers, params=[('tags', str(tag_id))], json=payload)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 2
+    for row in rows:
+        assert {t['id'] for t in row['tags']} == {tag_id}
+        tags_r = c.get(f"/input_entities/{row['id']}/tags", headers=headers)
+        assert tags_r.status_code == 200
+        assert {t['id'] for t in tags_r.json()} == {tag_id}
+
+
+def test_post_primers_bulk_unknown_tag_404(primers_client):
+    c = primers_client['client']
+    headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
+    payload = [{'name': 'bulk_no_tag_1', 'sequence': 'AACC', 'uid': None}]
+
+    r = c.post('/primers/bulk', headers=headers, params=[('tags', '999999')], json=payload)
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
+
+    list_r = c.get('/primers?name=bulk_no_tag_1', headers=headers)
+    assert list_r.status_code == 200
+    assert len(list_r.json()['items']) == 0
+
+
+def test_post_primers_bulk_cross_workspace_tag_403(primers_client):
+    c = primers_client['client']
+    headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
+    payload = [{'name': 'bulk_wrong_tag_1', 'sequence': 'AACC', 'uid': None}]
+
+    r = c.post(
+        '/primers/bulk',
+        headers=headers,
+        params=[('tags', str(primers_client['tag_w2_id']))],
+        json=payload,
+    )
+    assert r.status_code == 403
+
+    list_r = c.get('/primers?name=bulk_wrong_tag_1', headers=headers)
+    assert list_r.status_code == 200
+    assert len(list_r.json()['items']) == 0
 
 
 def test_post_primers_bulk_conflict_returns_409_and_is_atomic(primers_client):
