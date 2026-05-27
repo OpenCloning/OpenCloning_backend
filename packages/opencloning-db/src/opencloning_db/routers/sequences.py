@@ -521,7 +521,7 @@ async def post_sequences_bulk(
     if _has_any_sequence_warning(validation_rows, strict):
         return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in validation_rows])
 
-    db_sequences = list[Sequence]()
+    db_sequences = list()
     for record in records:
         db_sequences.extend(
             cloning_strategy_to_db(

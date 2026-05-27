@@ -640,7 +640,7 @@ def test_post_primers_bulk_unknown_tag_404(primers_client):
     assert len(list_r.json()['items']) == 0
 
 
-def test_post_primers_bulk_cross_workspace_tag_404(primers_client):
+def test_post_primers_bulk_cross_workspace_tag_403(primers_client):
     c = primers_client['client']
     headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
     payload = [{'name': 'bulk_wrong_tag_1', 'sequence': 'AACC', 'uid': None}]
