@@ -112,7 +112,7 @@ class EntityTagAttach(ApiModel):
 class InputEntityRef(ApiModel):
     id: int
     type: str
-    name: str | None
+    name: str
 
 
 class SequencingFileRef(ApiModel):
@@ -162,17 +162,22 @@ class SequenceRef(ApiModel):
 
 
 class SequenceUpdate(ApiModel):
-    name: StrippedStr | None = Field(default=None, min_length=3)
+    name: StrippedStr | None = Field(default=None, min_length=1)
     sequence_type: SequenceType | None = None
 
 
 class TemplateSequenceCreate(ApiModel):
-    name: StrippedStr = Field(min_length=3)
+    name: StrippedStr = Field(min_length=1)
     sequence_type: SequenceType
 
 
+class TemplateSequenceBulkRow(TemplateSequenceCreate):
+    name_exists: bool
+    name_duplicated: bool
+
+
 class PrimerUpdate(ApiModel):
-    name: StrippedStr | None = Field(default=None, min_length=2)
+    name: StrippedStr | None = Field(default=None, min_length=1)
     uid: StrippedStr | None = None
 
 
