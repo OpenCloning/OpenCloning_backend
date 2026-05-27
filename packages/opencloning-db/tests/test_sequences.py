@@ -103,7 +103,8 @@ def sequences_client(engine_client_config):
         attp = _sequence_in_workspace(session, w1, 'attP_input')
 
         tag = Tag(name='seq-filter-tag', workspace_id=w1)
-        session.add(tag)
+        tag_w2 = Tag(name='seq-filter-tag-w2', workspace_id=w2)
+        session.add_all([tag, tag_w2])
         session.flush()
         pcr_product.tags.append(tag)
 
@@ -179,6 +180,7 @@ def sequences_client(engine_client_config):
                 'attb_input_id': attb.id,
                 'attp_input_id': attp.id,
                 'filter_tag_id': tag.id,
+                'filter_tag_w2_id': tag_w2.id,
                 'seq_circ_id': seq_circ.id,
                 'seq_patch_linear_id': seq_patch_linear.id,
                 'seq_with_overhangs_id': seq_with_overhangs.id,
@@ -890,11 +892,15 @@ def _post_sequences_bulk(
     workspace_id: int,
     files: list[tuple[str, bytes]],
     strict: bool = True,
+    tags: list[int] | None = None,
 ):
+    params: list[tuple[str, str]] = [('strict', str(strict).lower())]
+    if tags:
+        params.extend(('tags', str(tag_id)) for tag_id in tags)
     return client.post(
         '/sequences/bulk',
         headers=workspace_headers(token, workspace_id),
-        params={'strict': str(strict).lower()},
+        params=params,
         files=[('files', (filename, body, 'application/octet-stream')) for filename, body in files],
     )
 
@@ -1027,6 +1033,61 @@ def test_post_sequences_bulk_success_strict_true(sequences_client):
     list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'bulk_ok'})
     assert list_r.status_code == 200
     assert len(list_r.json()['items']) == 2
+
+
+def test_post_sequences_bulk_applies_tags(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    tag_id = sequences_client['filter_tag_id']
+    payload = [
+        ('bulk_tg1.gb', Dseqrecord('ATGCATGCAAA', name='bulk_tg1').format('genbank').encode('utf-8')),
+        ('bulk_tg2.gb', Dseqrecord('GGGATGCATTT', name='bulk_tg2').format('genbank').encode('utf-8')),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=True, tags=[tag_id])
+    assert r.status_code == 200, r.text
+    rows = r.json()
+    assert len(rows) == 2
+    headers = workspace_headers(h_token, wid)
+    for row in rows:
+        assert {t['id'] for t in row['tags']} == {tag_id}
+        tags_r = c.get(f"/input_entities/{row['id']}/tags", headers=headers)
+        assert tags_r.status_code == 200
+        assert {t['id'] for t in tags_r.json()} == {tag_id}
+
+
+def test_post_sequences_bulk_unknown_tag_404(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        ('bulk_notag.gb', Dseqrecord('ATGCATGCNNN', name='bulk_notag').format('genbank').encode('utf-8')),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=True, tags=[999999])
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
+
+    list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'bulk_notag'})
+    assert list_r.status_code == 200
+    assert len(list_r.json()['items']) == 0
+
+
+def test_post_sequences_bulk_cross_workspace_tag_403(sequences_client):
+    c = sequences_client['client']
+    h_token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    payload = [
+        (
+            'bulk_wrtag.gb',
+            Dseqrecord('ATGCATGCWWW', name='bulk_wrtag').format('genbank').encode('utf-8'),
+        ),
+    ]
+    r = _post_sequences_bulk(c, h_token, wid, payload, strict=True, tags=[sequences_client['filter_tag_w2_id']])
+    assert r.status_code == 403
+
+    list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'bulk_wrtag'})
+    assert list_r.status_code == 200
+    assert len(list_r.json()['items']) == 0
 
 
 def test_post_sequences_bulk_strict_true_conflict_on_warning_and_is_atomic(sequences_client):

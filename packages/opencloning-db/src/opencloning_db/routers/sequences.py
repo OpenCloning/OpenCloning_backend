@@ -62,6 +62,7 @@ from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
     get_sequence_in_workspace_for_user,
+    get_tag_in_workspace_for_user,
     get_viewer_workspace_ctx,
 )
 
@@ -508,14 +509,19 @@ async def post_sequences_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     files: List[UploadFile] = File(...),
     strict: bool = Query(description='Fail on any validation warning', default=True),
+    tags: list[int] = Query(description='Tag IDs to apply to all created sequences', default_factory=list),
 ):
     current_user, session, workspace_id = ctx.destructure()
+    workspace_tags = [
+        get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
+        for tag_id in sorted(set(tags))
+    ]
     loaded_files = await _load_uploaded_files(files)
     validation_rows, records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     if _has_any_sequence_warning(validation_rows, strict):
         return JSONResponse(status_code=409, content=[row.model_dump(mode='json') for row in validation_rows])
 
-    db_sequences = list()
+    db_sequences = list[Sequence]()
     for record in records:
         db_sequences.extend(
             cloning_strategy_to_db(
@@ -525,6 +531,8 @@ async def post_sequences_bulk(
             )[0]
         )
 
+    for db_sequence in db_sequences:
+        db_sequence.tags.extend(workspace_tags)
     session.add_all(db_sequences)
     try:
         session.commit()
