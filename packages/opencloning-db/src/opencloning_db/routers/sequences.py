@@ -198,7 +198,7 @@ def patch_sequence(
                 status_code=409,
                 detail=f"Template sequence '{body.name}' already exists in this workspace",
             ) from None
-        raise
+        raise  # pragma: no cover
     session.refresh(db_sequence)
     return sequence_ref(db_sequence)
 

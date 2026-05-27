@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 from alembic import command
@@ -20,14 +19,7 @@ def _alembic_root() -> Path:
     for root in (here.parents[2], here.parents[1]):
         if (root / 'alembic.ini').is_file():
             return root
-    raise RuntimeError('Could not locate alembic.ini next to opencloning-db package')
-
-
-def _database_url(database_url: str | None = None) -> str:
-    url = database_url or os.environ.get('OPENCLONING_DB_URL')
-    if not url:
-        raise RuntimeError('OPENCLONING_DB_URL is required for Alembic. For local development load .env.dev')
-    return url
+    raise RuntimeError('Could not locate alembic.ini next to opencloning-db package')  # pragma: no cover
 
 
 def _alembic_config(database_url: str) -> AlembicConfig:
@@ -36,27 +28,25 @@ def _alembic_config(database_url: str) -> AlembicConfig:
     return cfg
 
 
-def upgrade_head(database_url: str | None = None) -> None:
+def upgrade_head(database_url: str) -> None:
     """Apply all pending Alembic revisions (creates schema from empty DB at head)."""
     for logger_name in ('alembic', 'alembic.runtime.migration'):
         logging.getLogger(logger_name).setLevel(logging.WARNING)
-    command.upgrade(_alembic_config(_database_url(database_url)), 'head')
+    command.upgrade(_alembic_config(database_url), 'head')
 
 
 def recreate_public_schema(engine: Engine) -> None:
     """Drop and recreate the public schema (destructive)."""
+    Base.metadata.drop_all(engine)
+    # Drop also alembic_version table
     with engine.begin() as conn:
-        conn.execute(text('DROP SCHEMA public CASCADE'))
-        conn.execute(text('CREATE SCHEMA public'))
-        conn.execute(text('GRANT ALL ON SCHEMA public TO public'))
-        conn.execute(text('GRANT ALL ON SCHEMA public TO CURRENT_USER'))
+        conn.execute(text('DROP TABLE alembic_version'))
+    upgrade_head(engine.url.render_as_string(hide_password=False))
 
 
 def truncate_application_tables(engine: Engine) -> None:
     """Clear all rows from ORM tables; leaves ``alembic_version`` untouched."""
     table_names = list(Base.metadata.tables.keys())
-    if not table_names:
-        return
     quoted = ', '.join(f'"{name}"' for name in table_names)
     with engine.begin() as conn:
         conn.execute(text(f'TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE'))

@@ -16,9 +16,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from opencloning_db.auth.security import get_password_hash
-from opencloning_db.config import get_config
 from opencloning_db.context import WriteContext
-from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, get_engine
+from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
 from opencloning_db.models import (
     Line,
     Primer,
@@ -35,11 +34,8 @@ from opencloning_db.models import (
 )
 
 
-def load_seed_data(engine: Engine | None = None) -> None:
+def load_seed_data(engine: Engine) -> None:
     """Insert the deterministic demo/test baseline into *engine* (or configured default)."""
-    if engine is None:
-        engine = get_engine(get_config())
-
     cloning_strategies = []
     file_names = []
     data_dir = Path(__file__).resolve().parent / 'init_db'
