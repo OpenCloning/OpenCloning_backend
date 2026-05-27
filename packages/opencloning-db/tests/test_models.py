@@ -855,13 +855,19 @@ class TestApiModelValidators(unittest.TestCase):
         obj = PrimerUpdate(uid=None)
         assert obj.uid is None
 
-    def test_primer_update_strip_name_short_raises(self):
+    def test_primer_update_strip_name_single_char_ok(self):
+        from opencloning_db.apimodels import PrimerUpdate
+
+        obj = PrimerUpdate(name=' a ')
+        assert obj.name == 'a'
+
+    def test_primer_update_strip_name_empty_raises(self):
         from pydantic import ValidationError
 
         from opencloning_db.apimodels import PrimerUpdate
 
-        with pytest.raises(ValidationError, match='at least 2'):
-            PrimerUpdate(name=' a ')
+        with pytest.raises(ValidationError):
+            PrimerUpdate(name='   ')
 
     def test_primer_update_strip_name_non_string(self):
         from opencloning_db.apimodels import PrimerUpdate
