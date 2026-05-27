@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
 from opencloning_db.models import (
@@ -261,6 +261,11 @@ class LineBulkSubmission(ApiModel):
         max_length=2,
         description='Up to two parent strain UIDs',
     )
+
+    @field_validator('parent_uids', mode='after')
+    @classmethod
+    def deduplicate_parent_uids(cls, v: list[StrippedStr]) -> list[StrippedStr]:
+        return list(sorted(set(v)))
 
 
 class LineBulkParentUidFlag(ApiModel):

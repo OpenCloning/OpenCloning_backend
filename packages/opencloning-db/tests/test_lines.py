@@ -712,7 +712,8 @@ def test_get_lines_filter_by_created_by(lines_client):
     assert r.json()['items'] == []
 
 
-def test_validate_upload_lines_flags(lines_client):
+def test_validate_upload_lines_bulk(lines_client):
+    """Validate-upload: sequence flags, UID flags, parent UIDs, and max-two parent_uids (422)."""
     c = lines_client['client']
     owner_headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
     viewer_headers = workspace_headers(lines_client['token_viewer_w1'], lines_client['w1'])
@@ -721,121 +722,227 @@ def test_validate_upload_lines_flags(lines_client):
             'uid': 'L-W1',
             'genotype': ['allele-w1'],
             'plasmids': ['plasmid-w1'],
+            'parent_uids': [],
         },
         {
             'uid': 'L-BULK-DUP',
             'genotype': ['allele-w1'],
             'plasmids': [],
+            'parent_uids': [],
         },
         {
             'uid': ' L-BULK-DUP ',
             'genotype': [],
             'plasmids': [],
+            'parent_uids': [],
         },
         {
             'uid': 'L-BULK-FRESH',
             'genotype': ['missing-allele'],
             'plasmids': ['plasmid-w1'],
+            'parent_uids': [],
         },
         {
             'uid': 'L-BULK-WRONG-TYPE',
             'genotype': ['plasmid-w1'],
             'plasmids': [],
+            'parent_uids': [],
+        },
+        {
+            'uid': 'L-BULK-PARENT-OK',
+            'genotype': [],
+            'plasmids': [],
+            'parent_uids': ['L-W1'],
+        },
+        {
+            'uid': 'L-BULK-PARENT-BAD',
+            'genotype': [],
+            'plasmids': [],
+            'parent_uids': ['missing-parent'],
+        },
+        {
+            'uid': 'L-BULK-PARENT-DUP',
+            'genotype': [],
+            'plasmids': [],
+            'parent_uids': ['L-W1', 'L-W1'],
         },
     ]
 
     r = c.post('/lines/validate-upload', headers=viewer_headers, json=payload)
     assert r.status_code == 200
     rows = r.json()
-    assert len(rows) == 5
+    assert len(rows) == 8
 
     assert rows[0]['uid_exists'] is True
     assert rows[0]['uid_duplicated'] is False
-    assert rows[0]['genotype_flags'][0]['not_found'] is False
     assert rows[0]['genotype_flags'][0]['ambiguous'] is True
     assert rows[0]['genotype_flags'][0]['sequence_id'] is None
-    assert rows[0]['plasmid_flags'][0]['not_found'] is False
     assert rows[0]['plasmid_flags'][0]['sequence_id'] == lines_client['plasmid_w1_id']
 
-    assert rows[1]['uid_exists'] is False
     assert rows[1]['uid_duplicated'] is True
     assert rows[2]['uid_duplicated'] is True
 
     assert rows[3]['genotype_flags'][0]['not_found'] is True
-    assert rows[3]['genotype_flags'][0]['sequence_id'] is None
-    assert rows[3]['plasmid_flags'][0]['not_found'] is False
     assert rows[3]['plasmid_flags'][0]['sequence_id'] == lines_client['plasmid_w1_id']
 
     assert rows[4]['genotype_flags'][0]['not_found'] is True
-    assert rows[4]['genotype_flags'][0]['sequence_id'] is None
 
-    # Seeded line still only one row
-    get_r = c.get(f"/lines/{lines_client['line_w1_id']}", headers=owner_headers)
-    assert get_r.status_code == 200
+    assert rows[5]['parent_flags'][0]['line_id'] == lines_client['line_w1_id']
+
+    assert rows[6]['parent_flags'][0]['line_id'] is None
+
+    assert len(rows[7]['parent_flags']) == 1
+    assert rows[7]['parent_flags'][0]['line_id'] == lines_client['line_w1_id']
+
+    assert c.get(f"/lines/{lines_client['line_w1_id']}", headers=owner_headers).status_code == 200
+
+    too_many = [
+        {
+            'uid': 'L-BULK-TOO-MANY-PARENTS',
+            'genotype': [],
+            'plasmids': [],
+            'parent_uids': ['L-W1', 'L-W2', 'L-FILTER'],
+        },
+    ]
+    assert c.post('/lines/validate-upload', headers=viewer_headers, json=too_many).status_code == 422
 
 
-def test_post_lines_bulk_success(lines_client):
+def test_post_lines_bulk_success_including_parents_and_template(lines_client):
+    """One bulk create: sequences + template allele, single parent, duplicate parent UIDs deduped."""
     c = lines_client['client']
     headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
     payload = [
         {
-            'uid': 'L-BULK-NEW-1',
+            'uid': 'L-BULK-M1',
             'genotype': ['allele-aux'],
             'plasmids': ['plasmid-w1'],
+            'parent_uids': [],
         },
         {
-            'uid': 'L-BULK-NEW-2',
+            'uid': 'L-BULK-M2',
             'genotype': ['template-allele-w1'],
             'plasmids': [],
+            'parent_uids': [],
+        },
+        {
+            'uid': 'L-BULK-M3',
+            'genotype': ['allele-aux'],
+            'plasmids': [],
+            'parent_uids': ['L-W1'],
+        },
+        {
+            'uid': 'L-BULK-M4',
+            'genotype': ['allele-aux'],
+            'plasmids': [],
+            'parent_uids': ['L-W1', 'L-W1'],
         },
     ]
 
     r = c.post('/lines/bulk', headers=headers, json=payload)
     assert r.status_code == 200
     rows = r.json()
-    assert len(rows) == 2
+    assert len(rows) == 4
     expected_keys = {'id', 'uid', 'sequences_in_line', 'parent_ids', 'tags', 'created_at', 'created_by'}
     assert set(rows[0]) == expected_keys
-    assert rows[0]['uid'] == 'L-BULK-NEW-1'
-    assert rows[1]['uid'] == 'L-BULK-NEW-2'
+
+    assert rows[0]['uid'] == 'L-BULK-M1'
     assert len(rows[0]['sequences_in_line']) == 2
+
+    assert rows[1]['uid'] == 'L-BULK-M2'
     assert len(rows[1]['sequences_in_line']) == 1
     assert rows[1]['sequences_in_line'][0]['sequence']['type'] == 'template_sequence'
 
+    assert rows[2]['uid'] == 'L-BULK-M3'
+    assert rows[2]['parent_ids'] == [lines_client['line_w1_id']]
+    children_r = c.get(f"/lines/{lines_client['line_w1_id']}/children", headers=headers)
+    assert children_r.status_code == 200
+    assert rows[2]['id'] in {child['id'] for child in children_r.json()}
 
-def test_post_lines_bulk_conflict_atomic(lines_client):
+    assert rows[3]['uid'] == 'L-BULK-M4'
+    assert rows[3]['parent_ids'] == [lines_client['line_w1_id']]
+
+
+def test_post_lines_bulk_409_variants(lines_client):
+    """Bulk rejects whole batch: existing line uid, duplicate new uids, ambiguous genotype, missing parent."""
     c = lines_client['client']
     headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
-    payload = [
-        {'uid': 'L-W1', 'genotype': ['allele-aux'], 'plasmids': []},
-        {'uid': 'L-BULK-NOT-CREATED', 'genotype': ['allele-aux'], 'plasmids': []},
-    ]
+    h = headers
+    aux = lines_client['allele_w1_aux_id']
 
-    r = c.post('/lines/bulk', headers=headers, json=payload)
-    assert r.status_code == 409
-    rows = r.json()
-    assert len(rows) == 2
-    assert rows[0]['uid_exists'] is True
-    assert rows[1]['uid_exists'] is False
-
-    create_r = c.post(
-        '/lines',
-        headers=headers,
-        json={
-            'uid': 'L-BULK-NOT-CREATED',
-            'allele_ids': [lines_client['allele_w1_aux_id']],
-            'plasmid_ids': [],
-            'parent_ids': [],
-        },
+    r = c.post(
+        '/lines/bulk',
+        headers=h,
+        json=[
+            {'uid': 'L-W1', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []},
+            {'uid': 'L-BULK-NOT-CREATED', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []},
+        ],
     )
-    assert create_r.status_code == 200
+    assert r.status_code == 409
+    assert r.json()[0]['uid_exists'] is True
+    assert r.json()[1]['uid_exists'] is False
+    assert (
+        c.post(
+            '/lines',
+            headers=h,
+            json={'uid': 'L-BULK-NOT-CREATED', 'allele_ids': [aux], 'plasmid_ids': [], 'parent_ids': []},
+        ).status_code
+        == 200
+    )
+
+    r = c.post(
+        '/lines/bulk',
+        headers=h,
+        json=[
+            {'uid': 'L-BULK-UID-DUP', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []},
+            {'uid': 'l-bulk-uid-dup', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []},
+        ],
+    )
+    assert r.status_code == 409
+    assert r.json()[0]['uid_duplicated'] is True
+    assert (
+        c.post(
+            '/lines',
+            headers=h,
+            json={'uid': 'L-BULK-UID-DUP', 'allele_ids': [aux], 'plasmid_ids': [], 'parent_ids': []},
+        ).status_code
+        == 200
+    )
+
+    r = c.post(
+        '/lines/bulk',
+        headers=h,
+        json=[{'uid': 'L-BULK-AMBIG', 'genotype': ['allele-w1'], 'plasmids': [], 'parent_uids': []}],
+    )
+    assert r.status_code == 409
+    assert r.json()[0]['genotype_flags'][0]['ambiguous'] is True
+    assert (
+        c.post(
+            '/lines', headers=h, json={'uid': 'L-BULK-AMBIG', 'allele_ids': [aux], 'plasmid_ids': [], 'parent_ids': []}
+        ).status_code
+        == 200
+    )
+
+    r = c.post(
+        '/lines/bulk',
+        headers=h,
+        json=[
+            {
+                'uid': 'L-BULK-NO-PARENT',
+                'genotype': ['allele-aux'],
+                'plasmids': [],
+                'parent_uids': ['no-such-parent'],
+            },
+        ],
+    )
+    assert r.status_code == 409
+    assert r.json()[0]['parent_flags'][0]['line_id'] is None
 
 
 def test_post_lines_bulk_viewer_forbidden(lines_client):
     c = lines_client['client']
     owner_headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
     viewer_headers = workspace_headers(lines_client['token_viewer_w1'], lines_client['w1'])
-    payload = [{'uid': 'L-BULK-VIEWER', 'genotype': ['allele-aux'], 'plasmids': []}]
+    payload = [{'uid': 'L-BULK-VIEWER', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []}]
 
     validate_r = c.post('/lines/validate-upload', headers=viewer_headers, json=payload)
     assert validate_r.status_code == 200
@@ -855,65 +962,3 @@ def test_post_lines_bulk_viewer_forbidden(lines_client):
         },
     )
     assert create_r.status_code == 200
-
-
-def test_post_lines_bulk_duplicate_uid_in_batch(lines_client):
-    c = lines_client['client']
-    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
-    payload = [
-        {'uid': 'L-BULK-UID-DUP', 'genotype': ['allele-aux'], 'plasmids': []},
-        {'uid': 'l-bulk-uid-dup', 'genotype': ['allele-aux'], 'plasmids': []},
-    ]
-
-    r = c.post('/lines/bulk', headers=headers, json=payload)
-    assert r.status_code == 409
-    rows = r.json()
-    assert rows[0]['uid_duplicated'] is True
-    assert rows[1]['uid_duplicated'] is True
-
-    create_r = c.post(
-        '/lines',
-        headers=headers,
-        json={
-            'uid': 'L-BULK-UID-DUP',
-            'allele_ids': [lines_client['allele_w1_aux_id']],
-            'plasmid_ids': [],
-            'parent_ids': [],
-        },
-    )
-    assert create_r.status_code == 200
-
-
-def test_post_lines_bulk_genotype_ambiguous(lines_client):
-    c = lines_client['client']
-    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
-    payload = [{'uid': 'L-BULK-AMBIG', 'genotype': ['allele-w1'], 'plasmids': []}]
-
-    r = c.post('/lines/bulk', headers=headers, json=payload)
-    assert r.status_code == 409
-    rows = r.json()
-    assert rows[0]['genotype_flags'][0]['ambiguous'] is True
-
-    create_r = c.post(
-        '/lines',
-        headers=headers,
-        json={
-            'uid': 'L-BULK-AMBIG',
-            'allele_ids': [lines_client['allele_w1_aux_id']],
-            'plasmid_ids': [],
-            'parent_ids': [],
-        },
-    )
-    assert create_r.status_code == 200
-
-
-def test_post_lines_bulk_accepts_template_sequence_name(lines_client):
-    c = lines_client['client']
-    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
-    payload = [{'uid': 'L-BULK-TEMPLATE', 'genotype': ['template-allele-w1'], 'plasmids': []}]
-
-    r = c.post('/lines/bulk', headers=headers, json=payload)
-    assert r.status_code == 200
-    body = r.json()[0]
-    assert body['uid'] == 'L-BULK-TEMPLATE'
-    assert body['sequences_in_line'][0]['sequence']['type'] == 'template_sequence'
