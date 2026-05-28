@@ -18,9 +18,13 @@ from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rat
 from opencloning_db.migrations import reset_database
 
 _JWT_SECRET = 'test-jwt-secret-not-for-production'
-_TEST_DATABASE_URL = os.environ.get(
+_TEST_DATABASE_URL_WRITE = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
     'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test',
+)
+_TEST_DATABASE_URL_READONLY = os.environ.get(
+    'OPENCLONING_TEST_DATABASE_URL_READONLY',
+    'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test_readonly',
 )
 _TEST_BUCKET = 'opencloning-test'
 _TEST_REGION = 'us-east-1'
@@ -39,10 +43,8 @@ def _disable_login_rate_limit_for_tests(monkeypatch):
     reset_login_rate_limiter()
 
 
-@pytest.fixture
-def postgres_test_config() -> Generator[Config, None, None]:
+def _build_postgres_test_config(default_config: Config | None, database_url: str) -> Generator[Config, None, None]:
     """Postgres test config backed by a Moto S3 bucket."""
-    default_config = _peek_config()
     with mock_aws():
         boto3.client(
             's3',
@@ -51,7 +53,7 @@ def postgres_test_config() -> Generator[Config, None, None]:
             aws_secret_access_key='test-secret-key',
         ).create_bucket(Bucket=_TEST_BUCKET)
         test_config = Config(
-            database_url=_TEST_DATABASE_URL,
+            database_url=database_url,
             object_storage_endpoint_url=_TEST_ENDPOINT_URL,
             object_storage_access_key_id='test-access-key',
             object_storage_secret_access_key='test-secret-key',
@@ -68,23 +70,38 @@ def postgres_test_config() -> Generator[Config, None, None]:
 
 
 @pytest.fixture
-def postgres_test_engine(postgres_test_config: Config) -> Generator[Engine, None, None]:
+def postgres_test_config_write() -> Generator[Config, None, None]:
+    """Function-scoped config for mutating tests."""
+    yield from _build_postgres_test_config(_peek_config(), _TEST_DATABASE_URL_WRITE)
+
+
+@pytest.fixture(scope='module')
+def postgres_test_config_readonly() -> Generator[Config, None, None]:
+    """Module-scoped config for readonly_db-marked tests."""
+    yield from _build_postgres_test_config(_peek_config(), _TEST_DATABASE_URL_READONLY)
+
+
+@pytest.fixture
+def postgres_test_engine_write(postgres_test_config_write: Config) -> Generator[Engine, None, None]:
     """Fresh schema bound to the shared Postgres test database."""
-    engine = db_module.get_engine(postgres_test_config)
+    engine = db_module.get_engine(postgres_test_config_write)
     reset_database(engine)
     yield engine
 
 
-@pytest.fixture
-def engine_client_config(
+@pytest.fixture(scope='module')
+def postgres_test_engine_readonly(postgres_test_config_readonly: Config) -> Generator[Engine, None, None]:
+    """Single DB reset for readonly_db-marked tests in one module."""
+    engine = db_module.get_engine(postgres_test_config_readonly)
+    reset_database(engine)
+    yield engine
+
+
+def _engine_client_config(
     postgres_test_config: Config,
     postgres_test_engine: Engine,
 ) -> Generator[tuple[Engine, TestClient, Config], None, None]:
-    """Temp file dirs plus a reset Postgres test DB, ``get_db`` override, and ``TestClient``.
-
-    Also use via ``@pytest.mark.usefixtures("engine_client_config")`` when tests
-    only need ``get_config()`` paths (e.g. model tests with their own engine).
-    """
+    """Shared TestClient/get_db wiring used by write and readonly chains."""
 
     def override_get_db():
         session = Session(postgres_test_engine)
@@ -97,3 +114,45 @@ def engine_client_config(
     with TestClient(app) as client:
         yield postgres_test_engine, client, postgres_test_config
     fastapi_app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def engine_client_config_write(
+    postgres_test_config_write: Config,
+    postgres_test_engine_write: Engine,
+) -> Generator[tuple[Engine, TestClient, Config], None, None]:
+    """Write DB (function scope) for mutating tests."""
+    yield from _engine_client_config(postgres_test_config_write, postgres_test_engine_write)
+
+
+@pytest.fixture(scope='module')
+def engine_client_config_readonly(
+    postgres_test_config_readonly: Config,
+    postgres_test_engine_readonly: Engine,
+) -> Generator[tuple[Engine, TestClient, Config], None, None]:
+    """Readonly DB (module scope) shared by readonly_db-marked tests."""
+    yield from _engine_client_config(postgres_test_config_readonly, postgres_test_engine_readonly)
+
+
+@pytest.fixture
+def postgres_test_config(postgres_test_config_write: Config) -> Generator[Config, None, None]:
+    """Backward-compatible alias to write config."""
+    yield postgres_test_config_write
+
+
+@pytest.fixture
+def postgres_test_engine(postgres_test_engine_write: Engine) -> Generator[Engine, None, None]:
+    """Backward-compatible alias to write engine."""
+    yield postgres_test_engine_write
+
+
+@pytest.fixture
+def engine_client_config(
+    engine_client_config_write: tuple[Engine, TestClient, Config],
+) -> Generator[tuple[Engine, TestClient, Config], None, None]:
+    """Backward-compatible alias to write client stack.
+
+    Also use via ``@pytest.mark.usefixtures("engine_client_config")`` when tests
+    only need ``get_config()`` paths (e.g. model tests with their own engine).
+    """
+    yield engine_client_config_write
