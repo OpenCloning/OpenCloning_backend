@@ -10,10 +10,17 @@ import opencloning_db.auth.rate_limit as login_rate_limit
 from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rate_limiter
 from opencloning_db.config import get_config
 
+readonly_db = pytest.mark.readonly_db
+
 
 @pytest.fixture
-def auth_client(engine_client_config):
-    _, client, _ = engine_client_config
+def auth_client(request):
+    fixture_name = (
+        'engine_client_config_readonly'
+        if request.node.get_closest_marker('readonly_db')
+        else 'engine_client_config_write'
+    )
+    _, client, _ = request.getfixturevalue(fixture_name)
     return client
 
 
@@ -55,6 +62,7 @@ def test_register_token_me(auth_client):
     assert token_body['access_token']
 
 
+@readonly_db
 def test_login_invalid(auth_client):
     """Wrong credentials return 401 (opaque error message)."""
     r = auth_client.post(
@@ -99,6 +107,7 @@ def test_register_duplicate_email_returns_400(auth_client):
     assert r2.json()['detail'] == 'Email already registered'
 
 
+@readonly_db
 def test_register_invalid_email_422(auth_client):
     """Pydantic rejects a non-email string in the email field."""
     r = auth_client.post(
@@ -115,6 +124,7 @@ def test_register_invalid_email_422(auth_client):
     assert detail
 
 
+@readonly_db
 def test_register_short_display_name_422(auth_client):
     """display_name must satisfy RegisterBody min_length=4."""
     r = auth_client.post(
@@ -131,6 +141,7 @@ def test_register_short_display_name_422(auth_client):
     assert detail
 
 
+@readonly_db
 def test_register_short_password_422(auth_client):
     """Password must satisfy RegisterBody min_length=8."""
     r = auth_client.post(
@@ -147,6 +158,7 @@ def test_register_short_password_422(auth_client):
     assert detail
 
 
+@readonly_db
 def test_register_empty_password_422(auth_client):
     """Password must satisfy RegisterBody min_length=8."""
     r = auth_client.post(
@@ -163,6 +175,7 @@ def test_register_empty_password_422(auth_client):
     assert detail
 
 
+@readonly_db
 def test_login_sql_injection_like_username_still_401(auth_client):
     """SQL-like usernames do not bypass login; ORM still returns 401."""
     r = auth_client.post(
@@ -173,6 +186,7 @@ def test_login_sql_injection_like_username_still_401(auth_client):
     assert 'Incorrect' in r.json()['detail']
 
 
+@readonly_db
 def test_me_malformed_authorization_401(auth_client):
     """/auth/me rejects tokens that are not valid JWTs."""
     r = auth_client.get(
@@ -184,6 +198,7 @@ def test_me_malformed_authorization_401(auth_client):
     assert r.json()['detail'] == 'Could not validate credentials'
 
 
+@readonly_db
 def test_me_wrong_secret_jwt_401(auth_client):
     """JWT signed with a different key than the app config is rejected."""
     bad = jwt.encode(
@@ -198,6 +213,7 @@ def test_me_wrong_secret_jwt_401(auth_client):
     assert r.status_code == 401
 
 
+@readonly_db
 def test_me_expired_jwt_401(auth_client):
     """Expired JWTs are rejected when decoding current user."""
     config = get_config()
@@ -214,6 +230,7 @@ def test_me_expired_jwt_401(auth_client):
     assert r.json()['detail'] == 'Could not validate credentials'
 
 
+@readonly_db
 def test_me_token_without_sub_claim_401(auth_client):
     """JWT missing subject claim is rejected."""
     config = get_config()
@@ -230,6 +247,7 @@ def test_me_token_without_sub_claim_401(auth_client):
     assert r.json()['detail'] == 'Could not validate credentials'
 
 
+@readonly_db
 def test_me_token_with_nonexistent_user_sub_401(auth_client):
     """JWT with valid sub for unknown user id is rejected."""
     config = get_config()
@@ -246,6 +264,7 @@ def test_me_token_with_nonexistent_user_sub_401(auth_client):
     assert r.json()['detail'] == 'Could not validate credentials'
 
 
+@readonly_db
 def test_login_rate_limited_by_ip(auth_client, monkeypatch):
     """Repeated login attempts from one client are rejected with 429."""
     reset_login_rate_limiter()
@@ -269,6 +288,7 @@ def test_login_rate_limited_by_ip(auth_client, monkeypatch):
     assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
 
 
+@readonly_db
 def test_login_rate_limited_by_email(auth_client, monkeypatch):
     """Repeated login attempts from one email are rejected with 429."""
     reset_login_rate_limiter()

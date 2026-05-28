@@ -10,6 +10,8 @@ from opencloning_db.auth.invites import (
 )
 from opencloning_db.storage import ObjectStorage
 
+readonly_db = pytest.mark.readonly_db
+
 
 def _write_invite_file(config, *emails: str) -> None:
     ObjectStorage(config).write_text(
@@ -19,8 +21,13 @@ def _write_invite_file(config, *emails: str) -> None:
 
 
 @pytest.fixture
-def auth_client(engine_client_config):
-    _, client, _ = engine_client_config
+def auth_client(request):
+    fixture_name = (
+        'engine_client_config_readonly'
+        if request.node.get_closest_marker('readonly_db')
+        else 'engine_client_config_write'
+    )
+    _, client, _ = request.getfixturevalue(fixture_name)
     return client
 
 

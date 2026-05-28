@@ -12,9 +12,23 @@ from .helpers import (
 
 
 @pytest.fixture
-def workspaces_client(engine_client_config):
-    engine, client, _ = engine_client_config
+def workspaces_client(request):
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_workspaces_client_readonly')
+    engine, client, _ = request.getfixturevalue('engine_client_config_write')
+    return _seed_workspaces_context(engine, client)
 
+
+@pytest.fixture(scope='module')
+def _workspaces_client_readonly(engine_client_config_readonly):
+    engine, client, _ = engine_client_config_readonly
+    return _seed_workspaces_context(engine, client)
+
+
+readonly_db = pytest.mark.readonly_db
+
+
+def _seed_workspaces_context(engine, client):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
         session.commit()
@@ -29,6 +43,7 @@ def workspaces_client(engine_client_config):
     return ctx
 
 
+@readonly_db
 def test_get_workspaces_lists_only_user_accessible(workspaces_client):
     """List workspaces returns only this user's memberships and roles."""
     c = workspaces_client['client']
@@ -44,6 +59,7 @@ def test_get_workspaces_lists_only_user_accessible(workspaces_client):
     assert data[1]['role'] == 'viewer'
 
 
+@readonly_db
 def test_get_workspace_by_id_member_ok(workspaces_client):
     """Member can GET workspace by id from fixture (not hardcoded)."""
     c = workspaces_client['client']
@@ -60,6 +76,7 @@ def test_get_workspace_by_id_member_ok(workspaces_client):
     assert body['role'] == 'owner'
 
 
+@readonly_db
 def test_get_workspace_by_id_not_found(workspaces_client):
     """GET unknown workspace id returns 404."""
     c = workspaces_client['client']
@@ -72,6 +89,7 @@ def test_get_workspace_by_id_not_found(workspaces_client):
     assert response.json()['detail'] == 'Workspace not found'
 
 
+@readonly_db
 def test_get_workspace_by_id_forbidden_non_member(workspaces_client):
     """User with no access to a workspace gets 403 when fetching it by id."""
     c = workspaces_client['client']
@@ -84,6 +102,7 @@ def test_get_workspace_by_id_forbidden_non_member(workspaces_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_create_workspace_forbidden_non_admin(workspaces_client):
     """Non-instance-admin users cannot POST /workspaces."""
     c = workspaces_client['client']
@@ -144,6 +163,7 @@ def test_patch_workspace_owner_can_rename(workspaces_client):
     assert get_response.json()['name'] == 'Workspace One Renamed'
 
 
+@readonly_db
 def test_patch_workspace_forbidden_for_viewer(workspaces_client):
     """Workspace viewer cannot rename the workspace."""
     c = workspaces_client['client']
@@ -157,6 +177,7 @@ def test_patch_workspace_forbidden_for_viewer(workspaces_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_patch_workspace_not_found(workspaces_client):
     """PATCH unknown workspace id returns 404."""
     c = workspaces_client['client']
@@ -170,6 +191,7 @@ def test_patch_workspace_not_found(workspaces_client):
     assert response.json()['detail'] == 'Workspace not found'
 
 
+@readonly_db
 def test_patch_workspace_forbidden_for_non_member(workspaces_client):
     """User who is not a member cannot PATCH another workspace."""
     c = workspaces_client['client']
@@ -183,6 +205,7 @@ def test_patch_workspace_forbidden_for_non_member(workspaces_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_workspaces_unauthenticated_401(workspaces_client):
     """Listing workspaces without a bearer token is rejected."""
     c = workspaces_client['client']
@@ -191,6 +214,7 @@ def test_get_workspaces_unauthenticated_401(workspaces_client):
     assert response.json()['detail'] == 'Not authenticated'
 
 
+@readonly_db
 def test_get_workspace_by_id_unauthenticated_401(workspaces_client):
     """Fetching a workspace by id without a bearer token is rejected."""
     c = workspaces_client['client']
@@ -199,6 +223,7 @@ def test_get_workspace_by_id_unauthenticated_401(workspaces_client):
     assert response.json()['detail'] == 'Not authenticated'
 
 
+@readonly_db
 def test_create_workspace_empty_name_422(workspaces_client):
     """Workspace name must be non-empty (Pydantic min_length=1)."""
     c = workspaces_client['client']
@@ -212,6 +237,7 @@ def test_create_workspace_empty_name_422(workspaces_client):
     assert response.json()['detail']
 
 
+@readonly_db
 def test_patch_workspace_empty_name_422(workspaces_client):
     """Workspace rename rejects an empty name."""
     c = workspaces_client['client']

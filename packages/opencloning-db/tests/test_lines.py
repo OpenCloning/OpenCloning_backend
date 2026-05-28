@@ -19,10 +19,24 @@ from .helpers import (
 
 
 @pytest.fixture
-def lines_client(engine_client_config):
-    """Fresh DB for lines workspace authorization tests."""
-    engine, client, _ = engine_client_config
+def lines_client(request):
+    """Seed read-only or write DB based on ``readonly_db`` marker."""
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_lines_client_readonly')
+    engine, client, _ = request.getfixturevalue('engine_client_config_write')
+    return attach_standard_tokens(_seed_lines_context(engine), client)
 
+
+@pytest.fixture(scope='module')
+def _lines_client_readonly(engine_client_config_readonly):
+    engine, client, _ = engine_client_config_readonly
+    return attach_standard_tokens(_seed_lines_context(engine), client)
+
+
+readonly_db = pytest.mark.readonly_db
+
+
+def _seed_lines_context(engine):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
 
@@ -152,10 +166,10 @@ def lines_client(engine_client_config):
                 'plasmid_w2_id': plasmid_w2.id,
             }
         )
+    return ctx
 
-    return attach_standard_tokens(ctx, client)
 
-
+@readonly_db
 def test_get_lines_requires_workspace_id(lines_client):
     """GET /lines without X-Workspace-Id fails validation (422)."""
     assert_get_missing_workspace_header_422(
@@ -165,6 +179,7 @@ def test_get_lines_requires_workspace_id(lines_client):
     )
 
 
+@readonly_db
 def test_get_lines_scoped_to_workspace(lines_client):
     """Pagination returns only lines in the selected workspace."""
     c = lines_client['client']
@@ -184,6 +199,7 @@ def test_get_lines_scoped_to_workspace(lines_client):
     assert ids == sorted(ids, reverse=True)
 
 
+@readonly_db
 def test_get_lines_filter_by_tag(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -195,6 +211,7 @@ def test_get_lines_filter_by_tag(lines_client):
     assert ids == {lines_client['line_tagged_id']}
 
 
+@readonly_db
 def test_get_lines_filter_by_genotype_tokens(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -206,6 +223,7 @@ def test_get_lines_filter_by_genotype_tokens(lines_client):
     assert ids == {lines_client['line_filter_id']}
 
 
+@readonly_db
 def test_get_lines_filter_by_plasmid_tokens(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -217,6 +235,7 @@ def test_get_lines_filter_by_plasmid_tokens(lines_client):
     assert ids == {lines_client['line_filter_id']}
 
 
+@readonly_db
 def test_get_lines_filter_by_uid(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -228,6 +247,7 @@ def test_get_lines_filter_by_uid(lines_client):
     assert ids == {lines_client['line_filter_id']}
 
 
+@readonly_db
 def test_get_lines_filter_by_uid_and_plasmid(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -239,6 +259,7 @@ def test_get_lines_filter_by_uid_and_plasmid(lines_client):
     assert ids == {lines_client['line_filter_id']}
 
 
+@readonly_db
 def test_get_lines_forbidden_for_non_member(lines_client):
     """Non-member cannot list lines with another workspace header."""
     c = lines_client['client']
@@ -248,6 +269,7 @@ def test_get_lines_forbidden_for_non_member(lines_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_line_forbidden_cross_workspace(lines_client):
     """User not in W1 cannot GET a W1 line with W1 header."""
     c = lines_client['client']
@@ -257,6 +279,7 @@ def test_get_line_forbidden_cross_workspace(lines_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_line_selected_workspace_mismatch_returns_404(lines_client):
     """Line in W1 with header W2 returns 404."""
     c = lines_client['client']
@@ -266,6 +289,7 @@ def test_get_line_selected_workspace_mismatch_returns_404(lines_client):
     assert response.json()['detail'] == 'Line not found'
 
 
+@readonly_db
 def test_get_line_ok(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -279,6 +303,7 @@ def test_get_line_ok(lines_client):
     assert names == {'alpha beta', 'gamma delta'}
 
 
+@readonly_db
 def test_get_line_seeded_parent_ids_ok(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -289,6 +314,7 @@ def test_get_line_seeded_parent_ids_ok(lines_client):
     assert response.json()['parent_ids'] == [lines_client['line_w1_id']]
 
 
+@readonly_db
 def test_get_line_children_ok(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -300,6 +326,7 @@ def test_get_line_children_ok(lines_client):
     assert ids == {lines_client['line_seeded_parented_id']}
 
 
+@readonly_db
 def test_get_line_children_empty_ok(lines_client):
     c = lines_client['client']
     response = c.get(
@@ -310,6 +337,7 @@ def test_get_line_children_empty_ok(lines_client):
     assert response.json() == []
 
 
+@readonly_db
 def test_post_line_viewer_forbidden(lines_client):
     """Viewer cannot create a line."""
     c = lines_client['client']
@@ -399,6 +427,7 @@ def test_post_line_with_parent_ids_ok(lines_client):
     assert response.json()['parent_ids'] == [lines_client['line_w1_id']]
 
 
+@readonly_db
 def test_patch_line_viewer_forbidden(lines_client):
     """Viewer cannot PATCH line fields."""
     c = lines_client['client']
@@ -412,6 +441,7 @@ def test_patch_line_viewer_forbidden(lines_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_lines_invalid_workspace_header_422(lines_client):
     """Non-integer X-Workspace-Id yields 422."""
     assert_get_invalid_workspace_id_422(
@@ -422,6 +452,7 @@ def test_get_lines_invalid_workspace_header_422(lines_client):
     )
 
 
+@readonly_db
 def test_get_lines_non_member_workspace_w3_forbidden_403(lines_client):
     """User with no access to W3 cannot use W3 header on GET /lines."""
     assert_get_non_member_workspace_403(
@@ -432,6 +463,7 @@ def test_get_lines_non_member_workspace_w3_forbidden_403(lines_client):
     )
 
 
+@readonly_db
 def test_get_lines_unauthenticated_401(lines_client):
     """GET /lines without Authorization is rejected."""
     assert_get_unauthenticated_401(
@@ -441,6 +473,7 @@ def test_get_lines_unauthenticated_401(lines_client):
     )
 
 
+@readonly_db
 def test_post_line_with_allele_from_other_workspace_returns_404(lines_client):
     """Reject W2 allele id when creating a line under W1 (404)."""
     c = lines_client['client']
@@ -559,6 +592,7 @@ def test_patch_line_uid_duplicate_409(lines_client):
     assert 'already exists' in response.json()['detail']
 
 
+@readonly_db
 def test_post_line_unauthenticated_401(lines_client):
     """POST /lines without Authorization is rejected."""
     assert_post_unauthenticated_401(
@@ -574,6 +608,7 @@ def test_post_line_unauthenticated_401(lines_client):
     )
 
 
+@readonly_db
 def test_patch_line_unauthenticated_401(lines_client):
     """PATCH /lines without Authorization is rejected."""
     assert_patch_unauthenticated_401(
@@ -584,6 +619,7 @@ def test_patch_line_unauthenticated_401(lines_client):
     )
 
 
+@readonly_db
 def test_patch_line_self_parent_returns_400(lines_client):
     """A line cannot list itself as its own parent."""
     c = lines_client['client']
@@ -598,6 +634,7 @@ def test_patch_line_self_parent_returns_400(lines_client):
     assert 'cannot be its own parent' in response.json()['detail']
 
 
+@readonly_db
 def test_delete_line_with_children_returns_409(lines_client):
     c = lines_client['client']
     response = c.delete(
@@ -653,6 +690,7 @@ def test_post_line_sets_created_by(lines_client):
     assert body['created_at'] is not None
 
 
+@readonly_db
 def test_get_line_returns_created_at_for_seeded(lines_client):
     """Seeded lines expose created_at and a null created_by."""
     c = lines_client['client']
@@ -712,6 +750,7 @@ def test_get_lines_filter_by_created_by(lines_client):
     assert r.json()['items'] == []
 
 
+@readonly_db
 def test_validate_upload_lines_bulk(lines_client):
     """Validate-upload: sequence flags, UID flags, parent UIDs, and max-two parent_uids (422)."""
     c = lines_client['client']

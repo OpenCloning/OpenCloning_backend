@@ -16,12 +16,18 @@ from opencloning_db.workspace_deps import (
 )
 from .helpers import seed_standard_users
 
+readonly_db = pytest.mark.readonly_db
+
 
 @pytest.fixture
-def deps_session(engine_client_config):
+def deps_session(request):
     """Small fixture to exercise workspace_deps access checks."""
-
-    engine, _, _ = engine_client_config
+    fixture_name = (
+        'engine_client_config_readonly'
+        if request.node.get_closest_marker('readonly_db')
+        else 'engine_client_config_write'
+    )
+    engine, _, _ = request.getfixturevalue(fixture_name)
 
     with Session(engine) as session:
         ctx = seed_standard_users(session)

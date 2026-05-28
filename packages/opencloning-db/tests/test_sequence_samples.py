@@ -17,10 +17,24 @@ from .helpers import (
 
 
 @pytest.fixture
-def seq_samples_client(engine_client_config):
-    """Fresh DB for sequence samples authorization tests."""
-    engine, client, _ = engine_client_config
+def seq_samples_client(request):
+    """Seed read-only or write DB based on ``readonly_db`` marker."""
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_seq_samples_client_readonly')
+    engine, client, _ = request.getfixturevalue('engine_client_config_write')
+    return attach_standard_tokens(_seed_seq_samples_context(engine), client)
 
+
+@pytest.fixture(scope='module')
+def _seq_samples_client_readonly(engine_client_config_readonly):
+    engine, client, _ = engine_client_config_readonly
+    return attach_standard_tokens(_seed_seq_samples_context(engine), client)
+
+
+readonly_db = pytest.mark.readonly_db
+
+
+def _seed_seq_samples_context(engine):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
 
@@ -63,10 +77,10 @@ def seq_samples_client(engine_client_config):
                 'sample_w1_uid': sample_w1.uid,
             }
         )
+    return ctx
 
-    return attach_standard_tokens(ctx, client)
 
-
+@readonly_db
 def test_get_sequence_samples_requires_workspace_id(seq_samples_client):
     """GET /sequence_samples without X-Workspace-Id fails validation (422)."""
     assert_get_missing_workspace_header_422(
@@ -76,6 +90,7 @@ def test_get_sequence_samples_requires_workspace_id(seq_samples_client):
     )
 
 
+@readonly_db
 def test_get_sequence_samples_scoped_to_workspace(seq_samples_client):
     """Listed samples are restricted to the selected workspace."""
     c = seq_samples_client['client']
@@ -91,6 +106,7 @@ def test_get_sequence_samples_scoped_to_workspace(seq_samples_client):
     assert uids == {seq_samples_client['sample_w1_uid']}
 
 
+@readonly_db
 def test_get_sequence_samples_uid_filter_case_insensitive(seq_samples_client):
     """uid query applies case-insensitive substring filtering."""
     c = seq_samples_client['client']
@@ -106,6 +122,7 @@ def test_get_sequence_samples_uid_filter_case_insensitive(seq_samples_client):
     assert data[0]['uid'] == seq_samples_client['sample_w1_uid']
 
 
+@readonly_db
 def test_get_sequence_samples_forbidden_for_non_member(seq_samples_client):
     """Non-member cannot list samples with another workspace header."""
     c = seq_samples_client['client']
@@ -118,6 +135,7 @@ def test_get_sequence_samples_forbidden_for_non_member(seq_samples_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_sequence_sample(seq_samples_client):
     """GET /sequence_samples/{uid} returns sample in selected workspace."""
     c = seq_samples_client['client']
@@ -132,6 +150,7 @@ def test_get_sequence_sample(seq_samples_client):
     assert body['sequence_id'] == seq_samples_client['seq_w1_id']
 
 
+@readonly_db
 def test_get_sequence_sample_not_found_404(seq_samples_client):
     """GET /sequence_samples/{uid} returns 404 if sample not found."""
     c = seq_samples_client['client']
@@ -144,6 +163,7 @@ def test_get_sequence_sample_not_found_404(seq_samples_client):
     assert response.json()['detail'] == 'Sequence sample not found'
 
 
+@readonly_db
 def test_post_sequence_sample_viewer_forbidden(seq_samples_client):
     """Viewer cannot create sequence samples."""
     c = seq_samples_client['client']
@@ -176,6 +196,7 @@ def test_post_sequence_sample_owner_ok(seq_samples_client):
     assert response.json()['uid'] == 'S-NEW-OWNER'
 
 
+@readonly_db
 def test_post_sequence_sample_wrong_workspace_sequence_rejected(
     seq_samples_client,
 ):
@@ -194,6 +215,7 @@ def test_post_sequence_sample_wrong_workspace_sequence_rejected(
     assert response.json()['detail'] == 'BaseSequence not found'
 
 
+@readonly_db
 def test_patch_sequence_sample_viewer_forbidden(seq_samples_client):
     """Viewer cannot PATCH a sequence sample."""
     c = seq_samples_client['client']
@@ -222,6 +244,7 @@ def test_patch_sequence_sample_owner_ok(seq_samples_client):
     assert body['sequence_id'] == seq_samples_client['seq_w1_id']
 
 
+@readonly_db
 def test_patch_sequence_sample_cross_workspace_sequence_rejected(
     seq_samples_client,
 ):
@@ -237,6 +260,7 @@ def test_patch_sequence_sample_cross_workspace_sequence_rejected(
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_sequence_samples_invalid_workspace_header_422(seq_samples_client):
     """Non-integer X-Workspace-Id yields 422."""
     assert_get_invalid_workspace_id_422(
@@ -247,6 +271,7 @@ def test_get_sequence_samples_invalid_workspace_header_422(seq_samples_client):
     )
 
 
+@readonly_db
 def test_get_sequence_samples_w3_non_member_403(seq_samples_client):
     """No access to W3: 403 when listing samples with W3 header."""
     assert_get_non_member_workspace_403(
@@ -257,6 +282,7 @@ def test_get_sequence_samples_w3_non_member_403(seq_samples_client):
     )
 
 
+@readonly_db
 def test_get_sequence_samples_unauthenticated_401(seq_samples_client):
     """GET /sequence_samples without Authorization is rejected."""
     assert_get_unauthenticated_401(
@@ -286,6 +312,7 @@ def test_post_sequence_sample_duplicate_uid_returns_409(seq_samples_client):
     assert 'already exists' in r2.json()['detail']
 
 
+@readonly_db
 def test_post_sequence_sample_invalid_sequence_id_404(seq_samples_client):
     """Nonexistent sequence_id yields 404 from workspace-scoped resolution."""
     c = seq_samples_client['client']
@@ -299,6 +326,7 @@ def test_post_sequence_sample_invalid_sequence_id_404(seq_samples_client):
     assert response.json()['detail'] == 'BaseSequence not found'
 
 
+@readonly_db
 def test_delete_sequence_sample_viewer_forbidden(seq_samples_client):
     """Viewer cannot DELETE a sequence sample."""
     c = seq_samples_client['client']
@@ -333,6 +361,7 @@ def test_delete_sequence_sample_owner_ok(seq_samples_client):
     assert get_after.json()['detail'] == 'Sequence sample not found'
 
 
+@readonly_db
 def test_delete_sequence_sample_not_found_404(seq_samples_client):
     """DELETE /sequence_samples/{uid} returns 404 if sample not found."""
     c = seq_samples_client['client']
@@ -345,6 +374,7 @@ def test_delete_sequence_sample_not_found_404(seq_samples_client):
     assert response.json()['detail'] == 'Sequence sample not found'
 
 
+@readonly_db
 def test_delete_sequence_sample_forbidden_for_non_member(seq_samples_client):
     """Non-member cannot delete a sample with another workspace header."""
     c = seq_samples_client['client']
@@ -357,6 +387,7 @@ def test_delete_sequence_sample_forbidden_for_non_member(seq_samples_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_delete_sequence_sample_other_workspace_uid_returns_404(seq_samples_client):
     """UID that exists only in another workspace is not found under this header."""
     c = seq_samples_client['client']
@@ -369,6 +400,7 @@ def test_delete_sequence_sample_other_workspace_uid_returns_404(seq_samples_clie
     assert response.json()['detail'] == 'Sequence sample not found'
 
 
+@readonly_db
 def test_delete_sequence_sample_unauthenticated_401(seq_samples_client):
     """DELETE /sequence_samples/{uid} without Authorization is rejected."""
     c = seq_samples_client['client']
