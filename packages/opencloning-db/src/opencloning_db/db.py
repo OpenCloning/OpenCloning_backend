@@ -8,11 +8,12 @@ from typing import List
 import opencloning_linkml.datamodel.models as opencloning_models
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
+from opencloning_db.apimodels import CloningStrategySyncResult, PrimerDatabaseIdMismatch
 from opencloning_db.config import Config, set_config
-from opencloning_db.context import WriteContext
+from opencloning_db.context import ReadContext, WriteContext
 from opencloning_db.models import (
     Primer,
     Sequence,
@@ -105,6 +106,157 @@ def dseqrecord_to_db(
         raise ValueError(f"dseqrecord_to_db expects exactly one sequence in the strategy; got {len(cs.sequences)}")
     sequences, _ = cloning_strategy_to_db(cs, session, ctx=ctx)
     return sequences[0]
+
+
+def _normalize_primer_sequence(sequence: str | None) -> str:
+    return (sequence or '').lower()
+
+
+def get_db_primers_from_database_ids(
+    session: Session,
+    workspace_id: int,
+    database_ids: set[int],
+) -> dict[int, Primer]:
+    if len(database_ids) == 0:
+        return {}
+    return {
+        primer.id: primer
+        for primer in session.scalars(
+            select(Primer).where(
+                Primer.workspace_id == workspace_id,
+                Primer.id.in_(database_ids),
+            )
+        ).all()
+    }
+
+
+def get_db_primers_grouped_by_sequence(
+    session: Session,
+    workspace_id: int,
+    sequences: set[str],
+) -> dict[str, list[Primer]]:
+    if len(sequences) == 0:
+        return {}
+    grouped: dict[str, list[Primer]] = {}
+    for primer in session.scalars(
+        select(Primer).where(
+            Primer.workspace_id == workspace_id,
+            func.lower(Primer.sequence).in_(sequences),
+        )
+    ).all():
+        grouped.setdefault(_normalize_primer_sequence(primer.sequence), []).append(primer)
+    return grouped
+
+
+def get_primer_db_mismatch(
+    primer: opencloning_models.Primer,
+    existing_primer: Primer | None,
+    normalized_sequence: str,
+) -> PrimerDatabaseIdMismatch | None:
+    provided_database_id = primer.database_id
+    if provided_database_id is None:
+        return None
+
+    if existing_primer is None:
+        return PrimerDatabaseIdMismatch(
+            primer_id=primer.id,
+            provided_database_id=provided_database_id,
+            kind='not_found',
+        )
+
+    if _normalize_primer_sequence(existing_primer.sequence) != normalized_sequence:
+        return PrimerDatabaseIdMismatch(
+            primer_id=primer.id,
+            provided_database_id=provided_database_id,
+            kind='sequence_mismatch',
+        )
+
+    return None
+
+
+def _verify_incoming_primer_database_ids(
+    primers: list[opencloning_models.Primer],
+    existing_primers_by_id: dict[int, Primer],
+) -> tuple[list[PrimerDatabaseIdMismatch], dict[int, str], set[str]]:
+
+    mismatches: list[PrimerDatabaseIdMismatch] = []
+    primer_sequences: dict[int, str] = {}
+    sequences_needing_match: set[str] = set()
+
+    for primer in primers:
+        normalized_sequence = _normalize_primer_sequence(primer.sequence)
+        primer_sequences[primer.id] = normalized_sequence
+
+        if primer.database_id is None:
+            sequences_needing_match.add(normalized_sequence)
+            continue
+
+        mismatch = get_primer_db_mismatch(
+            primer,
+            existing_primers_by_id.get(primer.database_id),
+            normalized_sequence,
+        )
+        if mismatch is not None:
+            mismatches.append(mismatch)
+            primer.database_id = None
+            sequences_needing_match.add(normalized_sequence)
+
+    return mismatches, primer_sequences, sequences_needing_match
+
+
+def _link_primers_by_unique_sequence_match(
+    primers: list[opencloning_models.Primer],
+    primer_sequences: dict[int, str],
+    existing_primers_by_sequence: dict[str, list[Primer]],
+) -> None:
+    for primer in primers:
+        if primer.database_id is not None:
+            continue
+        matches = existing_primers_by_sequence.get(primer_sequences[primer.id], [])
+        if len(matches) == 1:
+            primer.database_id = matches[0].id
+
+
+def sync_cloning_strategy_with_db(
+    cloning_strategy: opencloning_models.CloningStrategy,
+    session: Session,
+    *,
+    ctx: ReadContext,
+) -> CloningStrategySyncResult:
+    """
+    Sync a cloning strategy against existing workspace entities.
+
+    For primers:
+    - If ``database_id`` is set, verify it exists in the workspace and matches sequence
+      (case-insensitive). On failure, record a mismatch warning and clear ``database_id``.
+    - Then match remaining primers by sequence; if exactly one workspace primer matches,
+      set ``database_id`` to that primer.
+    """
+    primers = cloning_strategy.primers or []
+    if len(primers) == 0:
+        return CloningStrategySyncResult(
+            cloning_strategy=cloning_strategy,
+            primer_database_id_mismatches=[],
+        )
+
+    provided_database_ids = {primer.database_id for primer in primers if primer.database_id is not None}
+    existing_primers_by_id = get_db_primers_from_database_ids(session, ctx.workspace_id, provided_database_ids)
+
+    # This function edits primers in place to set database_id to None if it's not valid.
+    mismatches, primer_sequences, sequences_needing_match = _verify_incoming_primer_database_ids(
+        primers, existing_primers_by_id
+    )
+
+    if len(sequences_needing_match) > 0:
+        existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
+            session, ctx.workspace_id, sequences_needing_match
+        )
+        _link_primers_by_unique_sequence_match(primers, primer_sequences, existing_primers_by_sequence)
+
+    return CloningStrategySyncResult(
+        cloning_strategy=cloning_strategy,
+        primer_database_id_mismatches=mismatches,
+    )
 
 
 def cloning_strategy_to_db(

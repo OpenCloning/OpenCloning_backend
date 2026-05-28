@@ -8,8 +8,14 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class WriteContext:
+class ReadContext:
+    """Identity for workspace-scoped read operations."""
+
+    workspace_id: int
+
+
+@dataclass(frozen=True, slots=True)
+class WriteContext(ReadContext):
     """Identity for any write/create operation: who is acting, in which workspace."""
 
     user: 'User'
-    workspace_id: int

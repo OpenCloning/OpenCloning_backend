@@ -1,7 +1,7 @@
 """Shared Pydantic request/response models for the API."""
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
 
@@ -143,6 +143,19 @@ class CloningStrategyIdMapping(ApiModel):
 class CloningStrategyResponse(ApiModel):
     id: int
     mappings: list[CloningStrategyIdMapping]
+
+
+class PrimerDatabaseIdMismatch(ApiModel):
+    """Incoming ``database_id`` on a strategy primer could not be trusted."""
+
+    primer_id: int
+    provided_database_id: int
+    kind: Literal['not_found', 'sequence_mismatch']
+
+
+class CloningStrategySyncResult(ApiModel):
+    cloning_strategy: opencloning_models.CloningStrategy
+    primer_database_id_mismatches: list[PrimerDatabaseIdMismatch] = []
 
 
 # --- Sequence / primer refs ---

@@ -9,8 +9,13 @@ from pydna.opencloning_models import TextFileSequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from opencloning_db.context import WriteContext
-from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, dseqrecord_to_db
+from opencloning_db.context import ReadContext, WriteContext
+from opencloning_db.db import (
+    cloning_strategy_to_db,
+    create_sequencing_file,
+    dseqrecord_to_db,
+    sync_cloning_strategy_with_db,
+)
 from opencloning_db.models import (
     Line,
     Sequence,
@@ -1754,6 +1759,89 @@ def test_post_cloning_strategy_from_example(sequences_client):
     out = r.json()
     assert 'id' in out
     assert isinstance(out['mappings'], list)
+
+
+@readonly_db
+def test_sync_cloning_strategy_with_db_matches_primers_case_insensitively(sequences_client):
+    strategy = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
+    assert strategy.primers is not None
+    for primer in strategy.primers:
+        primer.database_id = None
+        primer.sequence = primer.sequence.lower()
+
+    with Session(sequences_client['engine']) as session:
+        result = sync_cloning_strategy_with_db(
+            strategy,
+            session,
+            ctx=ReadContext(workspace_id=sequences_client['w1']),
+        )
+
+    synced_ids = {primer.database_id for primer in (result.cloning_strategy.primers or [])}
+    assert sequences_client['primer1_id'] in synced_ids
+    assert sequences_client['primer2_id'] in synced_ids
+    assert result.primer_database_id_mismatches == []
+
+
+@readonly_db
+def test_sync_cloning_strategy_with_db_does_not_cross_workspaces(sequences_client):
+    strategy = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
+    assert strategy.primers is not None
+    for primer in strategy.primers:
+        primer.database_id = None
+
+    with Session(sequences_client['engine']) as session:
+        result = sync_cloning_strategy_with_db(
+            strategy,
+            session,
+            ctx=ReadContext(workspace_id=sequences_client['w2']),
+        )
+
+    assert all(primer.database_id is None for primer in (result.cloning_strategy.primers or []))
+    assert result.primer_database_id_mismatches == []
+
+
+@readonly_db
+def test_sync_cloning_strategy_with_db_warns_and_rematches_on_stale_database_id(sequences_client):
+    strategy = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
+    assert strategy.primers is not None
+    primer1 = next(p for p in strategy.primers if p.name == 'primer1')
+    primer1.database_id = sequences_client['primer2_id']
+
+    with Session(sequences_client['engine']) as session:
+        result = sync_cloning_strategy_with_db(
+            strategy,
+            session,
+            ctx=ReadContext(workspace_id=sequences_client['w1']),
+        )
+
+    assert len(result.primer_database_id_mismatches) == 1
+    mismatch = result.primer_database_id_mismatches[0]
+    assert mismatch.primer_id == primer1.id
+    assert mismatch.provided_database_id == sequences_client['primer2_id']
+    assert mismatch.kind == 'sequence_mismatch'
+    assert primer1.database_id == sequences_client['primer1_id']
+
+
+@readonly_db
+def test_sync_cloning_strategy_with_db_warns_when_database_id_not_in_workspace(sequences_client):
+    strategy = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
+    assert strategy.primers is not None
+    primer1 = next(p for p in strategy.primers if p.name == 'primer1')
+    primer1.database_id = 999_999
+
+    with Session(sequences_client['engine']) as session:
+        result = sync_cloning_strategy_with_db(
+            strategy,
+            session,
+            ctx=ReadContext(workspace_id=sequences_client['w1']),
+        )
+
+    assert len(result.primer_database_id_mismatches) == 1
+    mismatch = result.primer_database_id_mismatches[0]
+    assert mismatch.primer_id == primer1.id
+    assert mismatch.provided_database_id == 999_999
+    assert mismatch.kind == 'not_found'
+    assert primer1.database_id == sequences_client['primer1_id']
 
 
 def test_search_rotation_errors():
