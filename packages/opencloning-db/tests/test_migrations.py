@@ -14,23 +14,23 @@ def test_alembic_root_finds_ini_and_versions():
     assert (root / 'alembic' / 'versions').is_dir()
 
 
-def test_truncate_application_tables_preserves_alembic_version(postgres_test_engine):
+def test_truncate_application_tables_preserves_alembic_version(postgres_test_engine_write):
     """TRUNCATE must not target alembic_version (not in ORM metadata)."""
     assert 'alembic_version' not in Base.metadata.tables
 
-    load_seed_data(postgres_test_engine)
+    load_seed_data(postgres_test_engine_write)
 
-    with postgres_test_engine.connect() as conn:
+    with postgres_test_engine_write.connect() as conn:
         version_before = conn.execute(text('SELECT version_num FROM alembic_version')).scalar_one()
 
-    with Session(postgres_test_engine) as session:
+    with Session(postgres_test_engine_write) as session:
         assert session.query(User).count() > 0
 
-    truncate_application_tables(postgres_test_engine)
+    truncate_application_tables(postgres_test_engine_write)
 
-    with postgres_test_engine.connect() as conn:
+    with postgres_test_engine_write.connect() as conn:
         version_after = conn.execute(text('SELECT version_num FROM alembic_version')).scalar_one()
     assert version_after == version_before
 
-    with Session(postgres_test_engine) as session:
+    with Session(postgres_test_engine_write) as session:
         assert session.query(User).count() == 0

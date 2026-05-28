@@ -17,10 +17,24 @@ from .helpers import (
 
 
 @pytest.fixture
-def tags_client(engine_client_config):
-    """Fresh DB for tags workspace authorization tests."""
-    engine, client, _ = engine_client_config
+def tags_client(request):
+    """Seed read-only or write DB based on ``readonly_db`` marker."""
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_tags_client_readonly')
+    engine, client, _ = request.getfixturevalue('engine_client_config_write')
+    return attach_standard_tokens(_seed_tags_context(engine), client)
 
+
+@pytest.fixture(scope='module')
+def _tags_client_readonly(engine_client_config_readonly):
+    engine, client, _ = engine_client_config_readonly
+    return attach_standard_tokens(_seed_tags_context(engine), client)
+
+
+readonly_db = pytest.mark.readonly_db
+
+
+def _seed_tags_context(engine):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
 
@@ -61,10 +75,10 @@ def tags_client(engine_client_config):
                 'line_w2_id': line_w2.id,
             }
         )
+    return ctx
 
-    return attach_standard_tokens(ctx, client)
 
-
+@readonly_db
 def test_get_tags_requires_workspace_id(tags_client):
     """GET /tags without X-Workspace-Id fails validation (422)."""
     assert_get_missing_workspace_header_422(
@@ -74,6 +88,7 @@ def test_get_tags_requires_workspace_id(tags_client):
     )
 
 
+@readonly_db
 def test_get_tags_scoped_to_workspace(tags_client):
     """Listed tags are limited to the selected workspace."""
     c = tags_client['client']
@@ -87,6 +102,7 @@ def test_get_tags_scoped_to_workspace(tags_client):
     assert names == {'tag-w1', 'tag-w1-free'}
 
 
+@readonly_db
 def test_get_tags_forbidden_non_member(tags_client):
     """User who is not a member of the header workspace cannot list tags."""
     c = tags_client['client']
@@ -99,6 +115,7 @@ def test_get_tags_forbidden_non_member(tags_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_post_tag_viewer_forbidden(tags_client):
     """Workspace viewer cannot create tags."""
     c = tags_client['client']
@@ -112,6 +129,7 @@ def test_post_tag_viewer_forbidden(tags_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_post_tag_conflict_same_workspace(tags_client):
     """Duplicate tag name in the same workspace returns 409."""
     c = tags_client['client']
@@ -138,6 +156,7 @@ def test_post_tag_owner_success(tags_client):
     assert response.json()['name'] == 'tag-created'
 
 
+@readonly_db
 def test_get_tag_viewer_ok(tags_client):
     """Viewer can read a tag in a workspace they belong to."""
     c = tags_client['client']
@@ -150,6 +169,7 @@ def test_get_tag_viewer_ok(tags_client):
     assert response.json()['name'] == 'tag-w1'
 
 
+@readonly_db
 def test_get_tag_forbidden_cross_workspace(tags_client):
     """User with no access to the header workspace cannot read a tag by id."""
     c = tags_client['client']
@@ -162,6 +182,7 @@ def test_get_tag_forbidden_cross_workspace(tags_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_tag_selected_workspace_mismatch_returns_404(tags_client):
     """Tag in another workspace than header: 404 (no existence leak)."""
     c = tags_client['client']
@@ -174,6 +195,7 @@ def test_get_tag_selected_workspace_mismatch_returns_404(tags_client):
     assert response.json()['detail'] == 'Tag not found'
 
 
+@readonly_db
 def test_get_entity_tags_selected_workspace_mismatch_returns_404(tags_client):
     """W2 entity with W1 header: 404 for entity tags listing."""
     c = tags_client['client']
@@ -186,6 +208,7 @@ def test_get_entity_tags_selected_workspace_mismatch_returns_404(tags_client):
     assert response.json()['detail'] == 'InputEntity not found'
 
 
+@readonly_db
 def test_get_tag_entities_lists_linked_input_entities(tags_client):
     """GET /tags/{id}/input_entities returns linked sequence/primer refs."""
     c = tags_client['client']
@@ -200,6 +223,7 @@ def test_get_tag_entities_lists_linked_input_entities(tags_client):
     assert ids == {tags_client['primer_w1_id']}
 
 
+@readonly_db
 def test_attach_input_entity_tag_cross_workspace_blocked(tags_client):
     """Cannot attach a tag from workspace W2 to an entity in W1."""
     c = tags_client['client']
@@ -234,6 +258,7 @@ def test_attach_input_entity_tag_ok_and_remove(tags_client):
     assert remove.json() is not None
 
 
+@readonly_db
 def test_attach_input_entity_tag_conflict_409(tags_client):
     """Attaching an already-linked tag to an entity returns 409."""
     c = tags_client['client']
@@ -248,6 +273,7 @@ def test_attach_input_entity_tag_conflict_409(tags_client):
     assert 'already' in again.json()['detail'].lower()
 
 
+@readonly_db
 def test_delete_input_entity_tag_not_found_tag_404(tags_client):
     """Removing with a non-existent tag id returns 404."""
     c = tags_client['client']
@@ -260,6 +286,7 @@ def test_delete_input_entity_tag_not_found_tag_404(tags_client):
     assert response.json()['detail'] == 'Tag not found'
 
 
+@readonly_db
 def test_delete_input_entity_tag_unlinked_404(tags_client):
     """Removing a tag that is not linked to the entity returns 404."""
     c = tags_client['client']
@@ -272,6 +299,7 @@ def test_delete_input_entity_tag_unlinked_404(tags_client):
     assert 'not linked' in response.json()['detail'].lower()
 
 
+@readonly_db
 def test_attach_line_tag_cross_workspace_blocked(tags_client):
     """Cannot attach a W2 tag to a W1 line."""
     c = tags_client['client']
@@ -306,6 +334,7 @@ def test_remove_line_tag_viewer_forbidden(tags_client):
     assert 'Not allowed' in remove.json()['detail']
 
 
+@readonly_db
 def test_get_tags_invalid_workspace_id_header_422(tags_client):
     """Non-integer X-Workspace-Id is rejected by FastAPI (422)."""
     assert_get_invalid_workspace_id_422(
@@ -316,6 +345,7 @@ def test_get_tags_invalid_workspace_id_header_422(tags_client):
     )
 
 
+@readonly_db
 def test_get_tags_non_member_workspace_w3_forbidden_403(tags_client):
     """User not in W3 gets 403 when X-Workspace-Id is W3."""
     assert_get_non_member_workspace_403(
@@ -326,6 +356,7 @@ def test_get_tags_non_member_workspace_w3_forbidden_403(tags_client):
     )
 
 
+@readonly_db
 def test_get_tags_unauthenticated_401(tags_client):
     """GET /tags without Authorization is rejected."""
     assert_get_unauthenticated_401(
@@ -335,6 +366,7 @@ def test_get_tags_unauthenticated_401(tags_client):
     )
 
 
+@readonly_db
 def test_post_tag_empty_name_422(tags_client):
     """Empty tag name is rejected (422)."""
     c = tags_client['client']
@@ -348,6 +380,7 @@ def test_post_tag_empty_name_422(tags_client):
     assert r.json()['detail']
 
 
+@readonly_db
 def test_post_tag_whitespace_only_name_422(tags_client):
     """Whitespace-only name strips to empty and fails validation (422)."""
     c = tags_client['client']
@@ -361,6 +394,7 @@ def test_post_tag_whitespace_only_name_422(tags_client):
     assert r.json()['detail']
 
 
+@readonly_db
 def test_post_tag_missing_name_422(tags_client):
     """POST /tags without name field is rejected (422)."""
     c = tags_client['client']
@@ -374,6 +408,7 @@ def test_post_tag_missing_name_422(tags_client):
     assert r.json()['detail']
 
 
+@readonly_db
 def test_attach_input_entity_tag_viewer_forbidden(tags_client):
     """Viewer cannot attach tags to an input entity."""
     c = tags_client['client']
@@ -426,6 +461,7 @@ def test_delete_input_entity_tag_non_member_forbidden(tags_client):
     assert 'Not allowed' in remove.json()['detail']
 
 
+@readonly_db
 def test_post_line_tag_viewer_forbidden(tags_client):
     """Viewer cannot POST attach a tag to a line."""
     c = tags_client['client']
@@ -441,6 +477,7 @@ def test_post_line_tag_viewer_forbidden(tags_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_post_line_tag_non_member_forbidden(tags_client):
     """Non-member cannot POST a line tag using another workspace header."""
     c = tags_client['client']
@@ -477,6 +514,7 @@ def test_remove_line_tag_non_member_forbidden(tags_client):
     assert 'Not allowed' in remove.json()['detail']
 
 
+@readonly_db
 def test_get_line_tags_success(tags_client):
     """GET /lines/{id}/tags returns tags linked to line."""
     c = tags_client['client']

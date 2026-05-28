@@ -68,11 +68,11 @@ def _object_exists(config, key: str) -> bool:
     return key in _storage(config).list_keys(key)
 
 
-@pytest.fixture
-def sequences_client(engine_client_config):
-    """Fresh DB with tmp sequence/sequencing dirs, bare sequences, and example cloning strategies."""
-    engine, client, config = engine_client_config
+readonly_db = pytest.mark.readonly_db
 
+
+def _seed_sequences_context(engine, config):
+    """Build the shared seed payload for sequence route tests."""
     with Session(engine) as session:
         ctx = seed_standard_users(session)
         w1, w2 = ctx['w1'], ctx['w2']
@@ -191,10 +191,27 @@ def sequences_client(engine_client_config):
                 'template_sequence_id': template_sequence_id,
             }
         )
+    return ctx
 
-    return attach_standard_tokens(ctx, client)
+
+@pytest.fixture
+def sequences_client(request):
+    """Seed read-only or write DB based on ``readonly_db`` marker."""
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_sequences_client_readonly')
+
+    engine, client, config = request.getfixturevalue('engine_client_config_write')
+    return attach_standard_tokens(_seed_sequences_context(engine, config), client)
 
 
+@pytest.fixture(scope='module')
+def _sequences_client_readonly(engine_client_config_readonly):
+    """Shared seeded client for readonly_db-marked tests."""
+    engine, client, config = engine_client_config_readonly
+    return attach_standard_tokens(_seed_sequences_context(engine, config), client)
+
+
+@readonly_db
 def test_get_sequences_requires_workspace_id(sequences_client):
     """GET /sequences without X-Workspace-Id fails validation (422)."""
     assert_get_missing_workspace_header_422(
@@ -204,6 +221,7 @@ def test_get_sequences_requires_workspace_id(sequences_client):
     )
 
 
+@readonly_db
 def test_get_sequences_scoped_to_workspace(sequences_client):
     """Pagination list includes all sequences in the selected workspace."""
     c = sequences_client['client']
@@ -216,6 +234,7 @@ def test_get_sequences_scoped_to_workspace(sequences_client):
     assert ids == sorted(ids, reverse=True)
 
 
+@readonly_db
 def test_get_sequences_filter_by_tag(sequences_client):
     c = sequences_client['client']
     tid = sequences_client['filter_tag_id']
@@ -229,6 +248,7 @@ def test_get_sequences_filter_by_tag(sequences_client):
     assert ids == {sequences_client['pcr_product_id']}
 
 
+@readonly_db
 def test_get_sequences_filter_instantiated_true(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -245,6 +265,7 @@ def test_get_sequences_filter_instantiated_true(sequences_client):
     } == ids
 
 
+@readonly_db
 def test_get_sequences_filter_instantiated_false(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -259,6 +280,7 @@ def test_get_sequences_filter_instantiated_false(sequences_client):
     assert sequences_client['seq_w1_id'] not in ids
 
 
+@readonly_db
 def test_get_sequences_filter_sequence_types(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -271,6 +293,7 @@ def test_get_sequences_filter_sequence_types(sequences_client):
     assert {sequences_client['pcr_product_id']} == ids
 
 
+@readonly_db
 def test_get_sequences_filter_name(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -283,6 +306,7 @@ def test_get_sequences_filter_name(sequences_client):
     assert ids == {sequences_client['seq_w1_id']}
 
 
+@readonly_db
 def test_get_sequences_filter_uid_substring(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -295,6 +319,7 @@ def test_get_sequences_filter_uid_substring(sequences_client):
     assert ids == {sequences_client['pcr_product_id']}
 
 
+@readonly_db
 def test_get_sequences_filter_has_uid(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -307,6 +332,7 @@ def test_get_sequences_filter_has_uid(sequences_client):
     assert {sequences_client['seq_w1_id'], sequences_client['pcr_product_id']} == ids
 
 
+@readonly_db
 def test_get_sequences_forbidden_non_member(sequences_client):
     """Non-member cannot list sequences when passing another workspace id."""
     c = sequences_client['client']
@@ -316,6 +342,7 @@ def test_get_sequences_forbidden_non_member(sequences_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_sequence_owner_ok(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['pcr_product_id']
@@ -329,6 +356,7 @@ def test_get_sequence_owner_ok(sequences_client):
     assert body['name'] == 'pcr_product'
 
 
+@readonly_db
 def test_get_sequence_forbidden_cross_workspace(sequences_client):
     """User not in W1 cannot GET a W1 sequence even with W1 header."""
     c = sequences_client['client']
@@ -340,6 +368,7 @@ def test_get_sequence_forbidden_cross_workspace(sequences_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_sequence_workspace_mismatch_404(sequences_client):
     """W2 sequence with W1 header returns 404."""
     c = sequences_client['client']
@@ -391,6 +420,7 @@ def test_patch_sequence_owner_rename_ok(sequences_client):
     assert r.json()['name'] == 'renamed-linear'
 
 
+@readonly_db
 def test_patch_sequence_empty_name_422(sequences_client):
     c = sequences_client['client']
     r = c.patch(
@@ -413,6 +443,7 @@ def test_patch_sequence_type_linear_ok(sequences_client):
     assert r.json()['sequence_type'] == 'pcr_product'
 
 
+@readonly_db
 def test_patch_sequence_circular_rejects_non_plasmid_type(sequences_client):
     c = sequences_client['client']
     r = c.patch(
@@ -424,6 +455,7 @@ def test_patch_sequence_circular_rejects_non_plasmid_type(sequences_client):
     assert r.json()['detail'] == "Circular sequences can only have sequence_type 'plasmid'"
 
 
+@readonly_db
 def test_patch_sequence_type_rejects_sequence_in_line(sequences_client):
     """Cannot change sequence_type when the sequence is linked to a line."""
     c = sequences_client['client']
@@ -436,6 +468,7 @@ def test_patch_sequence_type_rejects_sequence_in_line(sequences_client):
     assert r.json()['detail'] == 'Cannot change sequence_type: sequence is present in a line.'
 
 
+@readonly_db
 def test_patch_sequence_viewer_forbidden(sequences_client):
     """Viewer cannot PATCH a sequence."""
     c = sequences_client['client']
@@ -499,6 +532,7 @@ def test_delete_template_sequence_owner_ok(sequences_client):
     )
 
 
+@readonly_db
 def test_delete_sequence_rejects_when_has_children(sequences_client):
     """Sequences used as input to another source cannot be deleted (409)."""
     c = sequences_client['client']
@@ -658,6 +692,7 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
     assert _object_exists(config, new_key)
 
 
+@readonly_db
 def test_change_circularity_rejects_when_sequence_has_children(sequences_client):
     c = sequences_client['client']
     tid = sequences_client['pcr_template_id']
@@ -669,6 +704,7 @@ def test_change_circularity_rejects_when_sequence_has_children(sequences_client)
     assert 'child sequences' in r.json()['detail']
 
 
+@readonly_db
 def test_change_circularity_rejects_when_sequence_has_parents(sequences_client):
     c = sequences_client['client']
     pid = sequences_client['pcr_product_id']
@@ -680,6 +716,7 @@ def test_change_circularity_rejects_when_sequence_has_parents(sequences_client):
     assert 'parent sequences' in r.json()['detail']
 
 
+@readonly_db
 def test_change_circularity_rejects_when_sequence_has_overhangs(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_with_overhangs_id']
@@ -698,6 +735,7 @@ def test_change_circularity_rejects_when_sequence_has_overhangs(sequences_client
         'seq_with_origin_spanning_feature_rc_id',
     ],
 )
+@readonly_db
 def test_change_circularity_rejects_when_sequence_has_features_spanning_origin(sequences_client, sid):
     c = sequences_client['client']
     sid = sequences_client[sid]
@@ -709,6 +747,7 @@ def test_change_circularity_rejects_when_sequence_has_features_spanning_origin(s
     assert 'features spanning the origin' in r.json()['detail']
 
 
+@readonly_db
 def test_change_circularity_viewer_forbidden(sequences_client):
     c = sequences_client['client']
     tok = sequences_client['token_viewer_w1']
@@ -720,6 +759,7 @@ def test_change_circularity_viewer_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_change_circularity_workspace_mismatch_404(sequences_client):
     c = sequences_client['client']
     r = c.patch(
@@ -733,6 +773,7 @@ def test_change_circularity_workspace_mismatch_404(sequences_client):
     assert r.json()['detail'] == 'BaseSequence not found'
 
 
+@readonly_db
 def test_change_circularity_unauthenticated_401(sequences_client):
     c = sequences_client['client']
     assert_patch_unauthenticated_401(
@@ -777,6 +818,7 @@ def test_change_annotation_success_replaces_file(sequences_client):
     assert _object_exists(config, new_key)
 
 
+@readonly_db
 def test_change_annotation_rejects_when_dseq_differs(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
@@ -790,6 +832,7 @@ def test_change_annotation_rejects_when_dseq_differs(sequences_client):
     assert 'does not match the existing sequence' in r.json()['detail']
 
 
+@readonly_db
 def test_change_annotation_viewer_forbidden(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
@@ -802,6 +845,7 @@ def test_change_annotation_viewer_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_change_annotation_workspace_mismatch_404(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_w2_id']
@@ -814,6 +858,7 @@ def test_change_annotation_workspace_mismatch_404(sequences_client):
     assert r.json()['detail'] == 'BaseSequence not found'
 
 
+@readonly_db
 def test_change_annotation_unauthenticated_401(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
@@ -825,6 +870,7 @@ def test_change_annotation_unauthenticated_401(sequences_client):
     )
 
 
+@readonly_db
 def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):
     """Resolve sequence by lab sample UID within the selected workspace."""
     c = sequences_client['client']
@@ -836,6 +882,7 @@ def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):
     assert response.json()['id'] == sequences_client['seq_w1_id']
 
 
+@readonly_db
 def test_get_sequence_by_uid_not_found_404(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -846,6 +893,7 @@ def test_get_sequence_by_uid_not_found_404(sequences_client):
     assert r.json()['detail'] == 'Sequence not found for UID'
 
 
+@readonly_db
 def test_get_sequence_by_uid_forbidden_non_member(sequences_client):
     """Non-member cannot use by-uid with another workspace header."""
     c = sequences_client['client']
@@ -857,6 +905,7 @@ def test_get_sequence_by_uid_forbidden_non_member(sequences_client):
     assert 'Not allowed' in response.json()['detail']
 
 
+@readonly_db
 def test_get_sequences_by_seguid_known(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -868,6 +917,7 @@ def test_get_sequences_by_seguid_known(sequences_client):
     assert sequences_client['pcr_product_id'] in ids
 
 
+@readonly_db
 def test_get_sequences_by_seguid_unknown_empty(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -905,6 +955,7 @@ def _post_sequences_bulk(
     )
 
 
+@readonly_db
 def test_validate_upload_sequences_returns_flags(sequences_client):
     c = sequences_client['client']
     h_token = sequences_client['token_owner_w1']
@@ -964,6 +1015,7 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
     assert rows[3]['duplicated_name'] is None
 
 
+@readonly_db
 def test_validate_upload_sequences_limit_100(sequences_client):
     c = sequences_client['client']
     h_token = sequences_client['token_owner_w1']
@@ -976,6 +1028,7 @@ def test_validate_upload_sequences_limit_100(sequences_client):
     assert 'maximum of 100' in r.json()['detail']
 
 
+@readonly_db
 def test_validate_upload_sequences_viewer_ok(sequences_client):
     c = sequences_client['client']
     rec = Dseqrecord('ATGCATGC', name='viewer_file')
@@ -989,6 +1042,7 @@ def test_validate_upload_sequences_viewer_ok(sequences_client):
     assert len(r.json()) == 1
 
 
+@readonly_db
 def test_validate_upload_sequences_non_member_forbidden(sequences_client):
     c = sequences_client['client']
     rec = Dseqrecord('ATGCATGC', name='forbidden_file')
@@ -1002,6 +1056,7 @@ def test_validate_upload_sequences_non_member_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_validate_upload_sequences_missing_workspace_header_422(sequences_client):
     c = sequences_client['client']
     rec = Dseqrecord('ATGCATGC', name='missing_header')
@@ -1148,6 +1203,7 @@ def test_post_sequences_bulk_non_strict_still_rejects_reading_errors_and_is_atom
     assert len([item for item in list_r.json()['items'] if item['name'] == 'ok_should_not_persist']) == 0
 
 
+@readonly_db
 def test_post_sequences_bulk_viewer_forbidden(sequences_client):
     c = sequences_client['client']
     r = _post_sequences_bulk(
@@ -1160,6 +1216,7 @@ def test_post_sequences_bulk_viewer_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_post_sequences_bulk_non_member_forbidden(sequences_client):
     c = sequences_client['client']
     r = _post_sequences_bulk(
@@ -1172,6 +1229,7 @@ def test_post_sequences_bulk_non_member_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_post_sequences_bulk_missing_workspace_header_422(sequences_client):
     c = sequences_client['client']
     rec = Dseqrecord('ATGCATGC', name='missing_ws')
@@ -1183,6 +1241,7 @@ def test_post_sequences_bulk_missing_workspace_header_422(sequences_client):
     assert r.status_code == 422
 
 
+@readonly_db
 def test_get_text_file_sequence_ok(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1208,6 +1267,7 @@ def test_get_text_file_sequence_ok(sequences_client):
         (Dseqrecord(Dseq.from_full_sequence_and_overhangs(str(pcr_product.seq), 0, 2)), None, None, 0),
     ],
 )
+@readonly_db
 def test_post_sequence_search_finds_linear_and_circular_rotation(
     sequences_client, query_sequence, expected_shift, expected_reverse_complemented, result_count
 ):
@@ -1224,6 +1284,7 @@ def test_post_sequence_search_finds_linear_and_circular_rotation(
         assert match['reverse_complemented'] == expected_reverse_complemented
 
 
+@readonly_db
 def test_get_cloning_strategy_pcr_product(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1237,6 +1298,7 @@ def test_get_cloning_strategy_pcr_product(sequences_client):
     assert len(data['primers']) == 2
 
 
+@readonly_db
 def test_get_sequence_children_template_to_product(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1248,6 +1310,7 @@ def test_get_sequence_children_template_to_product(sequences_client):
     assert ids == [sequences_client['pcr_product_id']]
 
 
+@readonly_db
 def test_get_sequence_lines_returns_lines_for_sequence(sequences_client):
     c = sequences_client['client']
     headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
@@ -1260,6 +1323,7 @@ def test_get_sequence_lines_returns_lines_for_sequence(sequences_client):
     assert {item['sequence']['id'] for item in body[0]['sequences_in_line']} == {sequences_client['pcr_template_id']}
 
 
+@readonly_db
 def test_get_sequence_lines_non_member_forbidden(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1270,6 +1334,7 @@ def test_get_sequence_lines_non_member_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_get_sequence_lines_workspace_mismatch_404(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1280,6 +1345,7 @@ def test_get_sequence_lines_workspace_mismatch_404(sequences_client):
     assert r.json()['detail'] == 'BaseSequence not found'
 
 
+@readonly_db
 def test_get_sequence_primers_pcr_template_and_product(sequences_client):
     """Template sequence is PCR input (template-side primers); product sequence lists output-side primers."""
     c = sequences_client['client']
@@ -1320,6 +1386,7 @@ def test_post_sequencing_files_owner_ok(sequences_client):
     assert listed_body == data
 
 
+@readonly_db
 def test_post_sequencing_files_viewer_forbidden(sequences_client):
     """Viewer cannot upload sequencing files."""
     c = sequences_client['client']
@@ -1335,6 +1402,7 @@ def test_post_sequencing_files_viewer_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_post_sequencing_files_non_member_forbidden(sequences_client):
     """Non-member cannot upload to another workspace sequence."""
     c = sequences_client['client']
@@ -1350,6 +1418,7 @@ def test_post_sequencing_files_non_member_forbidden(sequences_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_post_sequencing_files_workspace_mismatch_404(sequences_client):
     """W2 sequence id with W1 header returns 404 on upload."""
     c = sequences_client['client']
@@ -1390,6 +1459,7 @@ def test_get_sequence_sequencing_files_viewer_ok(sequences_client):
     assert listed.json() == up.json()
 
 
+@readonly_db
 def test_get_sequence_sequencing_files_non_member_forbidden(sequences_client):
     """Non-member cannot list sequencing files for another workspace."""
     c = sequences_client['client']
@@ -1536,6 +1606,7 @@ def test_download_sequencing_file_object_storage_error_500(sequences_client):
     assert 'MockText' in str(r.json()['detail'])
 
 
+@readonly_db
 def test_download_sequencing_file_unknown_id_404(sequences_client):
     c = sequences_client['client']
     r = c.get(
@@ -1573,6 +1644,7 @@ def test_download_sequencing_file_zz_forbidden_cross_workspace(sequences_client)
     assert 'Not allowed' in download.json()['detail']
 
 
+@readonly_db
 def test_get_sequences_invalid_workspace_id_header_422(sequences_client):
     """Non-integer X-Workspace-Id on GET /sequences yields 422."""
     assert_get_invalid_workspace_id_422(
@@ -1583,6 +1655,7 @@ def test_get_sequences_invalid_workspace_id_header_422(sequences_client):
     )
 
 
+@readonly_db
 def test_get_sequences_non_member_workspace_w3_forbidden_403(sequences_client):
     """Member of W1 only cannot use workspace W3 header."""
     assert_get_non_member_workspace_403(
@@ -1593,6 +1666,7 @@ def test_get_sequences_non_member_workspace_w3_forbidden_403(sequences_client):
     )
 
 
+@readonly_db
 def test_get_sequences_unauthenticated_401(sequences_client):
     """GET /sequences without Authorization is rejected."""
     assert_get_unauthenticated_401(
@@ -1650,6 +1724,7 @@ def test_download_sequencing_file_wrong_workspace_404(sequences_client):
     assert download.json()['detail'] == 'BaseSequence not found'
 
 
+@readonly_db
 def test_patch_sequence_cross_workspace_header_404(sequences_client):
     """PATCH W2 sequence id with W1 header returns 404."""
     c = sequences_client['client']
@@ -1718,6 +1793,7 @@ def test_post_cloning_strategy_sets_created_by(sequences_client):
     assert seq_body['created_at'] is not None
 
 
+@readonly_db
 def test_get_sequence_returns_created_at_and_created_by_for_seeded(sequences_client):
     """Seeded sequences (no creator) still expose created_at and a null created_by."""
     c = sequences_client['client']

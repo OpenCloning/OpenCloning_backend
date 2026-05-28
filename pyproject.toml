@@ -44,6 +44,9 @@ ipython = ["ipython>=8.20.0", "ipykernel>=6.28.0"]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
+markers = [
+    "readonly_db: use module-scoped readonly test database for sequence tests",
+]
 
 [tool.black]
 skip-string-normalization = true

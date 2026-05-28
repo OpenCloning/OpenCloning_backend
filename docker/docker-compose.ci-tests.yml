@@ -14,6 +14,7 @@ services:
       TMPDIR: /tmp
       OPENCLONING_DB_URL: postgresql+psycopg://dbuser:dbpassword@postgres:5432/opencloning_test # Setting this for migrations to work
       OPENCLONING_TEST_DATABASE_URL: postgresql+psycopg://dbuser:dbpassword@postgres:5432/opencloning_test
+      OPENCLONING_TEST_DATABASE_URL_READONLY: postgresql+psycopg://dbuser:dbpassword@postgres:5432/opencloning_test_readonly
       NCBI_API_KEY: ${NCBI_API_KEY:-}
       ADDGENE_USERNAME: ${ADDGENE_USERNAME:-}
       ADDGENE_PASSWORD: ${ADDGENE_PASSWORD:-}

@@ -7,13 +7,22 @@ from fastapi import HTTPException
 from opencloning_db.api import app as db_app
 from opencloning_db.combined import create_app
 
+readonly_db = pytest.mark.readonly_db
+
 
 @pytest.fixture
-def combined_client(engine_client_config) -> Generator[TestClient, None, None]:
+def combined_client(request) -> Generator[TestClient, None, None]:
+    fixture_name = (
+        'engine_client_config_readonly'
+        if request.node.get_closest_marker('readonly_db')
+        else 'engine_client_config_write'
+    )
+    request.getfixturevalue(fixture_name)
     with TestClient(create_app(db_app=db_app)) as client:
         yield client
 
 
+@readonly_db
 def test_combined_root_lists_mounted_apps(combined_client: TestClient):
     response = combined_client.get('/')
 
@@ -26,6 +35,7 @@ def test_combined_root_lists_mounted_apps(combined_client: TestClient):
     }
 
 
+@readonly_db
 def test_combined_cloning_openapi_requires_auth(combined_client: TestClient):
     unauthenticated_response = combined_client.get('/cloning/openapi.json')
 
@@ -34,6 +44,7 @@ def test_combined_cloning_openapi_requires_auth(combined_client: TestClient):
     assert unauthenticated_response.headers.get('www-authenticate') == 'Bearer'
 
 
+@readonly_db
 def test_options_request_is_not_authenticated(combined_client: TestClient):
     response = combined_client.options(
         '/cloning/version',
@@ -45,6 +56,7 @@ def test_options_request_is_not_authenticated(combined_client: TestClient):
     assert response.status_code == 200
 
 
+@readonly_db
 def test_wrong_auth_header_is_rejected(combined_client: TestClient):
     response = combined_client.get('/cloning/openapi.json', headers={'Authorization': 'Bearer wrong-token'})
 
@@ -53,6 +65,7 @@ def test_wrong_auth_header_is_rejected(combined_client: TestClient):
     assert response.headers.get('www-authenticate') == 'Bearer'
 
 
+@readonly_db
 def test_invalid_auth_header_is_rejected(combined_client: TestClient):
     response = combined_client.get('/cloning/openapi.json', headers={'Authorization': 'Basic invalid-token'})
 
@@ -61,7 +74,8 @@ def test_invalid_auth_header_is_rejected(combined_client: TestClient):
     assert response.headers.get('www-authenticate') == 'Bearer'
 
 
-def test_combined_app_uses_injected_cloning_verifier(engine_client_config):
+@readonly_db
+def test_combined_app_uses_injected_cloning_verifier(engine_client_config_readonly):
     def allow_all(_headers) -> None:
         return None
 

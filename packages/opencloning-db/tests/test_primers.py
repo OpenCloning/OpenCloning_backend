@@ -19,10 +19,24 @@ from .helpers import (
 
 
 @pytest.fixture
-def primers_client(engine_client_config):
-    """Fresh DB with W1/W2; seeded primer on W1."""
-    engine, client, _ = engine_client_config
+def primers_client(request):
+    """Seed read-only or write DB based on ``readonly_db`` marker."""
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_primers_client_readonly')
+    engine, client, _ = request.getfixturevalue('engine_client_config_write')
+    return attach_standard_tokens(_seed_primers_context(engine), client)
 
+
+@pytest.fixture(scope='module')
+def _primers_client_readonly(engine_client_config_readonly):
+    engine, client, _ = engine_client_config_readonly
+    return attach_standard_tokens(_seed_primers_context(engine), client)
+
+
+readonly_db = pytest.mark.readonly_db
+
+
+def _seed_primers_context(engine):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
 
@@ -154,8 +168,7 @@ def primers_client(engine_client_config):
                 'product_seq_w2_id': product_seq_w2.id,
             }
         )
-
-    return attach_standard_tokens(ctx, client)
+    return ctx
 
 
 _VALID_PRIMER_JSON = {
@@ -164,6 +177,7 @@ _VALID_PRIMER_JSON = {
 }
 
 
+@readonly_db
 def test_get_primers_requires_workspace_id(primers_client):
     """GET /primers without X-Workspace-Id fails validation (422)."""
     assert_get_missing_workspace_header_422(
@@ -173,6 +187,7 @@ def test_get_primers_requires_workspace_id(primers_client):
     )
 
 
+@readonly_db
 def test_get_primers_lists_scoped_primers(primers_client):
     """Listed primers belong only to the selected workspace."""
     c = primers_client['client']
@@ -189,6 +204,7 @@ def test_get_primers_lists_scoped_primers(primers_client):
     assert ids == sorted(ids, reverse=True)
 
 
+@readonly_db
 def test_get_primers_filter_by_tag(primers_client):
     c = primers_client['client']
     r = c.get(
@@ -200,6 +216,7 @@ def test_get_primers_filter_by_tag(primers_client):
     assert ids == {primers_client['primer_tagged_id']}
 
 
+@readonly_db
 def test_get_primers_filter_by_name(primers_client):
     c = primers_client['client']
     r = c.get('/primers?name=SEED', headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']))
@@ -208,6 +225,7 @@ def test_get_primers_filter_by_name(primers_client):
     assert ids == {primers_client['primer_id']}
 
 
+@readonly_db
 def test_get_primers_filter_by_uid_substring(primers_client):
     c = primers_client['client']
     r = c.get('/primers?uid=primer', headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']))
@@ -216,6 +234,7 @@ def test_get_primers_filter_by_uid_substring(primers_client):
     assert ids == {primers_client['primer_uid_id']}
 
 
+@readonly_db
 def test_get_primers_filter_has_uid_true(primers_client):
     c = primers_client['client']
     r = c.get(
@@ -226,6 +245,7 @@ def test_get_primers_filter_has_uid_true(primers_client):
     assert ids == {primers_client['primer_uid_id']}
 
 
+@readonly_db
 def test_get_primers_forbidden_other_workspace(primers_client):
     """Non-member cannot list primers using another workspace id."""
     c = primers_client['client']
@@ -241,6 +261,7 @@ def test_get_primers_forbidden_other_workspace(primers_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_get_primer_forbidden_cross_workspace(primers_client):
     """User not in W1 cannot GET a W1 primer with W1 header."""
     c = primers_client['client']
@@ -256,6 +277,7 @@ def test_get_primer_forbidden_cross_workspace(primers_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_get_primer_ok(primers_client):
     """Member can fetch a primer by id in their workspace."""
     c = primers_client['client']
@@ -271,6 +293,7 @@ def test_get_primer_ok(primers_client):
     assert r.json()['name'] == 'seed_primer'
 
 
+@readonly_db
 def test_get_primer_sequences_ok(primers_client):
     c = primers_client['client']
     r = c.get(
@@ -285,6 +308,7 @@ def test_get_primer_sequences_ok(primers_client):
     assert product_ids == {primers_client['product_seq_id']}
 
 
+@readonly_db
 def test_get_primer_selected_workspace_mismatch_returns_404(primers_client):
     """Primer in W1 with header W2 returns 404."""
     c = primers_client['client']
@@ -300,6 +324,7 @@ def test_get_primer_selected_workspace_mismatch_returns_404(primers_client):
     assert 'not found' in r.json()['detail'].lower()
 
 
+@readonly_db
 def test_post_primer_viewer_forbidden(primers_client):
     """Viewer cannot POST a primer."""
     c = primers_client['client']
@@ -404,6 +429,7 @@ def test_patch_primer_clears_uid(primers_client, clear_payload):
     assert get_r.json().get('uid') is None
 
 
+@readonly_db
 def test_unauthenticated_401(primers_client):
     """GET /primers without Authorization is rejected."""
     assert_get_unauthenticated_401(
@@ -413,6 +439,7 @@ def test_unauthenticated_401(primers_client):
     )
 
 
+@readonly_db
 def test_get_primers_invalid_workspace_header_422(primers_client):
     """Non-integer X-Workspace-Id yields 422."""
     assert_get_invalid_workspace_id_422(
@@ -423,6 +450,7 @@ def test_get_primers_invalid_workspace_header_422(primers_client):
     )
 
 
+@readonly_db
 def test_get_primers_non_member_workspace_w3_forbidden_403(primers_client):
     """User with no membership in W3 cannot pass W3 as workspace header."""
     assert_get_non_member_workspace_403(
@@ -433,6 +461,7 @@ def test_get_primers_non_member_workspace_w3_forbidden_403(primers_client):
     )
 
 
+@readonly_db
 def test_post_primer_unauthenticated_401(primers_client):
     """POST /primers without Authorization is rejected."""
     assert_post_unauthenticated_401(
@@ -443,6 +472,7 @@ def test_post_primer_unauthenticated_401(primers_client):
     )
 
 
+@readonly_db
 def test_post_primer_invalid_json_422(primers_client):
     """Malformed JSON body yields 422."""
     c = primers_client['client']
@@ -459,6 +489,7 @@ def test_post_primer_invalid_json_422(primers_client):
     assert r.json()['detail']
 
 
+@readonly_db
 def test_post_primer_empty_sequence_rejected_422(primers_client):
     """Empty primer sequence fails request validation (422)."""
     c = primers_client['client']
@@ -475,6 +506,7 @@ def test_post_primer_empty_sequence_rejected_422(primers_client):
     assert r.json()['detail']
 
 
+@readonly_db
 def test_post_primer_wrong_sequence_rejected(primers_client):
     """One-base sequence passes linkml validation but is rejected by the ORM on create."""
     c = primers_client['client']
@@ -503,6 +535,7 @@ def test_post_primer_wrong_sequence_rejected(primers_client):
     assert resp.status_code == 422
 
 
+@readonly_db
 def test_post_primer_repeated_uid_returns_409(primers_client):
     """POSTing a primer with a repeated UID returns 409."""
     c = primers_client['client']
@@ -516,6 +549,7 @@ def test_post_primer_repeated_uid_returns_409(primers_client):
     assert 'already exists' in r.json()['detail']
 
 
+@readonly_db
 def test_validate_upload_returns_primer_refs_with_flags(primers_client):
     c = primers_client['client']
     headers = workspace_headers(primers_client['token_viewer_w1'], primers_client['w1'])
@@ -564,6 +598,7 @@ def test_validate_upload_returns_primer_refs_with_flags(primers_client):
     assert rows[3]['uid_duplicated'] is False
 
 
+@readonly_db
 def test_validate_upload_flags_invalid_sequence(primers_client):
     c = primers_client['client']
     headers = workspace_headers(primers_client['token_viewer_w1'], primers_client['w1'])
@@ -626,6 +661,7 @@ def test_post_primers_bulk_applies_tags(primers_client):
         assert {t['id'] for t in tags_r.json()} == {tag_id}
 
 
+@readonly_db
 def test_post_primers_bulk_unknown_tag_404(primers_client):
     c = primers_client['client']
     headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
@@ -640,6 +676,7 @@ def test_post_primers_bulk_unknown_tag_404(primers_client):
     assert len(list_r.json()['items']) == 0
 
 
+@readonly_db
 def test_post_primers_bulk_cross_workspace_tag_403(primers_client):
     c = primers_client['client']
     headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
@@ -737,6 +774,7 @@ def test_delete_primer_owner_ok(primers_client):
     assert c.get(f"/primers/{pid}", headers=headers).status_code == 404
 
 
+@readonly_db
 def test_delete_primer_rejects_when_used_as_input(primers_client):
     """Primers used as inputs to a source cannot be deleted (409)."""
     c = primers_client['client']
@@ -748,6 +786,7 @@ def test_delete_primer_rejects_when_used_as_input(primers_client):
     assert 'Cannot delete primer in use.' in r.json()['detail']
 
 
+@readonly_db
 def test_delete_primer_viewer_forbidden(primers_client):
     """Viewers cannot delete primers."""
     c = primers_client['client']
@@ -759,6 +798,7 @@ def test_delete_primer_viewer_forbidden(primers_client):
     assert 'Not allowed' in r.json()['detail']
 
 
+@readonly_db
 def test_delete_primer_workspace_mismatch_404(primers_client):
     """W2 primer id with W1 header returns 404."""
     c = primers_client['client']
@@ -830,6 +870,7 @@ def test_post_primers_bulk_sets_created_by(primers_client):
         assert row['created_at'] is not None
 
 
+@readonly_db
 def test_get_primer_returns_created_at_and_created_by(primers_client):
     """Seeded primers (no creator) still expose the new fields."""
     c = primers_client['client']
@@ -880,6 +921,7 @@ def test_get_primers_filter_by_created_by(primers_client):
     assert r.json()['items'] == []
 
 
+@readonly_db
 def test_validate_upload_whitespace_uid_not_flagged_as_existing(primers_client):
     """Whitespace-only UID is normalised to None by _normalize_uid, so uid_exists is False."""
     c = primers_client['client']

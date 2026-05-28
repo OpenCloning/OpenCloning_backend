@@ -10,6 +10,8 @@ from opencloning_db.auth.invites import (
 )
 from opencloning_db.storage import ObjectStorage
 
+readonly_db = pytest.mark.readonly_db
+
 
 def _write_invite_file(config, *emails: str) -> None:
     ObjectStorage(config).write_text(
@@ -19,14 +21,19 @@ def _write_invite_file(config, *emails: str) -> None:
 
 
 @pytest.fixture
-def auth_client(engine_client_config):
-    _, client, _ = engine_client_config
+def auth_client(request):
+    fixture_name = (
+        'engine_client_config_readonly'
+        if request.node.get_closest_marker('readonly_db')
+        else 'engine_client_config_write'
+    )
+    _, client, _ = request.getfixturevalue(fixture_name)
     return client
 
 
-def test_registration_invites_disabled_when_path_empty(postgres_test_config):
-    assert not registration_invites_enabled(postgres_test_config)
-    require_invited_email('anyone@example.com', postgres_test_config)
+def test_registration_invites_disabled_when_path_empty(postgres_test_config_write):
+    assert not registration_invites_enabled(postgres_test_config_write)
+    require_invited_email('anyone@example.com', postgres_test_config_write)
 
 
 def test_register_open_when_invite_path_empty(auth_client):
@@ -38,10 +45,10 @@ def test_register_open_when_invite_path_empty(auth_client):
     assert response.status_code == 200
 
 
-def test_register_rejected_when_not_in_invite_file(auth_client, postgres_test_config):
+def test_register_rejected_when_not_in_invite_file(auth_client, postgres_test_config_write):
     key = 'registration-invites.txt'
     previous = app_config.config
-    cfg = postgres_test_config.model_copy(update={'registration_invites_object_key': key})
+    cfg = postgres_test_config_write.model_copy(update={'registration_invites_object_key': key})
     app_config.set_config(cfg)
     _write_invite_file(cfg, 'other@example.com')
     try:
@@ -56,10 +63,10 @@ def test_register_rejected_when_not_in_invite_file(auth_client, postgres_test_co
         app_config.set_config(previous)
 
 
-def test_register_succeeds_when_email_in_invite_file(auth_client, postgres_test_config):
+def test_register_succeeds_when_email_in_invite_file(auth_client, postgres_test_config_write):
     key = 'registration-invites.txt'
     previous = app_config.config
-    cfg = postgres_test_config.model_copy(update={'registration_invites_object_key': key})
+    cfg = postgres_test_config_write.model_copy(update={'registration_invites_object_key': key})
     app_config.set_config(cfg)
     email = 'invited@example.com'
     _write_invite_file(cfg, email.upper())

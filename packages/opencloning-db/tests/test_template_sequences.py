@@ -9,9 +9,27 @@ from .helpers import attach_standard_tokens, seed_standard_users, workspace_head
 
 
 @pytest.fixture
-def template_sequences_client(engine_client_config):
-    engine, client, _ = engine_client_config
+def template_sequences_client(request):
+    if request.node.get_closest_marker('readonly_db'):
+        return request.getfixturevalue('_template_sequences_client_readonly')
+    engine, client, _ = request.getfixturevalue('engine_client_config_write')
+    seeded = attach_standard_tokens(_seed_template_sequences_context(engine), client)
+    seeded['engine'] = engine
+    return seeded
 
+
+@pytest.fixture(scope='module')
+def _template_sequences_client_readonly(engine_client_config_readonly):
+    engine, client, _ = engine_client_config_readonly
+    seeded = attach_standard_tokens(_seed_template_sequences_context(engine), client)
+    seeded['engine'] = engine
+    return seeded
+
+
+readonly_db = pytest.mark.readonly_db
+
+
+def _seed_template_sequences_context(engine):
     with Session(engine) as session:
         ctx = seed_standard_users(session)
         tag_w1 = Tag(name='template-tag-w1', workspace_id=ctx['w1'])
@@ -20,11 +38,7 @@ def template_sequences_client(engine_client_config):
         session.commit()
         ctx = {**ctx, 'tag_w1_id': tag_w1.id, 'tag_w2_id': tag_w2.id}
 
-    seeded = attach_standard_tokens(ctx, client)
-    seeded['engine'] = engine
-    seeded['tag_w1_id'] = ctx['tag_w1_id']
-    seeded['tag_w2_id'] = ctx['tag_w2_id']
-    return seeded
+    return ctx
 
 
 def test_post_template_sequence_owner_ok(template_sequences_client):
@@ -43,6 +57,7 @@ def test_post_template_sequence_owner_ok(template_sequences_client):
     assert body['sample_uids'] == []
 
 
+@readonly_db
 def test_post_template_sequence_viewer_forbidden(template_sequences_client):
     c = template_sequences_client['client']
     response = c.post(

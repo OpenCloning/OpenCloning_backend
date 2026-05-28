@@ -146,7 +146,7 @@ class TestBaseRepr(unittest.TestCase):
         self.assertIn('sequence_instance_id: None', text)
 
 
-@pytest.mark.usefixtures('engine_client_config')
+@pytest.mark.usefixtures('engine_client_config_readonly')
 class TestSequence(_MemoryDbTestCase):
     """Tests for ``Sequence``."""
 
@@ -481,7 +481,7 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
         self.assertEqual(pyd.sequence, ent.id)
 
 
-@pytest.mark.usefixtures('engine_client_config')
+@pytest.mark.usefixtures('engine_client_config_readonly')
 class TestCloningStrategyToDb(_MemoryDbTestCase):
     """Tests for ``cloning_strategy_to_db`` mappings."""
 
