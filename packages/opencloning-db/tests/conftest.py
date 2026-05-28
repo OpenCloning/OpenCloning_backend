@@ -132,27 +132,3 @@ def engine_client_config_readonly(
 ) -> Generator[tuple[Engine, TestClient, Config], None, None]:
     """Readonly DB (module scope) shared by readonly_db-marked tests."""
     yield from _engine_client_config(postgres_test_config_readonly, postgres_test_engine_readonly)
-
-
-@pytest.fixture
-def postgres_test_config(postgres_test_config_write: Config) -> Generator[Config, None, None]:
-    """Backward-compatible alias to write config."""
-    yield postgres_test_config_write
-
-
-@pytest.fixture
-def postgres_test_engine(postgres_test_engine_write: Engine) -> Generator[Engine, None, None]:
-    """Backward-compatible alias to write engine."""
-    yield postgres_test_engine_write
-
-
-@pytest.fixture
-def engine_client_config(
-    engine_client_config_write: tuple[Engine, TestClient, Config],
-) -> Generator[tuple[Engine, TestClient, Config], None, None]:
-    """Backward-compatible alias to write client stack.
-
-    Also use via ``@pytest.mark.usefixtures("engine_client_config")`` when tests
-    only need ``get_config()`` paths (e.g. model tests with their own engine).
-    """
-    yield engine_client_config_write
