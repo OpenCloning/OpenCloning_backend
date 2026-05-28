@@ -153,9 +153,18 @@ class PrimerDatabaseIdMismatch(ApiModel):
     kind: Literal['not_found', 'sequence_mismatch']
 
 
+class SequenceDatabaseIdMismatch(ApiModel):
+    """Incoming ``database_id`` on a strategy sequence could not be trusted."""
+
+    sequence_id: int
+    provided_database_id: int
+    kind: Literal['not_found', 'seguid_mismatch']
+
+
 class CloningStrategySyncResult(ApiModel):
     cloning_strategy: opencloning_models.CloningStrategy
     primer_database_id_mismatches: list[PrimerDatabaseIdMismatch] = []
+    sequence_database_id_mismatches: list[SequenceDatabaseIdMismatch] = []
 
 
 # --- Sequence / primer refs ---

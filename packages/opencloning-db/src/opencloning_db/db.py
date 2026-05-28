@@ -11,7 +11,11 @@ import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
-from opencloning_db.apimodels import CloningStrategySyncResult, PrimerDatabaseIdMismatch
+from opencloning_db.apimodels import (
+    CloningStrategySyncResult,
+    PrimerDatabaseIdMismatch,
+    SequenceDatabaseIdMismatch,
+)
 from opencloning_db.config import Config, set_config
 from opencloning_db.context import ReadContext, WriteContext
 from opencloning_db.models import (
@@ -217,6 +221,208 @@ def _link_primers_by_unique_sequence_match(
             primer.database_id = matches[0].id
 
 
+def _sync_primers_with_db(
+    primers: list[opencloning_models.Primer],
+    session: Session,
+    workspace_id: int,
+) -> list[PrimerDatabaseIdMismatch]:
+    if len(primers) == 0:
+        return []
+
+    provided_database_ids = {primer.database_id for primer in primers if primer.database_id is not None}
+    existing_primers_by_id = get_db_primers_from_database_ids(session, workspace_id, provided_database_ids)
+    mismatches, primer_sequences, sequences_needing_match = _verify_incoming_primer_database_ids(
+        primers, existing_primers_by_id
+    )
+
+    if len(sequences_needing_match) > 0:
+        existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
+            session, workspace_id, sequences_needing_match
+        )
+        _link_primers_by_unique_sequence_match(primers, primer_sequences, existing_primers_by_sequence)
+
+    return mismatches
+
+
+def get_db_sequences_from_database_ids(
+    session: Session,
+    workspace_id: int,
+    database_ids: set[int],
+) -> dict[int, Sequence]:
+    if len(database_ids) == 0:
+        return {}
+    return {
+        sequence.id: sequence
+        for sequence in session.scalars(
+            select(Sequence).where(
+                Sequence.workspace_id == workspace_id,
+                Sequence.id.in_(database_ids),
+            )
+        ).all()
+    }
+
+
+def get_db_sequences_grouped_by_seguid(
+    session: Session,
+    workspace_id: int,
+    seguids: set[str],
+) -> dict[str, list[Sequence]]:
+    if len(seguids) == 0:
+        return {}
+    grouped: dict[str, list[Sequence]] = {}
+    for sequence in session.scalars(
+        select(Sequence).where(
+            Sequence.workspace_id == workspace_id,
+            Sequence.seguid.in_(seguids),
+        )
+    ).all():
+        grouped.setdefault(sequence.seguid, []).append(sequence)
+    return grouped
+
+
+def _clear_dseqrecord_database_id(dseqr: Dseqrecord) -> None:
+    assert dseqr.source is not None
+
+    if isinstance(dseqr.source, pydna_opencloning_models.DatabaseSource):
+        # This assignment is because DatabaseSource cannot have a database_id that is None
+        dseqr.source = None
+    else:
+        dseqr.source.database_id = None
+
+
+def _link_dseqrecord_to_database(dseqr: Dseqrecord, database_id: int) -> None:
+    dseqr.source = pydna_opencloning_models.DatabaseSource(database_id=database_id, input=[])
+
+
+def get_sequence_db_mismatch(
+    *,
+    sequence_id: int,
+    provided_database_id: int,
+    existing_sequence: Sequence | None,
+    seguid: str,
+) -> SequenceDatabaseIdMismatch | None:
+    if existing_sequence is None:
+        return SequenceDatabaseIdMismatch(
+            sequence_id=sequence_id,
+            provided_database_id=provided_database_id,
+            kind='not_found',
+        )
+
+    if existing_sequence.seguid != seguid:
+        return SequenceDatabaseIdMismatch(
+            sequence_id=sequence_id,
+            provided_database_id=provided_database_id,
+            kind='seguid_mismatch',
+        )
+
+    return None
+
+
+def _collect_dseqrecord_graph_lookups(
+    dseqr: Dseqrecord,
+    seguids: set[str],
+    database_ids: set[int],
+) -> None:
+    """Collect SEGUIDs and database IDs from a Dseqrecord graph."""
+    seguids.add(dseqr.seq.seguid())
+    if dseqr.source is None or dseqr.source.database_id is None:
+        return
+    database_ids.add(dseqr.source.database_id)
+
+    for source_input in dseqr.source.input:
+        child = source_input.sequence
+        if isinstance(child, Dseqrecord):
+            _collect_dseqrecord_graph_lookups(child, seguids, database_ids)
+
+
+def _sync_dseqrecord_with_db(
+    dseqr: Dseqrecord,
+    existing_sequences_by_id: dict[int, Sequence],
+    existing_sequences_by_seguid: dict[str, list[Sequence]],
+    mismatches: list[SequenceDatabaseIdMismatch],
+    visited: set[int],
+) -> None:
+    """Recursively navigate a Dseqrecord history graph up to the first ancestor that exists in the database.
+    If it exists, replace the source with a DatabaseSource, otherwise keep going up the graph.
+    """
+    local_id = pydna_opencloning_models.get_id(dseqr)
+    if local_id in visited:
+        return
+    visited.add(local_id)
+
+    seguid = dseqr.seq.seguid()
+
+    # "provided" because it comes from the cloning strategy, and might not be correct
+    provided_database_id = None if dseqr.source is None else dseqr.source.database_id
+
+    if provided_database_id is not None:
+        mismatch = get_sequence_db_mismatch(
+            sequence_id=local_id,
+            provided_database_id=provided_database_id,
+            existing_sequence=existing_sequences_by_id.get(provided_database_id),
+            seguid=seguid,
+        )
+        if mismatch is None:
+            if not isinstance(dseqr.source, pydna_opencloning_models.DatabaseSource):
+                _link_dseqrecord_to_database(dseqr, provided_database_id)
+            return
+
+        mismatches.append(mismatch)
+        _clear_dseqrecord_database_id(dseqr)
+
+    matches = existing_sequences_by_seguid.get(seguid, [])
+    if len(matches) > 0:
+        db_sequence = min(matches, key=lambda sequence: sequence.id)
+        _link_dseqrecord_to_database(dseqr, db_sequence.id)
+        return
+
+    if dseqr.source is None:
+        return
+
+    for source_input in dseqr.source.input:
+        child = source_input.sequence
+        if isinstance(child, Dseqrecord):
+            _sync_dseqrecord_with_db(
+                child,
+                existing_sequences_by_id,
+                existing_sequences_by_seguid,
+                mismatches,
+                visited,
+            )
+
+
+def _sync_sequences_via_dseqrecords(
+    pydna_strategy: pydna_opencloning_models.CloningStrategy,
+    session: Session,
+    workspace_id: int,
+) -> tuple[pydna_opencloning_models.CloningStrategy, list[SequenceDatabaseIdMismatch]]:
+    terminals = pydna_strategy.to_dseqrecords()
+    seguids: set[str] = set()
+    database_ids: set[int] = set()
+    for terminal in terminals:
+        _collect_dseqrecord_graph_lookups(terminal, seguids, database_ids)
+
+    existing_sequences_by_id = get_db_sequences_from_database_ids(session, workspace_id, database_ids)
+    existing_sequences_by_seguid = get_db_sequences_grouped_by_seguid(session, workspace_id, seguids)
+
+    mismatches: list[SequenceDatabaseIdMismatch] = []
+    visited: set[int] = set()
+    for terminal in terminals:
+        _sync_dseqrecord_with_db(
+            terminal,
+            existing_sequences_by_id,
+            existing_sequences_by_seguid,
+            mismatches,
+            visited,
+        )
+
+    synced_strategy = pydna_opencloning_models.CloningStrategy.from_dseqrecords(
+        terminals,
+        pydna_strategy.description or '',
+    )
+    return synced_strategy, mismatches
+
+
 def sync_cloning_strategy_with_db(
     cloning_strategy: opencloning_models.CloningStrategy,
     session: Session,
@@ -231,31 +437,33 @@ def sync_cloning_strategy_with_db(
       (case-insensitive). On failure, record a mismatch warning and clear ``database_id``.
     - Then match remaining primers by sequence; if exactly one workspace primer matches,
       set ``database_id`` to that primer.
+
+    For sequences (via pydna graph):
+    - Rebuild terminal ``Dseqrecord`` objects with ``to_dseqrecords()``.
+    - Validate or resolve ``database_id`` by SEGUID; on match, replace source with
+      ``DatabaseSource`` (dropping parent provenance).
+    - Rebuild the strategy with ``from_dseqrecords()``.
     """
-    primers = cloning_strategy.primers or []
-    if len(primers) == 0:
-        return CloningStrategySyncResult(
-            cloning_strategy=cloning_strategy,
-            primer_database_id_mismatches=[],
+    synced_primers = [
+        opencloning_models.Primer.model_validate(primer.model_dump(mode='json'))
+        for primer in (cloning_strategy.primers or [])
+    ]
+    primer_mismatches = _sync_primers_with_db(synced_primers, session, ctx.workspace_id)
+    pydna_strategy = pydna_opencloning_models.CloningStrategy.model_validate(cloning_strategy.model_dump(mode='json'))
+    with pydna_opencloning_models.id_mode(use_python_internal_id=False):
+        pydna_strategy, sequence_mismatches = _sync_sequences_via_dseqrecords(
+            pydna_strategy,
+            session,
+            ctx.workspace_id,
         )
 
-    provided_database_ids = {primer.database_id for primer in primers if primer.database_id is not None}
-    existing_primers_by_id = get_db_primers_from_database_ids(session, ctx.workspace_id, provided_database_ids)
-
-    # This function edits primers in place to set database_id to None if it's not valid.
-    mismatches, primer_sequences, sequences_needing_match = _verify_incoming_primer_database_ids(
-        primers, existing_primers_by_id
-    )
-
-    if len(sequences_needing_match) > 0:
-        existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
-            session, ctx.workspace_id, sequences_needing_match
-        )
-        _link_primers_by_unique_sequence_match(primers, primer_sequences, existing_primers_by_sequence)
+        linkml_strategy = opencloning_models.CloningStrategy.model_validate(pydna_strategy.model_dump(mode='json'))
+    linkml_strategy.primers = synced_primers
 
     return CloningStrategySyncResult(
-        cloning_strategy=cloning_strategy,
-        primer_database_id_mismatches=mismatches,
+        cloning_strategy=linkml_strategy,
+        primer_database_id_mismatches=primer_mismatches,
+        sequence_database_id_mismatches=sequence_mismatches,
     )
 
 
