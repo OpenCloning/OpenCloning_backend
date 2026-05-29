@@ -440,6 +440,9 @@ def _sync_sequences_via_dseqrecords(
         synced_strategy, existing_sequences_by_id, existing_sequences_by_seguid
     )
 
+    # Then normalize
+    synced_strategy = synced_strategy.normalize()
+
     return synced_strategy, mismatches
 
 

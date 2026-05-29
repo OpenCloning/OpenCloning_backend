@@ -3,9 +3,11 @@
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
+from pydna.assembly2 import pcr_assembly
 from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
 from pydna.opencloning_models import TextFileSequence
+from pydna.primer import Primer as PydnaPrimer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -2019,6 +2021,37 @@ def test_sync_cloning_strategy_with_db_returns_rotated_or_oriented_sequences(seq
     assert pydna_out.sources[0].database_id == sequences_client['pcr_template_id']
     assert pydna_out.sources[0].type == 'DatabaseSource'
     assert pydna_out.to_dseqrecords()[0].seq == pcr_template.seq
+
+
+def test_sync_cloning_strategy_with_db_returns_normalized_cloning_strategy(sequences_client):
+
+    wid = sequences_client['w1']
+
+    pcr_product = cs_pcr.to_dseqrecords()[0]
+    pcr_template = pcr_product.source.input[1].sequence
+    new_template = Dseqrecord(pcr_template.seq, circular=True).shifted(4)
+    new_product, *_ = pcr_assembly(
+        new_template,
+        PydnaPrimer('aaaaACGTACGT', name='primer1-with-tail'),
+        pcr_product.source.input[2].sequence,
+        limit=8,
+    )
+    with Session(sequences_client['engine']) as session:
+        pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
+            pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_product]),
+            session,
+            wid,
+        )
+    assert len(pydna_out.sequences) == 2
+    assert len(pydna_out.sources) == 2
+
+    # Template is the same as the original (not shifted)
+    returned_product = pydna_out.to_dseqrecords()[0]
+    returned_template = returned_product.source.input[1].sequence
+    assert returned_template.seq == pcr_template.seq
+
+    # Coordinates are different to what was submitted because the cloning strategy was normalized
+    assert returned_product.source.input[1].left_location != new_product.source.input[1].left_location
 
 
 def test_search_rotation_errors():
