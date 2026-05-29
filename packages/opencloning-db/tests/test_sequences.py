@@ -1958,12 +1958,10 @@ def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(s
             sequences_client['w1'],
         )
 
-    for s in pydna_out.sources:
-        print()
-        print(s)
-
-    # assert len(pydna_out.sequences) == 2
-    # assert len(pydna_out.sources) == 2
+    assert len(pydna_out.sequences) == 3
+    assert len(pydna_out.sources) == 3
+    assert len([s for s in pydna_out.sources if s.type == 'DatabaseSource']) == 1
+    assert len([s for s in pydna_out.sources if s.type == 'RestrictionEnzymeDigestionSource']) == 2
 
 
 @readonly_db

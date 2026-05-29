@@ -325,9 +325,10 @@ def _collect_dseqrecord_graph_lookups(
 ) -> None:
     """Collect SEGUIDs and database IDs from a Dseqrecord graph."""
     seguids.add(dseqr.seq.seguid())
-    if dseqr.source is None or dseqr.source.database_id is None:
+    if dseqr.source is None:
         return
-    database_ids.add(dseqr.source.database_id)
+    if dseqr.source.database_id is not None:
+        database_ids.add(dseqr.source.database_id)
 
     for source_input in dseqr.source.input:
         child = source_input.sequence
