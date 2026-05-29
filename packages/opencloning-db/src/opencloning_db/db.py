@@ -441,7 +441,10 @@ def _sync_sequences_via_dseqrecords(
     )
 
     # Then normalize
-    synced_strategy = synced_strategy.normalize()
+    try:
+        synced_strategy = synced_strategy.normalize()
+    except ValueError as e:  # pragma: no cover # This should never happen, as input is validated before syncing
+        raise ValueError(f"Error normalizing cloning strategy: {e}") from e
 
     return synced_strategy, mismatches
 
@@ -453,7 +456,8 @@ def sync_cloning_strategy_with_db(
     ctx: ReadContext,
 ) -> CloningStrategySyncResult:
     """
-    Sync a cloning strategy against existing workspace entities.
+    Sync a cloning strategy against existing workspace entities. It assumes that is
+    validated before syncing.
 
     For primers:
     - If ``database_id`` is set, verify it exists in the workspace and matches sequence
@@ -473,6 +477,7 @@ def sync_cloning_strategy_with_db(
     ]
     primer_mismatches = _sync_primers_with_db(synced_primers, session, ctx.workspace_id)
     pydna_strategy = pydna_opencloning_models.CloningStrategy.model_validate(cloning_strategy.model_dump(mode='json'))
+
     with pydna_opencloning_models.id_mode(use_python_internal_id=False):
         pydna_strategy, sequence_mismatches = _sync_sequences_via_dseqrecords(
             pydna_strategy,
