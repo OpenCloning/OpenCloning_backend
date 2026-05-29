@@ -13,7 +13,6 @@ from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
 from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
 from opencloning_db.cloning_strategy_bulk import (
-    has_cloning_strategy_bulk_errors,
     parse_cloning_strategy_file,
     validate_and_sync_cloning_strategy_dict,
 )
@@ -589,16 +588,23 @@ def post_cloning_strategy_bulk(
     ]
     payloads = [cs.cloning_strategy.model_dump(mode='json') for cs in sync_results]
     file_names = [cs.file_name for cs in sync_results]
-    validation_rows = [
+
+    # We use a generator to ensure that the same sequence submitted twice
+    # is added to the db once, and from then on synced.
+    validation_rows_generator = (
         validate_and_sync_cloning_strategy_dict(data, session, ctx, file_name=file_name)
         for data, file_name in zip(payloads, file_names)
-    ]
-    if has_cloning_strategy_bulk_errors(validation_rows):
-        return bulk_conflict_response(validation_rows)
+    )
 
     all_sequences: list[Sequence] = []
-    for row in validation_rows:
-        if row.already_synced:
+    error_found = False
+    rows = list()
+    for row in validation_rows_generator:
+        rows.append(row)
+        if row.parsing_errors:
+            error_found = True
+            continue
+        if row.already_synced or error_found:
             continue
         assert row.cloning_strategy is not None
         sequences, _id_mappings = cloning_strategy_to_db(
@@ -608,6 +614,9 @@ def post_cloning_strategy_bulk(
             tags=workspace_tags or None,
         )
         all_sequences.extend(sequences)
+
+    if error_found:
+        return bulk_conflict_response(rows)
 
     conflict = bulk_commit_or_conflict(
         session,

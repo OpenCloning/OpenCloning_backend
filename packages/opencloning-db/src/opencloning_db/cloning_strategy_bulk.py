@@ -45,7 +45,3 @@ def validate_and_sync_cloning_strategy_dict(
     sync_result.file_name = file_name
     sync_result.parsing_warnings = parsing_warnings
     return sync_result
-
-
-def has_cloning_strategy_bulk_errors(results: list[CloningStrategySyncResult]) -> bool:
-    return any(r.parsing_errors for r in results)

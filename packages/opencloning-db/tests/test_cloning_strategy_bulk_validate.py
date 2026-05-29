@@ -707,3 +707,19 @@ def test_bulk_submit_viewer_forbidden(sequences_client):
     )
     assert r.status_code == 403
     assert 'Not allowed' in r.json()['detail']
+
+
+def test_bulk_submit_same_sequence_twice_only_one_created(sequences_client, shifted_pcr_template_and_product):
+    c = sequences_client['client']
+    pcr_template, new_template, new_product = shifted_pcr_template_and_product
+    payload = _sync_result_filled(
+        pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_product]).model_dump(), file_name='pcr.json'
+    )
+    r = _post_bulk_submit(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [payload, payload],
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 2
