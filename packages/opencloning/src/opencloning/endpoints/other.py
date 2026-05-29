@@ -76,7 +76,8 @@ async def cloning_strategy_is_valid(data: dict, response: Response):
     cs = validate_cloning_strategy_format_and_migrate(data, warnings)
     if len(warnings) > 0:
         response.headers['x-warning'] = ';'.join(warnings)
-    return cs
+        return cs
+    return None
 
 
 @router.post('/validate_syntax')

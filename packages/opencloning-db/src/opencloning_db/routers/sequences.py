@@ -4,6 +4,7 @@ from typing import Annotated, List, TypeVar
 from urllib.parse import quote
 
 from opencloning.dna_functions import read_dsrecord_from_json
+from opencloning.utils import validate_cloning_strategy_format_and_migrate
 import opencloning_linkml.datamodel.models as opencloning_models
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
 from fastapi import status
@@ -24,6 +25,7 @@ from pydna.parsers import parse as pydna_parse
 from opencloning_db.apimodels import (
     CloningStrategyIdMapping,
     CloningStrategyResponse,
+    CloningStrategySyncResult,
     DeletedResponse,
     LineRef,
     SequenceRef,
@@ -36,7 +38,7 @@ from opencloning_db.apimodels import (
     primer_ref,
     sequence_ref,
 )
-from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
+from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, sync_cloning_strategy_with_db
 from opencloning_db.models import (
     InputEntity,
     Primer,
@@ -539,6 +541,33 @@ async def post_sequences_bulk(
     for db_sequence in db_sequences:
         session.refresh(db_sequence)
     return [sequence_ref(s) for s in db_sequences]
+
+
+@router.post('/sequences/cloning_strategy/bulk/validate', response_model=list[CloningStrategySyncResult])
+async def validate_cloning_strategy_bulk(
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    cloning_strategies: list[dict],
+):
+    _, session, workspace_id = ctx.destructure()
+    output = list()
+    for cloning_strategy in cloning_strategies:
+        parsing_warnings = list()
+        try:
+            cs = validate_cloning_strategy_format_and_migrate(cloning_strategy, parsing_warnings)
+        except HTTPException as e:
+            output.append(CloningStrategySyncResult(parsing_errors=[e.detail]))
+            continue
+        try:
+            pydna_opencloning_models.CloningStrategy.model_validate(cs.model_dump(mode='json')).validate()
+        except ValueError as e:
+            output.append(CloningStrategySyncResult(parsing_errors=['Cloning strategy is not correct: ' + str(e)]))
+            continue
+
+        sync_result = sync_cloning_strategy_with_db(cs, session, ctx=ctx)
+        sync_result.parsing_warnings = parsing_warnings
+        output.append(sync_result)
+
+    return output
 
 
 @router.get('/sequences/by-seguid/{seguid}', response_model=list[SequenceRef])

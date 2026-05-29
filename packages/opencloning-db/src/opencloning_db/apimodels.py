@@ -162,9 +162,11 @@ class SequenceDatabaseIdMismatch(ApiModel):
 
 
 class CloningStrategySyncResult(ApiModel):
-    cloning_strategy: opencloning_models.CloningStrategy
-    primer_database_id_mismatches: list[PrimerDatabaseIdMismatch] = []
-    sequence_database_id_mismatches: list[SequenceDatabaseIdMismatch] = []
+    cloning_strategy: opencloning_models.CloningStrategy | None = None
+    parsing_errors: list[str] = Field(default_factory=list)
+    parsing_warnings: list[str] = Field(default_factory=list)
+    primer_database_id_mismatches: list[PrimerDatabaseIdMismatch] = Field(default_factory=list)
+    sequence_database_id_mismatches: list[SequenceDatabaseIdMismatch] = Field(default_factory=list)
 
 
 # --- Sequence / primer refs ---

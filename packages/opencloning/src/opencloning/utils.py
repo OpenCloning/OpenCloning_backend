@@ -5,15 +5,14 @@ from opencloning.pydantic_models import BaseCloningStrategy
 from pydantic import ValidationError
 
 
-def validate_cloning_strategy_format_and_migrate(data: dict, warnings: list) -> BaseCloningStrategy | None:
+def validate_cloning_strategy_format_and_migrate(data: dict, warnings: list) -> BaseCloningStrategy:
     if any(key not in data for key in ['primers', 'sources', 'sequences']):
         raise HTTPException(status_code=422, detail='The cloning strategy is invalid')
 
     try:
         migrated_data = migrate(data)
         if migrated_data is None:
-            BaseCloningStrategy.model_validate(data)
-            return None
+            return BaseCloningStrategy.model_validate(data)
 
         data = migrated_data
         warnings.append(
@@ -24,9 +23,6 @@ def validate_cloning_strategy_format_and_migrate(data: dict, warnings: list) -> 
         if fixed_data is not None:
             data = fixed_data
             warnings.append('The cloning strategy contained an error and has been turned into a template.')
-        cs = BaseCloningStrategy.model_validate(data)
-        if len(warnings) > 0:
-            return cs
-        return None
+        return BaseCloningStrategy.model_validate(data)
     except ValidationError:
         raise HTTPException(status_code=422, detail='The cloning strategy is invalid')
