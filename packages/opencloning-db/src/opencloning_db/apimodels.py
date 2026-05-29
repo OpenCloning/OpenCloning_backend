@@ -168,6 +168,7 @@ class CloningStrategySyncResult(ApiModel):
     parsing_warnings: list[str] = Field(default_factory=list)
     primer_database_id_mismatches: list[PrimerDatabaseIdMismatch] = Field(default_factory=list)
     sequence_database_id_mismatches: list[SequenceDatabaseIdMismatch] = Field(default_factory=list)
+    already_synced: bool = False
 
 
 class CloningStrategySyncResultFilled(ApiModel):

@@ -578,8 +578,15 @@ def _cloning_strategy_response_from_db(
 def post_cloning_strategy_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     sync_results: list[CloningStrategySyncResultFilled],
+    tags: list[int] = Query(
+        description='Tag IDs to apply to all newly created sequences and primers', default_factory=list
+    ),
 ):
-    _, session, _workspace_id = ctx.destructure()
+    current_user, session, workspace_id = ctx.destructure()
+    workspace_tags = [
+        get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
+        for tag_id in sorted(set(tags))
+    ]
     payloads = [cs.cloning_strategy.model_dump(mode='json') for cs in sync_results]
     file_names = [cs.file_name for cs in sync_results]
     validation_rows = [
@@ -591,8 +598,15 @@ def post_cloning_strategy_bulk(
 
     all_sequences: list[Sequence] = []
     for row in validation_rows:
+        if row.already_synced:
+            continue
         assert row.cloning_strategy is not None
-        sequences, id_mappings = cloning_strategy_to_db(row.cloning_strategy, session, ctx=ctx)
+        sequences, _id_mappings = cloning_strategy_to_db(
+            row.cloning_strategy,
+            session,
+            ctx=ctx,
+            tags=workspace_tags or None,
+        )
         all_sequences.extend(sequences)
 
     conflict = bulk_commit_or_conflict(

@@ -25,6 +25,22 @@ _OLD_FORMAT_FILE = _TEST_FILES / 'homologous_recombination_old_format.json'
 readonly_db = pytest.mark.readonly_db
 
 
+@pytest.fixture(scope='module')
+def shifted_pcr_template_and_product() -> tuple[Dseqrecord, Dseqrecord, Dseqrecord]:
+    pcr_product = cs_pcr.to_dseqrecords()[0]
+    pcr_template = pcr_product.source.input[1].sequence
+    new_template = Dseqrecord(pcr_template.seq, circular=True).shifted(4)
+    new_template.name = 'new_template'
+    new_product, *_ = pcr_assembly(
+        new_template,
+        PydnaPrimer('aaaaACGTACGT', name='primer1-with-tail'),
+        pcr_product.source.input[2].sequence,
+        limit=8,
+    )
+    new_product.name = 'new_product'
+    return pcr_template, new_template, new_product
+
+
 def _post_bulk_validate(client, token: str, workspace_id: int, files: list[tuple[str, bytes]]):
     return client.post(
         '/sequences/cloning_strategy/bulk/validate',
@@ -66,7 +82,15 @@ def _sync_result_filled(cloning_strategy: dict, file_name: str = 'strategy.json'
     return {'cloning_strategy': cloning_strategy, 'file_name': file_name}
 
 
-def _post_bulk_submit(client, token: str, workspace_id: int, sync_results: list[dict]):
+def _post_bulk_submit(
+    client,
+    token: str,
+    workspace_id: int,
+    sync_results: list[dict],
+    *,
+    tags: list[int] | None = None,
+):
+    params = [('tags', str(tag_id)) for tag_id in (tags or [])]
     return client.post(
         '/sequences/cloning_strategy/bulk',
         headers=workspace_headers(
@@ -74,6 +98,7 @@ def _post_bulk_submit(client, token: str, workspace_id: int, sync_results: list[
             workspace_id,
             extra={'Content-Type': 'application/json'},
         ),
+        params=params,
         json=sync_results,
     )
 
@@ -98,6 +123,7 @@ def test_sync_cloning_strategy_with_db_matches_primers_case_insensitively(sequen
     assert sequences_client['primer2_id'] in synced_ids
     assert result.primer_database_id_mismatches == []
     assert result.sequence_database_id_mismatches == []
+    assert result.already_synced is True
 
 
 @readonly_db
@@ -117,6 +143,7 @@ def test_sync_cloning_strategy_with_db_does_not_cross_workspaces(sequences_clien
     assert all(primer.database_id is None for primer in (result.cloning_strategy.primers or []))
     assert result.primer_database_id_mismatches == []
     assert result.sequence_database_id_mismatches == []
+    assert result.already_synced is False
 
 
 @readonly_db
@@ -317,12 +344,13 @@ def test_sync_cloning_strategy_with_db_picks_lowest_id_for_ambiguous_seguid(sequ
     assert synced_source.database_id == lower_id
 
 
-def test_sync_cloning_strategy_with_db_returns_rotated_or_oriented_sequences(sequences_client):
+@readonly_db
+def test_sync_cloning_strategy_with_db_returns_rotated_or_oriented_sequences(
+    sequences_client, shifted_pcr_template_and_product
+):
     wid = sequences_client['w1']
 
-    pcr_product = cs_pcr.to_dseqrecords()[0]
-    pcr_template = pcr_product.source.input[1].sequence
-    new_template = Dseqrecord(pcr_template.seq, circular=True).shifted(4)
+    pcr_template, new_template, _ = shifted_pcr_template_and_product
     with Session(sequences_client['engine']) as session:
         pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
             pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_template]),
@@ -336,19 +364,14 @@ def test_sync_cloning_strategy_with_db_returns_rotated_or_oriented_sequences(seq
     assert pydna_out.to_dseqrecords()[0].seq == pcr_template.seq
 
 
-def test_sync_cloning_strategy_with_db_returns_normalized_cloning_strategy(sequences_client):
+@readonly_db
+def test_sync_cloning_strategy_with_db_returns_normalized_cloning_strategy(
+    sequences_client, shifted_pcr_template_and_product
+):
 
     wid = sequences_client['w1']
 
-    pcr_product = cs_pcr.to_dseqrecords()[0]
-    pcr_template = pcr_product.source.input[1].sequence
-    new_template = Dseqrecord(pcr_template.seq, circular=True).shifted(4)
-    new_product, *_ = pcr_assembly(
-        new_template,
-        PydnaPrimer('aaaaACGTACGT', name='primer1-with-tail'),
-        pcr_product.source.input[2].sequence,
-        limit=8,
-    )
+    pcr_template, new_template, new_product = shifted_pcr_template_and_product
     with Session(sequences_client['engine']) as session:
         pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
             pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_product]),
@@ -381,6 +404,7 @@ def test_bulk_validate_malformed_json(sequences_client):
     assert row['file_name'] == 'bad.json'
     assert row['parsing_errors'] == ['Cloning strategy is not valid JSON']
     assert row['cloning_strategy'] is None
+    assert row['already_synced'] is False
 
 
 @readonly_db
@@ -397,6 +421,7 @@ def test_bulk_validate_unrelated_json(sequences_client):
     assert row['file_name'] == 'unrelated.json'
     assert row['parsing_errors'] == ['The cloning strategy is invalid']
     assert row['cloning_strategy'] is None
+    assert row['already_synced'] is False
 
 
 @readonly_db
@@ -415,6 +440,7 @@ def test_bulk_validate_schema_invalid_cloning_strategy(sequences_client):
     assert row['file_name'] == 'invalid_schema.json'
     assert row['parsing_errors'] == ['The cloning strategy is invalid']
     assert row['cloning_strategy'] is None
+    assert row['already_synced'] is False
 
 
 @readonly_db
@@ -433,6 +459,7 @@ def test_bulk_validate_migrates_old_format(sequences_client):
     assert row['parsing_errors'] == []
     assert row['cloning_strategy'] is not None
     assert any('previous version of the model and has been migrated' in w for w in row['parsing_warnings'])
+    assert row['already_synced'] is False
 
 
 @readonly_db
@@ -450,6 +477,7 @@ def test_bulk_validate_pydna_graph_invalid(sequences_client):
     assert len(row['parsing_errors']) == 1
     assert row['parsing_errors'][0].startswith('Cloning strategy is not correct:')
     assert row['cloning_strategy'] is None
+    assert row['already_synced'] is False
 
 
 @readonly_db
@@ -469,6 +497,7 @@ def test_bulk_validate_happy_path_syncs_with_db(sequences_client):
     assert row['cloning_strategy'] is not None
     assert row['primer_database_id_mismatches'] == []
     assert row['sequence_database_id_mismatches'] == []
+    assert row['already_synced'] is True
 
     primers = row['cloning_strategy']['primers']
     assert primers is not None
@@ -507,34 +536,143 @@ def test_bulk_validate_multiple_files_in_one_request(sequences_client):
     assert rows[3]['parsing_errors'] == []
     assert any('previous version' in w for w in rows[3]['parsing_warnings'])
     assert rows[4]['parsing_errors'][0].startswith('Cloning strategy is not correct:')
+    assert rows[4]['already_synced'] is False
     assert rows[5]['parsing_errors'] == []
     assert rows[5]['cloning_strategy'] is not None
+    assert rows[5]['already_synced'] is True
 
 
-# Review below here
+def _create_tag(client, token: str, workspace_id: int, name: str):
+    return client.post(
+        '/tags',
+        headers=workspace_headers(token, workspace_id),
+        json={'name': name},
+    )
 
 
 def test_bulk_submit_happy_path(sequences_client):
+    """Submit a strategy that is not yet fully in the DB (homologous recombination fixture)."""
     c = sequences_client['client']
+    tag_id = _create_tag(c, sequences_client['token_owner_w1'], sequences_client['w1'], 'test_tag').json()['id']
+    old_bytes = _OLD_FORMAT_FILE.read_bytes()
+    # We run this to fast-forward to current state
+    val = _post_bulk_validate(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [('homologous.json', old_bytes)],
+    )
+    assert val.json()[0]['already_synced'] is False
+    filled = _sync_result_filled(val.json()[0]['cloning_strategy'], file_name='homologous.json')
+
     r = _post_bulk_submit(
         c,
         sequences_client['token_owner_w1'],
         sequences_client['w1'],
-        [_sync_result_filled(_pcr_strategy_dict(drop_database_ids=True), file_name='pcr.json')],
+        [filled],
+        tags=[tag_id],
     )
     assert r.status_code == 200, r.text
-    refs = r.json()
-    assert len(refs) == 1
-    assert refs[0]['name'] == 'pcr_product'
-    assert refs[0]['id'] == sequences_client['pcr_product_id']
+    assert len(r.json()) == 4
+    ids = {row['id'] for row in r.json()}
 
-    product_ref = refs[0]
-    get_r = c.get(
-        f"/sequences/{product_ref['id']}/cloning_strategy",
+    # Sequences are created and tagged
+    r = c.get(
+        f"/sequences?tags={tag_id}",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
-    assert get_r.status_code == 200
-    assert len(get_r.json()['sequences']) == 2
+    assert r.status_code == 200
+    assert len(r.json()['items']) == 4
+    assert {row['id'] for row in r.json()['items']} == ids
+
+    # Primers also created in the db
+    r = c.get(
+        f"/primers?tags={tag_id}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    assert len(r.json()['items']) == 2
+    assert {p['name'] for p in r.json()['items']} == {'fwd', 'rvs'}
+
+
+def test_bulk_submit_tags_only_in_new_entities(sequences_client, shifted_pcr_template_and_product):
+    pcr_template, new_template, new_product = shifted_pcr_template_and_product
+    c = sequences_client['client']
+    tag_id = _create_tag(c, sequences_client['token_owner_w1'], sequences_client['w1'], 'test_tag').json()['id']
+    payload = _sync_result_filled(
+        pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_product]).model_dump(), file_name='pcr.json'
+    )
+    r = _post_bulk_submit(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [payload],
+        tags=[tag_id],
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 2
+    names = {row['name'] for row in r.json()}
+    # The name is taken from the database, not the new template
+    assert names == {'new_product', 'template'}
+
+    # Only new entities have been tagged (one primer and one sequence)
+    r = c.get(
+        f"/sequences?tags={tag_id}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    assert len(r.json()['items']) == 1
+    assert {row['name'] for row in r.json()['items']} == {'new_product'}
+    r = c.get(
+        f"/primers?tags={tag_id}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    assert len(r.json()['items']) == 1
+    assert {p['name'] for p in r.json()['items']} == {'primer1-with-tail'}
+
+
+@readonly_db
+def test_bulk_validate_seeded_pcr_already_synced(sequences_client):
+    c = sequences_client['client']
+    r = _post_bulk_validate(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [('pcr.json', _pcr_strategy_bytes())],
+    )
+    assert r.status_code == 200
+    row = r.json()[0]
+    assert row['parsing_errors'] == []
+    assert row['already_synced'] is True
+
+    filled = _sync_result_filled(row['cloning_strategy'], file_name='pcr.json')
+    r = _post_bulk_submit(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [filled],
+    )
+    assert r.status_code == 200, r.text
+    # Empty list because all sequences are already in the db
+    assert r.json() == []
+
+
+def test_bulk_submit_unknown_tag_404(sequences_client):
+    c = sequences_client['client']
+    filled = _sync_result_filled(
+        _pcr_strategy_dict(drop_database_ids=True),
+        file_name='pcr.json',
+    )
+    r = _post_bulk_submit(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [filled],
+        tags=[999999],
+    )
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
 
 
 def test_bulk_submit_validation_failure_409(sequences_client):
@@ -554,53 +692,9 @@ def test_bulk_submit_validation_failure_409(sequences_client):
     assert len(rows) == 2
     assert rows[0]['file_name'] == 'ok.json'
     assert rows[0]['parsing_errors'] == []
+    assert rows[0]['already_synced'] is True
     assert rows[1]['file_name'] == 'bad.json'
     assert rows[1]['parsing_errors'][0].startswith('Cloning strategy is not correct:')
-
-
-def test_bulk_submit_graph_invalid_409(sequences_client):
-    c = sequences_client['client']
-    r = _post_bulk_submit(
-        c,
-        sequences_client['token_owner_w1'],
-        sequences_client['w1'],
-        [_sync_result_filled(_invalid_pcr_strategy_dict(), file_name='invalid_graph.json')],
-    )
-    assert r.status_code == 409
-    rows = r.json()
-    assert len(rows) == 1
-    assert rows[0]['file_name'] == 'invalid_graph.json'
-    assert rows[0]['parsing_errors'][0].startswith('Cloning strategy is not correct:')
-
-
-def test_bulk_submit_allows_migration_warnings(sequences_client):
-    c = sequences_client['client']
-    old_bytes = _OLD_FORMAT_FILE.read_bytes()
-    val = _post_bulk_validate(
-        c,
-        sequences_client['token_owner_w1'],
-        sequences_client['w1'],
-        [('homologous_recombination_old_format.json', old_bytes)],
-    )
-    assert val.status_code == 200
-    row = val.json()[0]
-    assert row['parsing_errors'] == []
-    assert any('previous version' in w for w in row['parsing_warnings'])
-    assert row['cloning_strategy'] is not None
-
-    r = _post_bulk_submit(
-        c,
-        sequences_client['token_owner_w1'],
-        sequences_client['w1'],
-        [
-            _sync_result_filled(
-                row['cloning_strategy'],
-                file_name='homologous_recombination_old_format.json',
-            )
-        ],
-    )
-    assert r.status_code == 200, r.text
-    assert len(r.json()) >= 1
 
 
 def test_bulk_submit_viewer_forbidden(sequences_client):

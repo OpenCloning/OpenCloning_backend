@@ -23,6 +23,7 @@ from opencloning_db.models import (
     Sequence,
     Source,
     SequencingFile,
+    Tag,
     WorkspaceRole,
 )
 from opencloning_db.storage import get_storage, set_storage
@@ -489,11 +490,14 @@ def sync_cloning_strategy_with_db(
     # Primers are added here, which means that even if they are not used in the cloning, they will be added.
     # If they are already in the db, they are skipped anyway.
     linkml_strategy.primers = synced_primers
+    all_sequences_are_in_db = all(source.database_id is not None for source in linkml_strategy.sources)
+    all_primers_are_in_db = all(primer.database_id is not None for primer in linkml_strategy.primers)
 
     return CloningStrategySyncResult(
         cloning_strategy=linkml_strategy,
         primer_database_id_mismatches=primer_mismatches,
         sequence_database_id_mismatches=sequence_mismatches,
+        already_synced=all_sequences_are_in_db and all_primers_are_in_db,
     )
 
 
@@ -502,6 +506,7 @@ def cloning_strategy_to_db(
     session: Session,
     *,
     ctx: WriteContext,
+    tags: list[Tag] | None = None,
 ) -> tuple[list[Sequence], dict[int, int]]:
     from opencloning_db.workspace_deps import get_sequence_in_workspace_for_user
 
@@ -516,6 +521,8 @@ def cloning_strategy_to_db(
         if parent_source.database_id is None:
             db_sequence = Sequence.from_pydantic_sequence(sequence, ctx=ctx)
             db_sequence.sequence_type = guess_sequence_type(sequence, parent_source)
+            if tags:
+                db_sequence.tags.extend(tags)
         else:
             db_sequence = get_sequence_in_workspace_for_user(
                 session, ctx.user, ctx.workspace_id, parent_source.database_id, WorkspaceRole.editor
@@ -539,7 +546,10 @@ def cloning_strategy_to_db(
     # Add primers first (no output_of_source); flush so they're persisted before any source references them
     for primer in cloning_strategy.primers or []:
         if primer.database_id is None:
-            session.add(entity_mapping[primer.id])
+            db_primer = entity_mapping[primer.id]
+            if tags:
+                db_primer.tags.extend(tags)
+            session.add(db_primer)
     session.flush()
 
     # Process sources in topological order, add+flush each to satisfy single_parent
