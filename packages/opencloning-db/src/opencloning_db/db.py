@@ -486,6 +486,8 @@ def sync_cloning_strategy_with_db(
         )
 
         linkml_strategy = opencloning_models.CloningStrategy.model_validate(pydna_strategy.model_dump(mode='json'))
+    # Primers are added here, which means that even if they are not used in the cloning, they will be added.
+    # If they are already in the db, they are skipped anyway.
     linkml_strategy.primers = synced_primers
 
     return CloningStrategySyncResult(

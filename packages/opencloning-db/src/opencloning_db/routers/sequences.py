@@ -2,7 +2,7 @@
 
 from typing import Annotated, List, TypeVar
 from urllib.parse import quote
-
+import json
 from opencloning.dna_functions import read_dsrecord_from_json
 from opencloning.utils import validate_cloning_strategy_format_and_migrate
 import opencloning_linkml.datamodel.models as opencloning_models
@@ -546,24 +546,39 @@ async def post_sequences_bulk(
 @router.post('/sequences/cloning_strategy/bulk/validate', response_model=list[CloningStrategySyncResult])
 async def validate_cloning_strategy_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
-    cloning_strategies: list[dict],
+    files: List[UploadFile] = File(...),
 ):
     _, session, workspace_id = ctx.destructure()
     output = list()
-    for cloning_strategy in cloning_strategies:
+    for file in files:
+        file_content = await file.read()
+        try:
+            cloning_strategy = json.loads(file_content)
+        except json.JSONDecodeError:
+            output.append(
+                CloningStrategySyncResult(
+                    file_name=file.filename, parsing_errors=['Cloning strategy is not valid JSON']
+                )
+            )
+            continue
         parsing_warnings = list()
         try:
             cs = validate_cloning_strategy_format_and_migrate(cloning_strategy, parsing_warnings)
         except HTTPException as e:
-            output.append(CloningStrategySyncResult(parsing_errors=[e.detail]))
+            output.append(CloningStrategySyncResult(file_name=file.filename, parsing_errors=[e.detail]))
             continue
         try:
             pydna_opencloning_models.CloningStrategy.model_validate(cs.model_dump(mode='json')).validate()
         except ValueError as e:
-            output.append(CloningStrategySyncResult(parsing_errors=['Cloning strategy is not correct: ' + str(e)]))
+            output.append(
+                CloningStrategySyncResult(
+                    file_name=file.filename, parsing_errors=['Cloning strategy is not correct: ' + str(e)]
+                )
+            )
             continue
 
         sync_result = sync_cloning_strategy_with_db(cs, session, ctx=ctx)
+        sync_result.file_name = file.filename
         sync_result.parsing_warnings = parsing_warnings
         output.append(sync_result)
 

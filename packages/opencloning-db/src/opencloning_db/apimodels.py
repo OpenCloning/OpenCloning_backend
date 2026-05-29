@@ -162,6 +162,7 @@ class SequenceDatabaseIdMismatch(ApiModel):
 
 
 class CloningStrategySyncResult(ApiModel):
+    file_name: str | None = None
     cloning_strategy: opencloning_models.CloningStrategy | None = None
     parsing_errors: list[str] = Field(default_factory=list)
     parsing_warnings: list[str] = Field(default_factory=list)
