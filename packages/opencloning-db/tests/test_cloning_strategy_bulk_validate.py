@@ -61,7 +61,12 @@ def _pcr_strategy_dict(drop_database_ids: bool = False) -> dict:
     return data
 
 
-def _post_bulk_submit(client, token: str, workspace_id: int, strategies: list[dict]):
+def _sync_result_filled(cloning_strategy: dict, file_name: str = 'strategy.json') -> dict:
+    """Build a ``CloningStrategySyncResultFilled`` request body item."""
+    return {'cloning_strategy': cloning_strategy, 'file_name': file_name}
+
+
+def _post_bulk_submit(client, token: str, workspace_id: int, sync_results: list[dict]):
     return client.post(
         '/sequences/cloning_strategy/bulk',
         headers=workspace_headers(
@@ -69,7 +74,7 @@ def _post_bulk_submit(client, token: str, workspace_id: int, strategies: list[di
             workspace_id,
             extra={'Content-Type': 'application/json'},
         ),
-        json=strategies,
+        json=sync_results,
     )
 
 
@@ -506,45 +511,50 @@ def test_bulk_validate_multiple_files_in_one_request(sequences_client):
     assert rows[5]['cloning_strategy'] is not None
 
 
+# Review below here
+
+
 def test_bulk_submit_happy_path(sequences_client):
     c = sequences_client['client']
     r = _post_bulk_submit(
         c,
         sequences_client['token_owner_w1'],
         sequences_client['w1'],
-        [_pcr_strategy_dict(drop_database_ids=True)],
+        [_sync_result_filled(_pcr_strategy_dict(drop_database_ids=True), file_name='pcr.json')],
     )
     assert r.status_code == 200, r.text
-    out = r.json()
-    assert len(out) == 1
-    assert 'id' in out[0]
-    assert isinstance(out[0]['mappings'], list)
+    refs = r.json()
+    assert len(refs) == 1
+    assert refs[0]['name'] == 'pcr_product'
+    assert refs[0]['id'] == sequences_client['pcr_product_id']
 
-    root_id = out[0]['id']
+    product_ref = refs[0]
     get_r = c.get(
-        f'/sequences/{root_id}/cloning_strategy',
+        f"/sequences/{product_ref['id']}/cloning_strategy",
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert get_r.status_code == 200
-    assert len(get_r.json()['sequences']) >= 1
+    assert len(get_r.json()['sequences']) == 2
 
 
 def test_bulk_submit_validation_failure_409(sequences_client):
-    """Logical validation errors return 409 (extra fields fail earlier with HTTP 422)."""
+    """Logical validation errors return 409 with ``CloningStrategySyncResult`` rows."""
     c = sequences_client['client']
     r = _post_bulk_submit(
         c,
         sequences_client['token_owner_w1'],
         sequences_client['w1'],
         [
-            _pcr_strategy_dict(drop_database_ids=True),
-            _invalid_pcr_strategy_dict(),
+            _sync_result_filled(_pcr_strategy_dict(drop_database_ids=True), file_name='ok.json'),
+            _sync_result_filled(_invalid_pcr_strategy_dict(), file_name='bad.json'),
         ],
     )
     assert r.status_code == 409
     rows = r.json()
     assert len(rows) == 2
+    assert rows[0]['file_name'] == 'ok.json'
     assert rows[0]['parsing_errors'] == []
+    assert rows[1]['file_name'] == 'bad.json'
     assert rows[1]['parsing_errors'][0].startswith('Cloning strategy is not correct:')
 
 
@@ -554,39 +564,43 @@ def test_bulk_submit_graph_invalid_409(sequences_client):
         c,
         sequences_client['token_owner_w1'],
         sequences_client['w1'],
-        [_invalid_pcr_strategy_dict()],
+        [_sync_result_filled(_invalid_pcr_strategy_dict(), file_name='invalid_graph.json')],
     )
     assert r.status_code == 409
     rows = r.json()
     assert len(rows) == 1
+    assert rows[0]['file_name'] == 'invalid_graph.json'
     assert rows[0]['parsing_errors'][0].startswith('Cloning strategy is not correct:')
 
 
 def test_bulk_submit_allows_migration_warnings(sequences_client):
-    from opencloning_db.cloning_strategy_bulk import (
-        has_cloning_strategy_bulk_errors,
-        validate_and_sync_cloning_strategy_bulk,
-    )
-
-    old_data = json.loads(_OLD_FORMAT_FILE.read_text())
-    with Session(sequences_client['engine']) as session:
-        rows = validate_and_sync_cloning_strategy_bulk(
-            [old_data],
-            session,
-            ReadContext(workspace_id=sequences_client['w1']),
-        )
-    assert not has_cloning_strategy_bulk_errors(rows)
-    assert any('previous version' in w for row in rows for w in row.parsing_warnings)
-
-    migrated = rows[0].cloning_strategy
-    assert migrated is not None
-    r = _post_bulk_submit(
-        sequences_client['client'],
+    c = sequences_client['client']
+    old_bytes = _OLD_FORMAT_FILE.read_bytes()
+    val = _post_bulk_validate(
+        c,
         sequences_client['token_owner_w1'],
         sequences_client['w1'],
-        [migrated.model_dump(mode='json')],
+        [('homologous_recombination_old_format.json', old_bytes)],
+    )
+    assert val.status_code == 200
+    row = val.json()[0]
+    assert row['parsing_errors'] == []
+    assert any('previous version' in w for w in row['parsing_warnings'])
+    assert row['cloning_strategy'] is not None
+
+    r = _post_bulk_submit(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [
+            _sync_result_filled(
+                row['cloning_strategy'],
+                file_name='homologous_recombination_old_format.json',
+            )
+        ],
     )
     assert r.status_code == 200, r.text
+    assert len(r.json()) >= 1
 
 
 def test_bulk_submit_viewer_forbidden(sequences_client):
@@ -595,7 +609,7 @@ def test_bulk_submit_viewer_forbidden(sequences_client):
         c,
         sequences_client['token_viewer_w1'],
         sequences_client['w1'],
-        [_pcr_strategy_dict(drop_database_ids=True)],
+        [_sync_result_filled(_pcr_strategy_dict(drop_database_ids=True), file_name='pcr.json')],
     )
     assert r.status_code == 403
     assert 'Not allowed' in r.json()['detail']
