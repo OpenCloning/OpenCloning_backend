@@ -170,6 +170,11 @@ class CloningStrategySyncResult(ApiModel):
     sequence_database_id_mismatches: list[SequenceDatabaseIdMismatch] = Field(default_factory=list)
 
 
+class CloningStrategySyncResultFilled(ApiModel):
+    cloning_strategy: opencloning_models.CloningStrategy
+    file_name: str
+
+
 # --- Sequence / primer refs ---
 class SequenceRef(ApiModel):
     id: int
