@@ -336,7 +336,7 @@ def _collect_dseqrecord_graph_lookups(
             _collect_dseqrecord_graph_lookups(child, seguids, database_ids)
 
 
-def _sync_dseqrecord_with_db(
+def _replace_sequence_source_if_exists_in_db(
     dseqr: Dseqrecord,
     existing_sequences_by_id: dict[int, Sequence],
     existing_sequences_by_seguid: dict[str, list[Sequence]],
@@ -383,13 +383,26 @@ def _sync_dseqrecord_with_db(
     for source_input in dseqr.source.input:
         child = source_input.sequence
         if isinstance(child, Dseqrecord):
-            _sync_dseqrecord_with_db(
+            _replace_sequence_source_if_exists_in_db(
                 child,
                 existing_sequences_by_id,
                 existing_sequences_by_seguid,
                 mismatches,
                 visited,
             )
+
+
+def _replace_sequences_file_content_if_exists_in_db(
+    synced_strategy: pydna_opencloning_models.CloningStrategy,
+    existing_sequences_by_id: dict[int, Sequence],
+    existing_sequences_by_seguid: dict[str, list[Sequence]],
+) -> None:
+    all_db_sequences = list(existing_sequences_by_id.values()) + sum(list(existing_sequences_by_seguid.values()), [])
+    for source in synced_strategy.sources:
+        if source.database_id is not None:
+            sequence = next((s for s in synced_strategy.sequences if s.id == source.id))
+            db_sequence = next((s for s in all_db_sequences if s.id == source.database_id))
+            sequence.file_content = db_sequence.to_pydantic_sequence().file_content
 
 
 def _sync_sequences_via_dseqrecords(
@@ -409,7 +422,7 @@ def _sync_sequences_via_dseqrecords(
     mismatches: list[SequenceDatabaseIdMismatch] = []
     visited: set[int] = set()
     for terminal in terminals:
-        _sync_dseqrecord_with_db(
+        _replace_sequence_source_if_exists_in_db(
             terminal,
             existing_sequences_by_id,
             existing_sequences_by_seguid,
@@ -421,6 +434,12 @@ def _sync_sequences_via_dseqrecords(
         terminals,
         pydna_strategy.description or '',
     )
+
+    # Finally, for sequences that do exist in the database, replace their sequence.file_content with that of the db.
+    _replace_sequences_file_content_if_exists_in_db(
+        synced_strategy, existing_sequences_by_id, existing_sequences_by_seguid
+    )
+
     return synced_strategy, mismatches
 
 

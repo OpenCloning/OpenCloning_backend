@@ -2002,6 +2002,25 @@ def test_sync_cloning_strategy_with_db_picks_lowest_id_for_ambiguous_seguid(sequ
     assert synced_source.database_id == lower_id
 
 
+def test_sync_cloning_strategy_with_db_returns_rotated_or_oriented_sequences(sequences_client):
+    wid = sequences_client['w1']
+
+    pcr_product = cs_pcr.to_dseqrecords()[0]
+    pcr_template = pcr_product.source.input[1].sequence
+    new_template = Dseqrecord(pcr_template.seq, circular=True).shifted(4)
+    with Session(sequences_client['engine']) as session:
+        pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
+            pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_template]),
+            session,
+            wid,
+        )
+    assert len(pydna_out.sequences) == 1
+    assert len(pydna_out.sources) == 1
+    assert pydna_out.sources[0].database_id == sequences_client['pcr_template_id']
+    assert pydna_out.sources[0].type == 'DatabaseSource'
+    assert pydna_out.to_dseqrecords()[0].seq == pcr_template.seq
+
+
 def test_search_rotation_errors():
     with pytest.raises(ValueError):
         _search_rotation(Dseq('ATGC'), Dseq('ATG'))
