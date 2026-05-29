@@ -209,7 +209,7 @@ def _verify_incoming_primer_database_ids(
     return mismatches, primer_sequences, sequences_needing_match
 
 
-def _link_primers_by_unique_sequence_match(
+def _link_primers_by_sequence_match(
     primers: list[opencloning_models.Primer],
     primer_sequences: dict[int, str],
     existing_primers_by_sequence: dict[str, list[Primer]],
@@ -218,7 +218,7 @@ def _link_primers_by_unique_sequence_match(
         if primer.database_id is not None:
             continue
         matches = existing_primers_by_sequence.get(primer_sequences[primer.id], [])
-        if len(matches) == 1:
+        if len(matches) >= 1:
             primer.database_id = matches[0].id
 
 
@@ -240,7 +240,7 @@ def _sync_primers_with_db(
         existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
             session, workspace_id, sequences_needing_match
         )
-        _link_primers_by_unique_sequence_match(primers, primer_sequences, existing_primers_by_sequence)
+        _link_primers_by_sequence_match(primers, primer_sequences, existing_primers_by_sequence)
 
     return mismatches
 
