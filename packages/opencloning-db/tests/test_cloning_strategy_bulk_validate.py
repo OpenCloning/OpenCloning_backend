@@ -297,7 +297,7 @@ def test_sync_cloning_strategy_with_db_sequence_not_found_database_id(sequences_
     assert synced_source.database_id == sequences_client['pcr_product_id']
 
 
-@pytest.mark.parametrize('provide_database_id', [False, True])
+@pytest.mark.parametrize('provide_database_id', ['', 'correct', 'wrong'])
 @readonly_db
 def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(sequences_client, provide_database_id):
 
@@ -306,7 +306,10 @@ def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(s
     pydna_strategy = pydna_opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
     if provide_database_id:
         pcr_source = next(s for s in pydna_strategy.sources if s.type == 'PCRSource')
-        pcr_source.database_id = sequences_client['pcr_product_id']
+        if provide_database_id == 'correct':
+            pcr_source.database_id = sequences_client['pcr_product_id']
+        elif provide_database_id == 'wrong':
+            pcr_source.database_id = 999_999
 
     product = pydna_strategy.to_dseqrecords()[0]
     children_of_product = product.cut(AfaI)
@@ -322,6 +325,34 @@ def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(s
     assert len(pydna_out.sources) == 3
     assert len([s for s in pydna_out.sources if s.type == 'DatabaseSource']) == 1
     assert len([s for s in pydna_out.sources if s.type == 'RestrictionEnzymeDigestionSource']) == 2
+
+
+@readonly_db
+def test_sync_cloning_strategy_with_db_database_source_with_wrong_db_id(sequences_client):
+    strategy = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
+    sequence = strategy.sequences[0]
+
+    sequence.id = 123
+    source = {
+        'id': 123,
+        'type': 'DatabaseSource',
+        'database_id': 999_999,
+    }
+    cs = opencloning_models.CloningStrategy.model_validate(
+        {
+            'sequences': [sequence.model_dump(mode='json')],
+            'sources': [source],
+            'primers': [],
+        }
+    )
+    client = sequences_client['client']
+    r = client.post(
+        '/sequences/cloning_strategy/bulk',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        json=[_sync_result_filled(cs.model_dump(), file_name='cs.json')],
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 0
 
 
 @readonly_db
