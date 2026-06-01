@@ -2,7 +2,6 @@
 
 from typing import Annotated, List, TypeVar
 from urllib.parse import quote
-
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
@@ -13,6 +12,10 @@ from botocore.exceptions import ClientError
 from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
 from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
+from opencloning_db.cloning_strategy_bulk import (
+    parse_cloning_strategy_file,
+    validate_and_sync_cloning_strategy_dict,
+)
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload
 from sqlalchemy import and_, exists, select, Select
@@ -24,6 +27,8 @@ from pydna.parsers import parse as pydna_parse
 from opencloning_db.apimodels import (
     CloningStrategyIdMapping,
     CloningStrategyResponse,
+    CloningStrategySyncResult,
+    CloningStrategySyncResultFilled,
     DeletedResponse,
     LineRef,
     SequenceRef,
@@ -541,6 +546,95 @@ async def post_sequences_bulk(
     return [sequence_ref(s) for s in db_sequences]
 
 
+@router.post('/sequences/cloning_strategy/bulk/validate', response_model=list[CloningStrategySyncResult])
+async def validate_cloning_strategy_bulk(
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    files: List[UploadFile] = File(...),
+):
+    _, session, _workspace_id = ctx.destructure()
+    output = list()
+    for file in files:
+        data, json_errors = parse_cloning_strategy_file(await file.read())
+        if data is None:
+            output.append(CloningStrategySyncResult(file_name=file.filename, parsing_errors=json_errors))
+            continue
+        output.append(validate_and_sync_cloning_strategy_dict(data, session, ctx, file_name=file.filename))
+    return output
+
+
+def _cloning_strategy_response_from_db(
+    sequences: list[Sequence],
+    id_mappings: dict[int, int],
+) -> CloningStrategyResponse:
+    root_sequence = next(s for s in sequences if len(s.source_inputs) == 0)
+    formatted_mappings = [
+        CloningStrategyIdMapping(localId=k, databaseId=v) for k, v in id_mappings.items() if v is not None
+    ]
+    return CloningStrategyResponse(id=root_sequence.id, mappings=formatted_mappings)
+
+
+@router.post('/sequences/cloning_strategy/bulk', response_model=list[SequenceRef])
+def post_cloning_strategy_bulk(
+    ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
+    sync_results: list[CloningStrategySyncResultFilled],
+    tags: list[int] = Query(
+        description='Tag IDs to apply to all newly created sequences and primers', default_factory=list
+    ),
+):
+    current_user, session, workspace_id = ctx.destructure()
+    workspace_tags = [
+        get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
+        for tag_id in sorted(set(tags))
+    ]
+    payloads = [cs.cloning_strategy.model_dump(mode='json') for cs in sync_results]
+    file_names = [cs.file_name for cs in sync_results]
+
+    # We use a generator to ensure that the same sequence submitted twice
+    # is added to the db once, and from then on synced.
+    validation_rows_generator = (
+        validate_and_sync_cloning_strategy_dict(data, session, ctx, file_name=file_name)
+        for data, file_name in zip(payloads, file_names)
+    )
+
+    all_sequences: list[Sequence] = []
+    error_found = False
+    rows = list()
+    for row in validation_rows_generator:
+        rows.append(row)
+        if row.parsing_errors:
+            error_found = True
+            continue
+        if row.already_synced or error_found:
+            continue
+        assert row.cloning_strategy is not None
+        sequences, _id_mappings = cloning_strategy_to_db(
+            row.cloning_strategy,
+            session,
+            ctx=ctx,
+            tags=workspace_tags or None,
+        )
+        all_sequences.extend(sequences)
+
+    if error_found:
+        return bulk_conflict_response(rows)
+
+    conflict = bulk_commit_or_conflict(
+        session,
+        all_sequences,
+        lambda: [
+            validate_and_sync_cloning_strategy_dict(data, session, ctx, file_name=file_name)
+            for data, file_name in zip(payloads, file_names)
+        ],
+    )
+    if conflict is not None:
+        return conflict
+
+    for db_sequence in all_sequences:
+        session.refresh(db_sequence)
+
+    return [sequence_ref(s) for s in all_sequences]
+
+
 @router.get('/sequences/by-seguid/{seguid}', response_model=list[SequenceRef])
 def get_sequences_by_seguid(
     seguid: str,
@@ -773,16 +867,13 @@ def post_cloning_strategy(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     cloning_strategy: opencloning_models.CloningStrategy,
 ):
-    current_user, session, workspace_id = ctx.destructure()
+    _, session, _workspace_id = ctx.destructure()
     sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, ctx=ctx)
     session.flush()
-    root_sequence = next((s for s in sequences if len(s.source_inputs) == 0))
-    session.refresh(root_sequence)
+    response = _cloning_strategy_response_from_db(sequences, id_mappings)
+    session.refresh(session.get(Sequence, response.id))
     session.commit()
-    formatted_mappings = [
-        CloningStrategyIdMapping(localId=k, databaseId=v) for k, v in id_mappings.items() if v is not None
-    ]
-    return CloningStrategyResponse(id=root_sequence.id, mappings=formatted_mappings)
+    return response
 
 
 def _search_rotation(seqr: Dseq, query_seqr: Dseq) -> tuple[int, bool]:

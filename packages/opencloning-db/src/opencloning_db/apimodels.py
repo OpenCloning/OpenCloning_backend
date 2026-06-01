@@ -1,7 +1,7 @@
 """Shared Pydantic request/response models for the API."""
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
 
@@ -143,6 +143,37 @@ class CloningStrategyIdMapping(ApiModel):
 class CloningStrategyResponse(ApiModel):
     id: int
     mappings: list[CloningStrategyIdMapping]
+
+
+class PrimerDatabaseIdMismatch(ApiModel):
+    """Incoming ``database_id`` on a strategy primer could not be trusted."""
+
+    primer_id: int
+    provided_database_id: int
+    kind: Literal['not_found', 'sequence_mismatch']
+
+
+class SequenceDatabaseIdMismatch(ApiModel):
+    """Incoming ``database_id`` on a strategy sequence could not be trusted."""
+
+    sequence_id: int
+    provided_database_id: int
+    kind: Literal['not_found', 'seguid_mismatch']
+
+
+class CloningStrategySyncResult(ApiModel):
+    file_name: str | None = None
+    cloning_strategy: opencloning_models.CloningStrategy | None = None
+    parsing_errors: list[str] = Field(default_factory=list)
+    parsing_warnings: list[str] = Field(default_factory=list)
+    primer_database_id_mismatches: list[PrimerDatabaseIdMismatch] = Field(default_factory=list)
+    sequence_database_id_mismatches: list[SequenceDatabaseIdMismatch] = Field(default_factory=list)
+    already_synced: bool = False
+
+
+class CloningStrategySyncResultFilled(ApiModel):
+    cloning_strategy: opencloning_models.CloningStrategy
+    file_name: str
 
 
 # --- Sequence / primer refs ---

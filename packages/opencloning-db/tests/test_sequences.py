@@ -10,7 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
-from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, dseqrecord_to_db
+from opencloning_db.db import (
+    cloning_strategy_to_db,
+    create_sequencing_file,
+    dseqrecord_to_db,
+)
 from opencloning_db.models import (
     Line,
     Sequence,
