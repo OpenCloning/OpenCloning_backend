@@ -1001,3 +1001,24 @@ def test_post_lines_bulk_viewer_forbidden(lines_client):
         },
     )
     assert create_r.status_code == 200
+
+
+def test_post_lines_bulk_sequence_type_mismatch(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [{'uid': 'L-BULK-MISMATCH', 'genotype': [], 'plasmids': ['alpha beta'], 'parent_uids': []}]
+
+    r = c.post('/lines/bulk', headers=headers, json=payload)
+    assert r.status_code == 409
+    data = r.json()
+    assert data[0]['plasmid_flags'][0]['not_found'] is True
+
+    payload2 = [{'uid': 'L-BULK-MISMATCH', 'genotype': ['plasmid-w1'], 'plasmids': [], 'parent_uids': []}]
+    r = c.post('/lines/bulk', headers=headers, json=payload2)
+    assert r.status_code == 409
+    data = r.json()
+    assert data[0]['genotype_flags'][0]['not_found'] is True
+
+    payload3 = [{'uid': 'L-BULK-OK', 'genotype': ['alpha beta'], 'plasmids': ['plasmid-w1'], 'parent_uids': []}]
+    r = c.post('/lines/bulk', headers=headers, json=payload3)
+    assert r.status_code == 200
