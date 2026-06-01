@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.6.1...opencloning-cli-v1.7.0) (2026-06-01)
+
+
+### Features
+
+* add alembic + prevent repeated template sequence names ([#482](https://github.com/OpenCloning/OpenCloning_backend/issues/482)) ([204dbbd](https://github.com/OpenCloning/OpenCloning_backend/commit/204dbbdb0cb2703cb4127bb340ad90ee202debd1))
+
 ## [1.6.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.6.0...opencloning-cli-v1.6.1) (2026-05-22)
 
 
