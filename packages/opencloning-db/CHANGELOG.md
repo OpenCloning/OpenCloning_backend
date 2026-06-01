@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.6.1...opencloning-db-v1.7.0) (2026-06-01)
+
+
+### Features
+
+* add alembic + prevent repeated template sequence names ([#482](https://github.com/OpenCloning/OpenCloning_backend/issues/482)) ([204dbbd](https://github.com/OpenCloning/OpenCloning_backend/commit/204dbbdb0cb2703cb4127bb340ad90ee202debd1))
+* allow tagging when bulk-submitting ([#484](https://github.com/OpenCloning/OpenCloning_backend/issues/484)) ([18d904c](https://github.com/OpenCloning/OpenCloning_backend/commit/18d904c516bf31fdd58e4a2ebe24b132bef9e6f6))
+
+
+### Bug Fixes
+
+* Bulk submit cloning strategies ([#488](https://github.com/OpenCloning/OpenCloning_backend/issues/488)) ([a97142e](https://github.com/OpenCloning/OpenCloning_backend/commit/a97142e2949a95bec60707b62a5e850d15fcf33d))
+* bulk submit lines ([#486](https://github.com/OpenCloning/OpenCloning_backend/issues/486)) ([391e124](https://github.com/OpenCloning/OpenCloning_backend/commit/391e124ff4a05bd3b1d7fdc7e194a835e532dab1))
+* bulk submit sequences + allow longer names ([#485](https://github.com/OpenCloning/OpenCloning_backend/issues/485)) ([1eee48d](https://github.com/OpenCloning/OpenCloning_backend/commit/1eee48d58acaac285a7d4563181ddddbfa11e177))
+
 ## [1.6.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.6.0...opencloning-db-v1.6.1) (2026-05-22)
 
 

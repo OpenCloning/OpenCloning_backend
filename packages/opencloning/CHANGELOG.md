@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.6.1...opencloning-v1.7.0) (2026-06-01)
+
+
+### Bug Fixes
+
+* Bulk submit cloning strategies ([#488](https://github.com/OpenCloning/OpenCloning_backend/issues/488)) ([a97142e](https://github.com/OpenCloning/OpenCloning_backend/commit/a97142e2949a95bec60707b62a5e850d15fcf33d))
+
 ## [1.6.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.6.0...opencloning-v1.6.1) (2026-05-22)
 
 
