@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import copy
 
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
@@ -176,6 +177,10 @@ def test_sync_cloning_strategy_with_db_warns_when_database_id_not_in_workspace(s
     primer1 = next(p for p in strategy.primers if p.name == 'primer1')
     primer1.database_id = 999_999
 
+    assert len(strategy.sources) == 2
+    strategy.sources[0].database_id = 999_999
+    strategy.sources[1].database_id = 999_999
+
     with Session(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
@@ -190,6 +195,17 @@ def test_sync_cloning_strategy_with_db_warns_when_database_id_not_in_workspace(s
     assert mismatch.kind == 'not_found'
     synced_primer1 = next(p for p in (result.cloning_strategy.primers or []) if p.name == 'primer1')
     assert synced_primer1.database_id == sequences_client['primer1_id']
+
+    assert len(result.sequence_database_id_mismatches) == 1
+    mismatch = result.sequence_database_id_mismatches[0]
+    assert mismatch.sequence_id == strategy.sources[0].id
+    assert mismatch.provided_database_id == 999_999
+    assert mismatch.kind == 'not_found'
+    assert len(result.cloning_strategy.sequences) == 1
+    assert len(result.cloning_strategy.sources) == 1
+    synced_source = result.cloning_strategy.sources[0]
+    assert synced_source.type == 'DatabaseSource'
+    assert synced_source.database_id == sequences_client['pcr_product_id']
 
 
 def _terminal_sequence_ids(strategy: opencloning_models.CloningStrategy) -> set[int]:
@@ -281,14 +297,16 @@ def test_sync_cloning_strategy_with_db_sequence_not_found_database_id(sequences_
     assert synced_source.database_id == sequences_client['pcr_product_id']
 
 
+@pytest.mark.parametrize('provide_database_id', [False, True])
 @readonly_db
-def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(sequences_client):
+def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(sequences_client, provide_database_id):
 
     from Bio.Restriction import AfaI
 
     pydna_strategy = pydna_opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json'))
-    for source in pydna_strategy.sources:
-        source.database_id = None
+    if provide_database_id:
+        pcr_source = next(s for s in pydna_strategy.sources if s.type == 'PCRSource')
+        pcr_source.database_id = sequences_client['pcr_product_id']
 
     product = pydna_strategy.to_dseqrecords()[0]
     children_of_product = product.cut(AfaI)
@@ -723,3 +741,34 @@ def test_bulk_submit_same_sequence_twice_only_one_created(sequences_client, shif
     )
     assert r.status_code == 200
     assert len(r.json()) == 2
+
+
+def test_bulk_submit_primers_only_works(sequences_client):
+    c = sequences_client['client']
+    cs = copy.deepcopy(cs_pcr)
+    cs.sources = []
+    cs.sequences = []
+    tag_id = _create_tag(c, sequences_client['token_owner_w1'], sequences_client['w1'], 'test_tag').json()['id']
+    cs.primers = [
+        pydna_opencloning_models.PrimerModel(id=12, name='primer-only1', sequence='AAAAAAAAAA'),
+        pydna_opencloning_models.PrimerModel(id=13, name='primer-only2', sequence='TTTTTTTTTT'),
+    ]
+    payload = _sync_result_filled(cs.model_dump(), file_name='primers_only.json')
+    r = _post_bulk_submit(
+        c,
+        sequences_client['token_owner_w1'],
+        sequences_client['w1'],
+        [payload],
+        tags=[tag_id],
+    )
+    assert r.status_code == 200
+    assert len(r.json()) == 0
+
+    # The primers have been created in the db
+    r = c.get(
+        f"/primers?tags={tag_id}",
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+    )
+    assert r.status_code == 200
+    assert len(r.json()['items']) == 2
+    assert {p['name'] for p in r.json()['items']} == {'primer-only1', 'primer-only2'}

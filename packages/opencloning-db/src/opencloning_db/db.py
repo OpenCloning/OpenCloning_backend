@@ -140,8 +140,7 @@ def get_db_primers_grouped_by_sequence(
     workspace_id: int,
     sequences: set[str],
 ) -> dict[str, list[Primer]]:
-    if len(sequences) == 0:
-        return {}
+    assert len(sequences) > 0
     grouped: dict[str, list[Primer]] = {}
     for primer in session.scalars(
         select(Primer).where(
@@ -159,8 +158,7 @@ def get_primer_db_mismatch(
     normalized_sequence: str,
 ) -> PrimerDatabaseIdMismatch | None:
     provided_database_id = primer.database_id
-    if provided_database_id is None:
-        return None
+    assert provided_database_id is not None
 
     if existing_primer is None:
         return PrimerDatabaseIdMismatch(
@@ -215,8 +213,7 @@ def _link_primers_by_sequence_match(
     existing_primers_by_sequence: dict[str, list[Primer]],
 ) -> None:
     for primer in primers:
-        if primer.database_id is not None:
-            continue
+        assert primer.database_id is None
         matches = existing_primers_by_sequence.get(primer_sequences[primer.id], [])
         if len(matches) >= 1:
             primer.database_id = matches[0].id
