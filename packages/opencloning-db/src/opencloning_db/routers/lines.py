@@ -28,6 +28,7 @@ from opencloning_db.workspace_deps import (
     get_editor_workspace_ctx,
     get_line_in_workspace_for_user,
     get_sequence_in_workspace_for_user,
+    get_tag_in_workspace_for_user,
     get_viewer_workspace_ctx,
 )
 
@@ -312,8 +313,13 @@ def validate_upload_lines(
 def post_lines_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     items: list[LineBulkSubmission] = Body(..., description='Lines to create', min_length=1),
+    tags: list[int] = Query(description='Tag IDs to apply to all created lines', default_factory=list),
 ):
     current_user, session, workspace_id = ctx.destructure()
+    workspace_tags = [
+        get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
+        for tag_id in sorted(set(tags))
+    ]
     validation_rows = _line_bulk_rows_with_flags(items, session, workspace_id)
     if _has_any_line_conflict(validation_rows):
         return bulk_conflict_response(validation_rows)
@@ -355,6 +361,9 @@ def post_lines_bulk(
             line.parents = parents
             line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in sequences_into_line]
             db_lines.append(line)
+
+    for line in db_lines:
+        line.tags.extend(workspace_tags)
 
     conflict = bulk_commit_or_conflict(
         session,
