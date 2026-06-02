@@ -773,7 +773,6 @@ async def post_sequence_sequencing_files(
             sequence=db_sequence,
             file_content=content,
             original_name=upload.filename or 'unnamed',
-            content_type=upload.content_type,
         )
         session.add(sf)
         session.flush()
@@ -816,7 +815,7 @@ def download_sequencing_file(
 
     return Response(
         content=db_file.file_content,
-        media_type=db_file.content_type or 'application/octet-stream',
+        media_type='application/octet-stream',
         headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(original_name, safe='')}"},
     )
 

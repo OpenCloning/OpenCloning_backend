@@ -635,7 +635,6 @@ class SequencingFile(Base):
     sequence_id: Mapped[int] = mapped_column(ForeignKey('sequence.id'), nullable=False)
     original_name: Mapped[str] = mapped_column()
     file_content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    content_type: Mapped[Optional[str]] = mapped_column(nullable=True)
 
     sequence: Mapped['Sequence'] = relationship(back_populates='sequencing_files')
 

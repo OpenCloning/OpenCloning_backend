@@ -55,14 +55,12 @@ def create_sequencing_file(
     sequence: 'Sequence',
     file_content: bytes,
     original_name: str,
-    content_type: str | None = None,
 ) -> SequencingFile:
     """Create a SequencingFile row backed directly by database storage."""
     return SequencingFile(
         sequence=sequence,
         original_name=original_name,
         file_content=file_content,
-        content_type=content_type or 'application/octet-stream',
     )
 
 
