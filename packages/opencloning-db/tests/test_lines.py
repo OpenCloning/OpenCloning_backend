@@ -144,9 +144,19 @@ def _seed_lines_context(engine):
         ]
         line_tagged = Line(workspace_id=ctx['w1'], uid='L-TAGGED', created_by_id=ctx['owner_w1_id'])
         tag_filter = Tag(name='line-filter-tag', workspace_id=ctx['w1'])
+        tag_w2 = Tag(name='line-tag-w2', workspace_id=ctx['w2'])
         line_tagged.tags.append(tag_filter)
         session.add_all(
-            [line_w1, line_w2, line_filter, line_parent_to_be_added, line_seeded_parented, line_tagged, tag_filter]
+            [
+                line_w1,
+                line_w2,
+                line_filter,
+                line_parent_to_be_added,
+                line_seeded_parented,
+                line_tagged,
+                tag_filter,
+                tag_w2,
+            ]
         )
         session.commit()
 
@@ -158,6 +168,7 @@ def _seed_lines_context(engine):
                 'line_seeded_parented_id': line_seeded_parented.id,
                 'line_tagged_id': line_tagged.id,
                 'tag_filter_id': tag_filter.id,
+                'tag_w2_id': tag_w2.id,
                 'allele_w1_id': allele_w1.id,
                 'allele_w1_aux_id': allele_w1_aux.id,
                 'template_allele_w1_id': template_allele_w1.id,
@@ -1022,3 +1033,71 @@ def test_post_lines_bulk_sequence_type_mismatch(lines_client):
     payload3 = [{'uid': 'L-BULK-OK', 'genotype': ['alpha beta'], 'plasmids': ['plasmid-w1'], 'parent_uids': []}]
     r = c.post('/lines/bulk', headers=headers, json=payload3)
     assert r.status_code == 200
+
+
+def test_post_lines_bulk_applies_tags(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    tag_id = lines_client['tag_filter_id']
+    payload = [
+        {'uid': 'L-BULK-TAG-1', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []},
+        {'uid': 'L-BULK-TAG-2', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []},
+    ]
+
+    r = c.post('/lines/bulk', headers=headers, params=[('tags', str(tag_id))], json=payload)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 2
+    for row in rows:
+        assert {t['id'] for t in row['tags']} == {tag_id}
+        tags_r = c.get(f"/lines/{row['id']}/tags", headers=headers)
+        assert tags_r.status_code == 200
+        assert {t['id'] for t in tags_r.json()} == {tag_id}
+
+
+def test_post_lines_bulk_unknown_tag_404(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [{'uid': 'L-BULK-NO-TAG', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []}]
+
+    r = c.post('/lines/bulk', headers=headers, params=[('tags', '999999')], json=payload)
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
+
+    create_r = c.post(
+        '/lines',
+        headers=headers,
+        json={
+            'uid': 'L-BULK-NO-TAG',
+            'allele_ids': [lines_client['allele_w1_aux_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert create_r.status_code == 200
+
+
+def test_post_lines_bulk_cross_workspace_tag_403(lines_client):
+    c = lines_client['client']
+    headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
+    payload = [{'uid': 'L-BULK-WRONG-TAG', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []}]
+
+    r = c.post(
+        '/lines/bulk',
+        headers=headers,
+        params=[('tags', str(lines_client['tag_w2_id']))],
+        json=payload,
+    )
+    assert r.status_code == 403
+
+    create_r = c.post(
+        '/lines',
+        headers=headers,
+        json={
+            'uid': 'L-BULK-WRONG-TAG',
+            'allele_ids': [lines_client['allele_w1_aux_id']],
+            'plasmid_ids': [],
+            'parent_ids': [],
+        },
+    )
+    assert create_r.status_code == 200
