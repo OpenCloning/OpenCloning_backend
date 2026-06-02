@@ -17,9 +17,16 @@ def testing_app_client(monkeypatch) -> TestClient:
         reload(api_module)
 
 
-def test_reset_endpoint_disabled_returns_404():
-    client = TestClient(api_module.app)
-    response = client.post('/__test/reset-db')
+@pytest.fixture
+def non_testing_app_client(monkeypatch) -> TestClient:
+    monkeypatch.delenv('OPENCLONING_TESTING', raising=False)
+    reload(api_module)
+    yield TestClient(api_module.app)
+    monkeypatch.undo()
+
+
+def test_reset_endpoint_disabled_returns_404(non_testing_app_client):
+    response = non_testing_app_client.post('/__test/reset-db')
     assert response.status_code == 404
 
 

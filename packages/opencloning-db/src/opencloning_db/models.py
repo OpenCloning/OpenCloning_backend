@@ -284,7 +284,7 @@ class Sequence(BaseSequence):
     overhang_watson_3prime: Mapped[int] = mapped_column(default=0)
     seguid: Mapped[str] = mapped_column(nullable=False)
 
-    file_content: Mapped[str] = mapped_column(Text, nullable=False)
+    file_content: Mapped[str] = mapped_column(Text, nullable=False, deferred=True)
     sequencing_files: Mapped[List['SequencingFile']] = relationship(
         back_populates='sequence', cascade='all, delete-orphan'
     )
@@ -634,7 +634,7 @@ class SequencingFile(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sequence_id: Mapped[int] = mapped_column(ForeignKey('sequence.id'), nullable=False)
     original_name: Mapped[str] = mapped_column()
-    file_content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    file_content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
 
     sequence: Mapped['Sequence'] = relationship(back_populates='sequencing_files')
 

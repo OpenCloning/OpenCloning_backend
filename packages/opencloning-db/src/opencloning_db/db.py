@@ -8,7 +8,7 @@ import opencloning_linkml.datamodel.models as opencloning_models
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, undefer
 
 from opencloning_db.apimodels import (
     CloningStrategySyncResult,
@@ -241,15 +241,15 @@ def get_db_sequences_from_database_ids(
 ) -> dict[int, Sequence]:
     if len(database_ids) == 0:
         return {}
-    return {
-        sequence.id: sequence
-        for sequence in session.scalars(
-            select(Sequence).where(
-                Sequence.workspace_id == workspace_id,
-                Sequence.id.in_(database_ids),
-            )
-        ).all()
-    }
+    stmt = (
+        select(Sequence)
+        .where(
+            Sequence.workspace_id == workspace_id,
+            Sequence.id.in_(database_ids),
+        )
+        .options(undefer(Sequence.file_content))
+    )
+    return {sequence.id: sequence for sequence in session.scalars(stmt).all()}
 
 
 def get_db_sequences_grouped_by_seguid(
@@ -260,12 +260,15 @@ def get_db_sequences_grouped_by_seguid(
     if len(seguids) == 0:
         return {}
     grouped: dict[str, list[Sequence]] = {}
-    for sequence in session.scalars(
-        select(Sequence).where(
+    stmt = (
+        select(Sequence)
+        .where(
             Sequence.workspace_id == workspace_id,
             Sequence.seguid.in_(seguids),
         )
-    ).all():
+        .options(undefer(Sequence.file_content))
+    )
+    for sequence in session.scalars(stmt).all():
         grouped.setdefault(sequence.seguid, []).append(sequence)
     return grouped
 

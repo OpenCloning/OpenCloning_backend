@@ -16,7 +16,7 @@ from opencloning_db.cloning_strategy_bulk import (
     validate_and_sync_cloning_strategy_dict,
 )
 import pydna.opencloning_models as pydna_opencloning_models
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, undefer
 from sqlalchemy import and_, exists, select, Select
 from sqlalchemy.exc import IntegrityError
 
@@ -69,6 +69,7 @@ from opencloning_db.workspace_deps import (
 )
 
 from pydna.dseq import Dseq
+from opencloning_db.db import get_db_sequences_from_database_ids
 
 router = APIRouter(tags=['sequences'])
 
@@ -361,6 +362,7 @@ def _seguid_query(seguid: str, workspace_id: int) -> Select[tuple[Sequence]]:
         .options(
             selectinload(InputEntity.tags),
             selectinload(Sequence.instances),
+            undefer(Sequence.file_content),
         )
     )
 
@@ -627,6 +629,8 @@ def get_text_file_sequence(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
     )
+    if isinstance(db_sequence, Sequence):
+        session.refresh(db_sequence, attribute_names=['file_content'])
     return db_sequence.to_pydantic_sequence()
 
 
@@ -654,10 +658,16 @@ def get_cloning_strategy(
         and source_input.input_entity.workspace_id == db_sequence.workspace_id  # TODO: Maybe remove?
     ]
 
+    sequence_ids = {db_sequence.id}
+    sequence_ids.update(sequence.id for sequence in parent_sequences)
+    loaded_sequences = get_db_sequences_from_database_ids(session, workspace_id, sequence_ids)
+
     grandparent_sources: list[Source] = []
     grandparent_sources += [s.output_of_source for s in parent_sequences]
 
-    all_sequences = [db_sequence] + parent_sequences
+    all_sequences = [loaded_sequences[db_sequence.id]] + [
+        loaded_sequences[sequence.id] for sequence in parent_sequences
+    ]
     all_sources = [parent_source] + grandparent_sources
 
     exported_sequences = [seq.to_pydantic_sequence() for seq in unique_and_sorted(all_sequences)]
@@ -807,7 +817,9 @@ def download_sequencing_file(
 ):
     """Download a sequencing file by ID."""
     current_user, session, workspace_id = ctx.destructure()
-    db_file = session.get(SequencingFile, file_id)
+    db_file = session.scalar(
+        select(SequencingFile).where(SequencingFile.id == file_id).options(undefer(SequencingFile.file_content))
+    )
     if db_file is None:
         raise HTTPException(status_code=404, detail='Sequencing file not found')
     get_sequence_in_workspace_for_user(session, current_user, workspace_id, db_file.sequence_id, WorkspaceRole.viewer)
