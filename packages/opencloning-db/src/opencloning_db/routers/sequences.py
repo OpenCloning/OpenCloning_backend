@@ -214,9 +214,7 @@ def delete_sequence(
 ):
     """Delete a sequence with no children and not present in any strain.
 
-    Linked sequence samples and sequencing files are removed via ORM cascade;
-    the underlying sequence file and any sequencing file blobs are unlinked
-    from disk after the database commit succeeds.
+    Linked sequence samples and sequencing files are removed via ORM cascade
     """
 
     current_user, session, workspace_id = ctx.destructure()
