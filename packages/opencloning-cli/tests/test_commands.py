@@ -53,6 +53,7 @@ class TestHelpAndTree:
         result = _invoke('admin', '--help')
         assert result.exit_code == 0
         assert 'list-users' in result.output
+        assert 'whitelist-list' in result.output
         assert 'list-workspaces' in result.output
         assert 'assign-user' in result.output
         assert 'set-instance-admin' in result.output
@@ -97,6 +98,15 @@ class TestSeedCommand:
 
 
 class TestWhitelistCommands:
+    def test_whitelist_list(self, db_fixture):
+        _invoke('admin', 'whitelist-add', 'zebra@example.com')
+        _invoke('admin', 'whitelist-add', 'Allowed@Example.com')
+
+        result = _invoke('admin', 'whitelist-list')
+
+        assert result.exit_code == 0, result.output
+        assert result.output.splitlines() == ['allowed@example.com', 'zebra@example.com']
+
     def test_whitelist_add_and_remove(self, db_fixture):
         _, config = db_fixture
 

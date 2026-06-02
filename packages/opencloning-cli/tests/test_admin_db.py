@@ -44,6 +44,15 @@ def test_list_user_emails(admin_db_session):
     assert emails == ['alice@example.com']
 
 
+def test_list_whitelisted_emails(admin_db_session):
+    admin_db.add_whitelisted_email('zebra@example.com')
+    admin_db.add_whitelisted_email('Allowed@Example.com')
+
+    emails = admin_db.list_whitelisted_emails()
+
+    assert emails == ['allowed@example.com', 'zebra@example.com']
+
+
 def test_list_workspaces(admin_db_session):
     _, _, workspace = admin_db_session
     workspaces = admin_db.list_workspaces()

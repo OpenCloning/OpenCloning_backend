@@ -28,6 +28,12 @@ def list_user_emails() -> list[str]:
         return list(session.scalars(select(User.email).order_by(User.email.asc())).all())
 
 
+def list_whitelisted_emails() -> list[str]:
+    config = get_config()
+    with Session(db_module.get_engine(config)) as session:
+        return list(session.scalars(select(EmailWhitelist.email).order_by(EmailWhitelist.email.asc())).all())
+
+
 def list_workspaces() -> list[dict[str, Any]]:
     config = get_config()
     with Session(db_module.get_engine(config)) as session:

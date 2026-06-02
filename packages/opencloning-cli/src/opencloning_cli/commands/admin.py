@@ -25,6 +25,17 @@ def list_users_command() -> None:
         typer.echo(email)
 
 
+@admin_app.command('whitelist-list')
+def whitelist_list_command() -> None:
+    """List email addresses allowed by the registration whitelist."""
+    try:
+        emails = admin_db.list_whitelisted_emails()
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    for email in emails:
+        typer.echo(email)
+
+
 @admin_app.command('list-workspaces')
 def list_workspaces_command() -> None:
     """List all workspaces (id and name)."""
