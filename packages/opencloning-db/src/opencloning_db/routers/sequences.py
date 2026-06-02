@@ -227,13 +227,8 @@ def delete_sequence(
     if isinstance(db_sequence, Sequence):
         if db_sequence.source_inputs:
             raise HTTPException(status_code=409, detail='Cannot delete sequence: it has child sequences.')
-        parent_source = db_sequence.output_of_source
         if any(isinstance(instance, SequenceInLine) for instance in db_sequence.instances):
             raise HTTPException(status_code=409, detail='Cannot delete sequence: it is present in a line.')
-
-        for source_input in list(parent_source.input):
-            session.delete(source_input)
-        session.delete(parent_source)
 
     session.delete(db_sequence)
     session.commit()

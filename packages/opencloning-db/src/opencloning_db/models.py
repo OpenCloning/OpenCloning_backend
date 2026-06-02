@@ -278,7 +278,7 @@ class Sequence(BaseSequence):
 
     id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), primary_key=True)
     output_of_source: Mapped['Source'] = relationship(
-        back_populates='output_sequence', uselist=False, single_parent=True
+        back_populates='output_sequence', uselist=False, single_parent=True, cascade='all, delete-orphan'
     )
     overhang_crick_3prime: Mapped[int] = mapped_column(default=0)
     overhang_watson_3prime: Mapped[int] = mapped_column(default=0)
@@ -509,6 +509,7 @@ class Source(Base):
         back_populates='source',
         order_by='SourceInput.position',
         collection_class=ordering_list('position'),
+        cascade='all, delete-orphan',
     )
 
     extra_fields: Mapped[dict] = mapped_column(JSON)

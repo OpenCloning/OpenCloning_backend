@@ -7,6 +7,7 @@ from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
 from pydna.opencloning_models import TextFileSequence
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
@@ -485,9 +486,11 @@ def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
     sid = sequences_client['seq_w1_id']
     headers = workspace_headers(tok, wid)
 
-    up = post_sequencing_file_upload(c, sid, tok, wid, 'attached.ab1', b'ABIF')
-    assert up.status_code == 200
-    sequencing_file_id = up.json()[0]['id']
+    sequencing_file_ids = []
+    for file_name, payload in [('attached-1.ab1', b'ABIF-1'), ('attached-2.ab1', b'ABIF-2')]:
+        up = post_sequencing_file_upload(c, sid, tok, wid, file_name, payload)
+        assert up.status_code == 200
+        sequencing_file_ids.append(up.json()[0]['id'])
 
     r = c.delete(f"/sequences/{sid}", headers=headers)
     assert r.status_code == 200, r.text
@@ -497,7 +500,8 @@ def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
     assert c.get(f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=headers).status_code == 404
     with Session(sequences_client['engine']) as session:
         assert session.scalar(select(SequenceSample).where(SequenceSample.sequence_id == sid)) is None
-        assert session.get(SequencingFile, sequencing_file_id) is None
+        for sequencing_file_id in sequencing_file_ids:
+            assert session.get(SequencingFile, sequencing_file_id) is None
 
 
 def test_delete_template_sequence_owner_ok(sequences_client):
@@ -561,6 +565,37 @@ def test_delete_sequence_allows_when_has_parents(sequences_client):
         headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
     )
     assert r.status_code == 200
+
+
+def test_delete_sequence_session_delete_rejects_when_has_children(sequences_client):
+    sid = sequences_client['pcr_template_id']
+
+    with Session(sequences_client['engine']) as session:
+        db_sequence = session.get(Sequence, sid)
+        assert db_sequence is not None
+
+        session.delete(db_sequence)
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+
+    with Session(sequences_client['engine']) as session:
+        assert session.get(Sequence, sid) is not None
+
+
+def test_delete_sequence_session_delete_allows_when_has_parents(sequences_client):
+    sid = sequences_client['pcr_product_id']
+
+    with Session(sequences_client['engine']) as session:
+        db_sequence = session.get(Sequence, sid)
+        assert db_sequence is not None
+
+        session.delete(db_sequence)
+        session.commit()
+
+    with Session(sequences_client['engine']) as session:
+        assert session.get(Sequence, sid) is None
+        assert session.get(Sequence, sequences_client['pcr_template_id']) is not None
 
 
 def test_delete_sequence_rejects_when_in_strain(sequences_client):
