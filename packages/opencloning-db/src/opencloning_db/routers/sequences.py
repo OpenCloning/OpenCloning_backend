@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, 
 from fastapi import status
 
 from opencloning_db.models import BaseSequence
-from botocore.exceptions import ClientError
 from pydna.utils import location_boundaries
 from sqlalchemy.orm import Session
 from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
@@ -61,7 +60,6 @@ from opencloning_db.models import (
 )
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from opencloning_db.storage import get_storage, is_missing_object_error
 from opencloning_db.workspace_deps import (
     WorkspaceContext,
     get_editor_workspace_ctx,
@@ -224,7 +222,6 @@ def delete_sequence(
     db_sequence = get_sequence_in_workspace_for_user(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
-    storage_keys: list[str] = []
 
     if isinstance(db_sequence, Sequence):
         if db_sequence.source_inputs:
@@ -233,8 +230,6 @@ def delete_sequence(
         if any(isinstance(instance, SequenceInLine) for instance in db_sequence.instances):
             raise HTTPException(status_code=409, detail='Cannot delete sequence: it is present in a line.')
 
-        storage_keys = [db_sequence.file_path, *(sf.storage_path for sf in db_sequence.sequencing_files)]
-
         for source_input in list(parent_source.input):
             session.delete(source_input)
         session.delete(parent_source)
@@ -242,39 +237,13 @@ def delete_sequence(
     session.delete(db_sequence)
     session.commit()
 
-    get_storage().delete_objects(storage_keys)
-
     return DeletedResponse(deleted=sequence_id)
 
 
 def _replace_sequence_file(session: Session, db_sequence: Sequence, file_content: str):
-    storage = get_storage()
-    old_key = db_sequence.file_path
-    new_key = storage.new_sequence_key('.gb')
-
-    try:
-        storage.write_text(new_key, file_content, content_type='text/plain; charset=utf-8')
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to write sequence file: {e}') from e
-
-    db_sequence.file_path = new_key
-
-    try:
-        session.commit()
-    except Exception:
-        session.rollback()
-        try:
-            storage.delete_object(new_key)
-        except Exception:
-            pass
-        raise
-
+    db_sequence.file_content = file_content
+    session.commit()
     session.refresh(db_sequence)
-
-    try:
-        storage.delete_object(old_key)
-    except Exception:
-        pass
 
 
 def _feature_spans_origin(feature) -> bool:
@@ -827,10 +796,8 @@ def delete_sequence_sequencing_file(
     )
     if db_file is None:
         raise HTTPException(status_code=404, detail='Sequencing file not found')
-    storage_key = db_file.storage_path
     session.delete(db_file)
     session.commit()
-    get_storage().delete_object(storage_key)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -845,19 +812,11 @@ def download_sequencing_file(
     if db_file is None:
         raise HTTPException(status_code=404, detail='Sequencing file not found')
     get_sequence_in_workspace_for_user(session, current_user, workspace_id, db_file.sequence_id, WorkspaceRole.viewer)
-    storage_path = db_file.storage_path
     original_name = db_file.original_name
 
-    try:
-        content, content_type = get_storage().read_bytes_with_content_type(storage_path)
-    except ClientError as exc:
-        if is_missing_object_error(exc):
-            raise HTTPException(status_code=404, detail='File not found in object storage') from exc
-        raise HTTPException(status_code=500, detail=f'Error reading file from object storage: {exc}') from exc
-
     return Response(
-        content=content,
-        media_type=content_type or 'application/octet-stream',
+        content=db_file.file_content,
+        media_type=db_file.content_type or 'application/octet-stream',
         headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(original_name, safe='')}"},
     )
 

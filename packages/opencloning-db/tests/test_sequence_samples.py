@@ -41,7 +41,7 @@ def _seed_seq_samples_context(engine):
         seq_w1 = Sequence(
             workspace_id=ctx['w1'],
             name='seq-w1',
-            file_path='seq_w1.gb',
+            file_content='seq_w1.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-SEQ-W1',
             created_by_id=ctx['owner_w1_id'],
@@ -49,7 +49,7 @@ def _seed_seq_samples_context(engine):
         seq_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='seq-w2',
-            file_path='seq_w2.gb',
+            file_content='seq_w2.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-SEQ-W2',
             created_by_id=ctx['owner_w2_id'],

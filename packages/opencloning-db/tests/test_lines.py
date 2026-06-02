@@ -43,7 +43,7 @@ def _seed_lines_context(engine):
         allele_w1 = Sequence(
             workspace_id=ctx['w1'],
             name='allele-w1',
-            file_path='allele_w1.gb',
+            file_content='allele_w1.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-W1',
             created_by_id=ctx['owner_w1_id'],
@@ -51,7 +51,7 @@ def _seed_lines_context(engine):
         plasmid_w1 = Sequence(
             workspace_id=ctx['w1'],
             name='plasmid-w1',
-            file_path='plasmid_w1.gb',
+            file_content='plasmid_w1.gb',
             sequence_type=SequenceType.plasmid,
             seguid='SEGUID-PLASMID-W1',
             created_by_id=ctx['owner_w1_id'],
@@ -59,7 +59,7 @@ def _seed_lines_context(engine):
         allele_w1_aux = Sequence(
             workspace_id=ctx['w1'],
             name='allele-aux',
-            file_path='allele_aux.gb',
+            file_content='allele_aux.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-AUX',
             created_by_id=ctx['owner_w1_id'],
@@ -67,7 +67,7 @@ def _seed_lines_context(engine):
         allele_w1_duplicate_name = Sequence(
             workspace_id=ctx['w1'],
             name='allele-w1',
-            file_path='allele_w1_dup.gb',
+            file_content='allele_w1_dup.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-W1-DUP',
             created_by_id=ctx['owner_w1_id'],
@@ -81,7 +81,7 @@ def _seed_lines_context(engine):
         allele_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='allele-w2',
-            file_path='allele_w2.gb',
+            file_content='allele_w2.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-W2',
             created_by_id=ctx['owner_w2_id'],
@@ -89,7 +89,7 @@ def _seed_lines_context(engine):
         plasmid_w2 = Sequence(
             workspace_id=ctx['w2'],
             name='plasmid-w2',
-            file_path='plasmid_w2.gb',
+            file_content='plasmid_w2.gb',
             sequence_type=SequenceType.plasmid,
             seguid='SEGUID-PLASMID-W2',
             created_by_id=ctx['owner_w2_id'],
@@ -98,7 +98,7 @@ def _seed_lines_context(engine):
         allele_filter = Sequence(
             workspace_id=ctx['w1'],
             name='alpha beta',
-            file_path='allele_filter.gb',
+            file_content='allele_filter.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-ALLELE-FILTER',
             created_by_id=ctx['owner_w1_id'],
@@ -106,7 +106,7 @@ def _seed_lines_context(engine):
         plasmid_filter = Sequence(
             workspace_id=ctx['w1'],
             name='gamma delta',
-            file_path='plasmid_filter.gb',
+            file_content='plasmid_filter.gb',
             sequence_type=SequenceType.plasmid,
             seguid='SEGUID-PLASMID-FILTER',
             created_by_id=ctx['owner_w1_id'],

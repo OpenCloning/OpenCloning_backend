@@ -71,4 +71,28 @@ def set_instance_admin_command(
     )
 
 
+@admin_app.command('whitelist-add')
+def whitelist_add_command(
+    email: str = typer.Argument(help='Email address to add to the registration whitelist.'),
+) -> None:
+    """Add an email address to the registration whitelist."""
+    try:
+        result = admin_db.add_whitelisted_email(email)
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    typer.echo(f"email={result['email']}")
+
+
+@admin_app.command('whitelist-remove')
+def whitelist_remove_command(
+    email: str = typer.Argument(help='Email address to remove from the registration whitelist.'),
+) -> None:
+    """Remove an email address from the registration whitelist."""
+    try:
+        result = admin_db.remove_whitelisted_email(email)
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    typer.echo(f"email={result['email']}")
+
+
 __all__ = ['admin_app']

@@ -1,11 +1,13 @@
-"""Registration allowlist loaded from a text file in object storage."""
+"""Registration allowlist helpers backed by database rows."""
 
 from __future__ import annotations
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from opencloning_db.config import Config
-from opencloning_db.storage import get_storage
+from opencloning_db.models import EmailWhitelist
 
 REGISTRATION_UNAVAILABLE_DETAIL = 'Registration is not available for this email.'
 
@@ -15,25 +17,15 @@ def normalize_email(email: str) -> str:
 
 
 def registration_invites_enabled(config: Config) -> bool:
-    return bool(config.registration_invites_object_key.strip())
+    return config.registration_whitelist_enabled
 
 
-def _parse_invite_file(content: str) -> set[str]:
-    return set(normalize_email(line) for line in content.splitlines())
-
-
-def load_invited_emails(config: Config) -> set[str]:
-    key = config.registration_invites_object_key.strip()
-    content = get_storage().read_text(key)
-    return _parse_invite_file(content)
-
-
-def require_invited_email(email: str, config: Config) -> None:
-    """When an invite file path is configured, email must appear on a line in that object."""
+def require_invited_email(email: str, session: Session, config: Config) -> None:
+    """When whitelist enforcement is enabled, email must appear in the whitelist table."""
     if not registration_invites_enabled(config):
         return
     normalized = normalize_email(email)
-    if normalized not in load_invited_emails(config):
+    if session.scalar(select(EmailWhitelist.id).where(EmailWhitelist.email == normalized)) is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=REGISTRATION_UNAVAILABLE_DETAIL,

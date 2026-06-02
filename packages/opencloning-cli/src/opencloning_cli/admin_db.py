@@ -12,7 +12,7 @@ from opencloning_db.auth.invites import normalize_email
 from fastapi import HTTPException
 from opencloning_db.config import get_config
 from opencloning_db.db_utils import get_workspace_or_404
-from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
+from opencloning_db.models import EmailWhitelist, User, Workspace, WorkspaceMembership, WorkspaceRole
 
 
 def _parse_workspace_role(role: str) -> WorkspaceRole:
@@ -89,3 +89,32 @@ def set_user_instance_admin(email: str, *, is_instance_admin: bool) -> dict[str,
             'email': user.email,
             'is_instance_admin': user.is_instance_admin,
         }
+
+
+def add_whitelisted_email(email: str) -> dict[str, Any]:
+    config = get_config()
+    normalized_email = normalize_email(email)
+
+    with Session(db_module.get_engine(config)) as session:
+        existing = session.scalar(select(EmailWhitelist).where(EmailWhitelist.email == normalized_email))
+        if existing is not None:
+            raise RuntimeError('Email already whitelisted')
+
+        entry = EmailWhitelist(email=normalized_email)
+        session.add(entry)
+        session.commit()
+        return {'email': entry.email}
+
+
+def remove_whitelisted_email(email: str) -> dict[str, Any]:
+    config = get_config()
+    normalized_email = normalize_email(email)
+
+    with Session(db_module.get_engine(config)) as session:
+        entry = session.scalar(select(EmailWhitelist).where(EmailWhitelist.email == normalized_email))
+        if entry is None:
+            raise RuntimeError('Email not found in whitelist')
+
+        session.delete(entry)
+        session.commit()
+        return {'email': normalized_email}

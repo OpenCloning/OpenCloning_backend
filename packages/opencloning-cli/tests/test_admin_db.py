@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 import opencloning_db.db as db_module
 from opencloning_db.auth.security import get_password_hash
-from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
+from opencloning_db.models import EmailWhitelist, User, Workspace, WorkspaceMembership, WorkspaceRole
 from opencloning_cli import admin_db
 
 from opencloning_db.migrations import reset_database
@@ -128,3 +128,38 @@ def test_set_user_instance_admin_revoke(admin_db_session):
 def test_set_user_instance_admin_not_found(admin_db_session):
     with pytest.raises(RuntimeError, match='User not found'):
         admin_db.set_user_instance_admin('missing@example.com', is_instance_admin=True)
+
+
+def test_add_whitelisted_email_normalizes_and_persists(admin_db_session):
+    session, _, _ = admin_db_session
+
+    result = admin_db.add_whitelisted_email('Invited@Example.com')
+    assert result == {'email': 'invited@example.com'}
+
+    session.expire_all()
+    row = session.scalar(select(EmailWhitelist).where(EmailWhitelist.email == 'invited@example.com'))
+    assert row is not None
+
+
+def test_add_whitelisted_email_duplicate_raises(admin_db_session):
+    admin_db.add_whitelisted_email('invited@example.com')
+
+    with pytest.raises(RuntimeError, match='already whitelisted'):
+        admin_db.add_whitelisted_email('INVITED@example.com')
+
+
+def test_remove_whitelisted_email_deletes_row(admin_db_session):
+    session, _, _ = admin_db_session
+    admin_db.add_whitelisted_email('invited@example.com')
+
+    result = admin_db.remove_whitelisted_email('INVITED@example.com')
+    assert result == {'email': 'invited@example.com'}
+
+    session.expire_all()
+    row = session.scalar(select(EmailWhitelist).where(EmailWhitelist.email == 'invited@example.com'))
+    assert row is None
+
+
+def test_remove_whitelisted_email_missing_raises(admin_db_session):
+    with pytest.raises(RuntimeError, match='not found in whitelist'):
+        admin_db.remove_whitelisted_email('missing@example.com')

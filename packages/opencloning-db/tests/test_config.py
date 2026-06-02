@@ -8,10 +8,6 @@ import opencloning_db.config as app_config
 
 common_args = {
     'database_url': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
-    'object_storage_endpoint_url': 'https://s3.amazonaws.com',
-    'object_storage_access_key_id': 'test-access-key',
-    'object_storage_secret_access_key': 'test-secret-key',
-    'object_storage_bucket': 'opencloning-test',
     'jwt_secret': 'test-secret',
 }
 
@@ -26,11 +22,8 @@ class TestConfig(unittest.TestCase):
             os.environ,
             {
                 'OPENCLONING_DB_URL': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
-                'OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL': 'https://s3.amazonaws.com',
-                'OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID': 'test-access-key',
-                'OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY': 'test-secret-key',
-                'OPENCLONING_OBJECT_STORAGE_BUCKET': 'opencloning-test',
                 'OPENCLONING_JWT_SECRET': 'test-secret',
+                'OPENCLONING_REGISTRATION_WHITELIST_ENABLED': 'true',
             },
             clear=True,
         ):
@@ -38,15 +31,8 @@ class TestConfig(unittest.TestCase):
             cfg = app_config.get_config()
         app_config.set_config(previous_config)
         self.assertEqual(cfg.database_url, 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev')
-        self.assertEqual(cfg.object_storage_endpoint_url, 'https://s3.amazonaws.com')
-        self.assertEqual(cfg.object_storage_access_key_id, 'test-access-key')
-        self.assertEqual(cfg.object_storage_secret_access_key, 'test-secret-key')
-        self.assertEqual(cfg.object_storage_bucket, 'opencloning-test')
-        self.assertEqual(cfg.object_storage_region, 'us-east-1')
-        self.assertTrue(cfg.object_storage_force_path_style)
-        self.assertEqual(cfg.sequence_objects_prefix, 'sequences/')
-        self.assertEqual(cfg.sequencing_objects_prefix, 'sequencing-files/')
         self.assertEqual(cfg.jwt_secret, 'test-secret')
+        self.assertTrue(cfg.registration_whitelist_enabled)
 
     def test_get_config_requires_runtime_env_vars(self):
         """Missing env vars produce one actionable runtime error."""
@@ -59,10 +45,6 @@ class TestConfig(unittest.TestCase):
 
         message = str(exc_info.exception)
         self.assertIn('OPENCLONING_DB_URL', message)
-        self.assertIn('OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL', message)
-        self.assertIn('OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID', message)
-        self.assertIn('OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY', message)
-        self.assertIn('OPENCLONING_OBJECT_STORAGE_BUCKET', message)
         self.assertIn('OPENCLONING_JWT_SECRET', message)
         self.assertIn('.env.dev', message)
 
@@ -81,14 +63,6 @@ class TestConfig(unittest.TestCase):
             )
         self.assertIn('postgresql+psycopg', str(exc_info.exception))
 
-    def test_object_storage_prefixes_must_not_be_empty(self):
-        """Object storage prefixes must not be empty."""
-        with self.assertRaises(ValidationError):
-            Config(
-                **(common_args | {'sequence_objects_prefix': ''}),
-            )
-
-        with self.assertRaises(ValidationError):
-            Config(
-                **(common_args | {'sequencing_objects_prefix': ''}),
-            )
+    def test_registration_whitelist_enabled_defaults_false(self):
+        cfg = Config(**common_args)
+        self.assertFalse(cfg.registration_whitelist_enabled)

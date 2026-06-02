@@ -2,7 +2,6 @@
 Database engine and conversion logic (Pydantic <-> ORM).
 """
 
-import os
 from typing import List
 
 import opencloning_linkml.datamodel.models as opencloning_models
@@ -26,7 +25,6 @@ from opencloning_db.models import (
     Tag,
     WorkspaceRole,
 )
-from opencloning_db.storage import get_storage, set_storage
 from opencloning_db.utils import guess_sequence_type
 from opencloning_db.models import require_real_sequence
 
@@ -40,7 +38,6 @@ def reset_runtime_state(config: Config | None = None) -> None:
         _engine.dispose()
     _engine = None
     _bound_database_url = None
-    set_storage(None)
     set_config(config)
 
 
@@ -60,15 +57,12 @@ def create_sequencing_file(
     original_name: str,
     content_type: str | None = None,
 ) -> SequencingFile:
-    """Create SequencingFile; write content to a unique object key."""
-    ext = os.path.splitext(original_name)[1]
-    storage = get_storage()
-    storage_filename = storage.new_sequencing_key(ext)
-    storage.write_bytes(storage_filename, file_content, content_type=content_type or 'application/octet-stream')
+    """Create a SequencingFile row backed directly by database storage."""
     return SequencingFile(
         sequence=sequence,
         original_name=original_name,
-        storage_path=storage_filename,
+        file_content=file_content,
+        content_type=content_type or 'application/octet-stream',
     )
 
 

@@ -36,7 +36,7 @@ def deps_session(request):
         seq = Sequence(
             workspace_id=ctx['w1'],
             name='deps-seq',
-            file_path='deps.gb',
+            file_content='deps.gb',
             sequence_type=SequenceType.allele,
             seguid='SEGUID-DEPS-SEQ',
             created_by_id=ctx['owner_w1_id'],

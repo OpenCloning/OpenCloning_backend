@@ -53,28 +53,28 @@ def _seed_primers_context(engine):
         primer_tagged.tags.append(tag_w1)
         template_seq = Sequence.from_create(
             name='template-seq',
-            file_path='template_seq.gb',
+            file_content='template_seq.gb',
             seguid='SEGUID-TEMPLATE-SEQ',
             sequence_type=SequenceType.allele,
             ctx=w1_ctx,
         )
         product_seq = Sequence.from_create(
             name='product-seq',
-            file_path='product_seq.gb',
+            file_content='product_seq.gb',
             seguid='SEGUID-PRODUCT-SEQ',
             sequence_type=SequenceType.pcr_product,
             ctx=w1_ctx,
         )
         template_seq_w2 = Sequence.from_create(
             name='template-seq-w2',
-            file_path='template_seq_w2.gb',
+            file_content='template_seq_w2.gb',
             seguid='SEGUID-TEMPLATE-SEQ-W2',
             sequence_type=SequenceType.allele,
             ctx=w2_ctx,
         )
         product_seq_w2 = Sequence.from_create(
             name='product-seq-w2',
-            file_path='product_seq_w2.gb',
+            file_content='product_seq_w2.gb',
             seguid='SEGUID-PRODUCT-SEQ-W2',
             sequence_type=SequenceType.pcr_product,
             ctx=w2_ctx,

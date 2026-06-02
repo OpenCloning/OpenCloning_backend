@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
 import opencloning_db.db as db_module
-from opencloning_db.models import User
-from opencloning_db.storage import ObjectStorage
+from opencloning_db.models import EmailWhitelist, SequencingFile, User, Sequence
 from opencloning_cli.main import app
 from opencloning_db.migrations import reset_database
 
@@ -57,6 +56,8 @@ class TestHelpAndTree:
         assert 'list-workspaces' in result.output
         assert 'assign-user' in result.output
         assert 'set-instance-admin' in result.output
+        assert 'whitelist-add' in result.output
+        assert 'whitelist-remove' in result.output
 
 
 class TestMigrateCommand:
@@ -69,9 +70,9 @@ class TestMigrateCommand:
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''
         assert _count_users(config) == 0
-        storage = ObjectStorage(config)
-        assert len(storage.list_keys(config.sequence_objects_prefix)) == 0
-        assert len(storage.list_keys(config.sequencing_objects_prefix)) == 0
+        with Session(db_module.get_engine(config)) as session:
+            assert session.query(SequencingFile).count() == 0
+            assert session.query(Sequence).count() == 0
 
 
 class TestSeedCommand:
@@ -90,9 +91,28 @@ class TestSeedCommand:
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''
         assert _count_users(config) > 0
-        storage = ObjectStorage(config)
-        assert len(storage.list_keys(config.sequence_objects_prefix)) == 48
-        assert len(storage.list_keys(config.sequencing_objects_prefix)) == 3
+        with Session(db_module.get_engine(config)) as session:
+            assert session.query(SequencingFile).count() == 3
+            assert session.query(Sequence).count() == 48
+
+
+class TestWhitelistCommands:
+    def test_whitelist_add_and_remove(self, db_fixture):
+        _, config = db_fixture
+
+        add_result = _invoke('admin', 'whitelist-add', 'Invited@Example.com')
+        assert add_result.exit_code == 0, add_result.output
+        assert 'email=invited@example.com' in add_result.output
+
+        with Session(db_module.get_engine(config)) as session:
+            assert session.query(EmailWhitelist).count() == 1
+
+        remove_result = _invoke('admin', 'whitelist-remove', 'invited@example.com')
+        assert remove_result.exit_code == 0, remove_result.output
+        assert 'email=invited@example.com' in remove_result.output
+
+        with Session(db_module.get_engine(config)) as session:
+            assert session.query(EmailWhitelist).count() == 0
 
 
 class TestStubCommand:
