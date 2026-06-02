@@ -25,6 +25,17 @@ def list_users_command() -> None:
         typer.echo(email)
 
 
+@admin_app.command('whitelist-list')
+def whitelist_list_command() -> None:
+    """List email addresses allowed by the registration whitelist."""
+    try:
+        emails = admin_db.list_whitelisted_emails()
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    for email in emails:
+        typer.echo(email)
+
+
 @admin_app.command('list-workspaces')
 def list_workspaces_command() -> None:
     """List all workspaces (id and name)."""
@@ -69,6 +80,30 @@ def set_instance_admin_command(
     typer.echo(
         f"user_id={result['user_id']} email={result['email']} " f"is_instance_admin={result['is_instance_admin']}"
     )
+
+
+@admin_app.command('whitelist-add')
+def whitelist_add_command(
+    email: str = typer.Argument(help='Email address to add to the registration whitelist.'),
+) -> None:
+    """Add an email address to the registration whitelist."""
+    try:
+        result = admin_db.add_whitelisted_email(email)
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    typer.echo(f"email={result['email']}")
+
+
+@admin_app.command('whitelist-remove')
+def whitelist_remove_command(
+    email: str = typer.Argument(help='Email address to remove from the registration whitelist.'),
+) -> None:
+    """Remove an email address from the registration whitelist."""
+    try:
+        result = admin_db.remove_whitelisted_email(email)
+    except RuntimeError as exc:
+        _handle_runtime_error(exc)
+    typer.echo(f"email={result['email']}")
 
 
 __all__ = ['admin_app']

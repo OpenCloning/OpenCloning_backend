@@ -14,14 +14,13 @@ from pathlib import Path
 from typing import Any
 
 import opencloning_db.db as _db_module
-from opencloning_db.config import Config, get_config, parse_bool
+from opencloning_db.config import get_config, parse_bool
 from opencloning_db.init_db import load_seed_data
 from opencloning_db.migrations import (
     recreate_public_schema,
     truncate_application_tables,
     upgrade_head,
 )
-from opencloning_db.storage import ObjectStorage
 from opencloning_db.combined import app
 from fastapi.testclient import TestClient
 from .stubs import stubs, RecordedStub, StubRequest, StubResponse
@@ -55,14 +54,6 @@ def _dispose_engine() -> None:
         _db_module._bound_database_url = None
 
 
-def _reset_storage(config: Config) -> None:
-    """Clear the configured object-storage prefixes."""
-    storage = ObjectStorage(config)
-    storage.validate_bucket_exists()
-    storage.clear_prefix(config.sequence_objects_prefix)
-    storage.clear_prefix(config.sequencing_objects_prefix)
-
-
 def _require_testing_seed_enabled() -> None:
     if not parse_bool(os.getenv('OPENCLONING_TESTING', False)):
         raise RuntimeError('db seed requires OPENCLONING_TESTING=1')
@@ -77,14 +68,13 @@ def migrate() -> None:
 
 
 def seed(*, recreate_schema: bool = False) -> None:
-    """Recreate deterministic database baseline and object-storage prefixes.
+    """Recreate deterministic database baseline.
 
     This is destructive and only allowed when ``OPENCLONING_TESTING=1``.
     """
     _require_testing_seed_enabled()
     config = get_config()
     _dispose_engine()
-    _reset_storage(config)
 
     database_url = config.database_url
     if recreate_schema:

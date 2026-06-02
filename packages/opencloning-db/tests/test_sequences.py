@@ -7,6 +7,7 @@ from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
 from pydna.opencloning_models import TextFileSequence
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
@@ -28,7 +29,6 @@ from opencloning_db.models import (
     SequenceType,
     BaseSequence,
 )
-from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_gateway_BP, cs_pcr, pcr_product, pcr_template
 from .helpers import (
     assert_get_invalid_workspace_id_422,
@@ -62,14 +62,6 @@ def _primer_in_workspace(session: Session, workspace_id: int, name: str) -> Prim
     row = session.scalar(select(Primer).where(Primer.workspace_id == workspace_id, Primer.name == name))
     assert row is not None, f"No Primer in workspace {workspace_id} with name {name!r}"
     return row
-
-
-def _storage(config) -> ObjectStorage:
-    return ObjectStorage(config)
-
-
-def _object_exists(config, key: str) -> bool:
-    return key in _storage(config).list_keys(key)
 
 
 readonly_db = pytest.mark.readonly_db
@@ -487,24 +479,18 @@ def test_patch_sequence_viewer_forbidden(sequences_client):
 
 
 def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
-    """Owner can delete an isolated sequence; sample row and stored objects are removed."""
+    """Owner can delete an isolated sequence; sample row and uploaded file rows are removed."""
     c = sequences_client['client']
     tok = sequences_client['token_owner_w1']
     wid = sequences_client['w1']
     sid = sequences_client['seq_w1_id']
-    config = sequences_client['config']
     headers = workspace_headers(tok, wid)
 
-    up = post_sequencing_file_upload(c, sid, tok, wid, 'attached.ab1', b'ABIF')
-    assert up.status_code == 200
-    sequencing_file_id = up.json()[0]['id']
-
-    with Session(sequences_client['engine']) as session:
-        seq = session.get(Sequence, sid)
-        sequence_key = seq.file_path
-        sequencing_key = session.get(SequencingFile, sequencing_file_id).storage_path
-    assert _object_exists(config, sequence_key)
-    assert _object_exists(config, sequencing_key)
+    sequencing_file_ids = []
+    for file_name, payload in [('attached-1.ab1', b'ABIF-1'), ('attached-2.ab1', b'ABIF-2')]:
+        up = post_sequencing_file_upload(c, sid, tok, wid, file_name, payload)
+        assert up.status_code == 200
+        sequencing_file_ids.append(up.json()[0]['id'])
 
     r = c.delete(f"/sequences/{sid}", headers=headers)
     assert r.status_code == 200, r.text
@@ -512,11 +498,10 @@ def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
 
     assert c.get(f"/sequences/{sid}", headers=headers).status_code == 404
     assert c.get(f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=headers).status_code == 404
-    assert not _object_exists(config, sequence_key)
-    assert not _object_exists(config, sequencing_key)
     with Session(sequences_client['engine']) as session:
         assert session.scalar(select(SequenceSample).where(SequenceSample.sequence_id == sid)) is None
-        assert session.get(SequencingFile, sequencing_file_id) is None
+        for sequencing_file_id in sequencing_file_ids:
+            assert session.get(SequencingFile, sequencing_file_id) is None
 
 
 def test_delete_template_sequence_owner_ok(sequences_client):
@@ -582,6 +567,37 @@ def test_delete_sequence_allows_when_has_parents(sequences_client):
     assert r.status_code == 200
 
 
+def test_delete_sequence_session_delete_rejects_when_has_children(sequences_client):
+    sid = sequences_client['pcr_template_id']
+
+    with Session(sequences_client['engine']) as session:
+        db_sequence = session.get(Sequence, sid)
+        assert db_sequence is not None
+
+        session.delete(db_sequence)
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+
+    with Session(sequences_client['engine']) as session:
+        assert session.get(Sequence, sid) is not None
+
+
+def test_delete_sequence_session_delete_allows_when_has_parents(sequences_client):
+    sid = sequences_client['pcr_product_id']
+
+    with Session(sequences_client['engine']) as session:
+        db_sequence = session.get(Sequence, sid)
+        assert db_sequence is not None
+
+        session.delete(db_sequence)
+        session.commit()
+
+    with Session(sequences_client['engine']) as session:
+        assert session.get(Sequence, sid) is None
+        assert session.get(Sequence, sequences_client['pcr_template_id']) is not None
+
+
 def test_delete_sequence_rejects_when_in_strain(sequences_client):
     """Sequences linked to a strain via SequenceInLine cannot be deleted (409)."""
     c = sequences_client['client']
@@ -631,16 +647,14 @@ def _parse_dseqr(payload: dict) -> Dseqrecord:
 
 
 def test_change_circularity_isolated_linear_to_circular(sequences_client):
-    """Isolated linear sequence toggles to circular with new GenBank file and old file removed."""
+    """Isolated linear sequence toggles to circular and updates stored GenBank content."""
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
     headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
-    config = sequences_client['config']
 
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
-        old_key = seq.file_path
-    assert _object_exists(config, old_key)
+        old_file_content = seq.file_content
 
     r0 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
     assert r0.status_code == 200
@@ -660,21 +674,16 @@ def test_change_circularity_isolated_linear_to_circular(sequences_client):
 
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
-        assert seq.file_path != old_key
-        new_key = seq.file_path
-
-    assert not _object_exists(config, old_key)
-    assert _object_exists(config, new_key)
+        assert seq.file_content != old_file_content
 
 
 def test_change_circularity_isolated_circular_to_linear(sequences_client):
     c = sequences_client['client']
     sid = sequences_client['seq_circ_id']
     headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
-    config = sequences_client['config']
 
     with Session(sequences_client['engine']) as session:
-        old_key = session.get(Sequence, sid).file_path
+        old_file_content = session.get(Sequence, sid).file_content
 
     r0 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
     assert _parse_dseqr(r0.json()).seq == Dseq('atgcgatcgatac'.upper(), circular=True)
@@ -691,9 +700,7 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
 
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
-        new_key = seq.file_path
-    assert not _object_exists(config, old_key)
-    assert _object_exists(config, new_key)
+        assert seq.file_content != old_file_content
 
 
 @readonly_db
@@ -799,12 +806,10 @@ def test_change_annotation_success_replaces_file(sequences_client):
     token = sequences_client['token_owner_w1']
     workspace_id = sequences_client['w1']
     headers = workspace_headers(token, workspace_id)
-    config = sequences_client['config']
 
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
-        old_key = seq.file_path
-    assert _object_exists(config, old_key)
+        old_file_content = seq.file_content
 
     r = c.patch(f'/sequences/{sid}/change_annotation', headers=headers, json=existing_sequence_annotated)
     assert r.status_code == 200
@@ -815,11 +820,7 @@ def test_change_annotation_success_replaces_file(sequences_client):
 
     with Session(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
-        assert seq.file_path != old_key
-        new_key = seq.file_path
-
-    assert not _object_exists(config, old_key)
-    assert _object_exists(config, new_key)
+        assert seq.file_content != old_file_content
 
 
 @readonly_db
@@ -1556,60 +1557,6 @@ def test_download_sequencing_file_ok(sequences_client):
     assert r.content == payload
 
 
-def test_download_sequencing_file_ok_then_missing_on_disk_404(sequences_client):
-    """Happy download, then blob removed from disk → 404 (same client/session as upload)."""
-    c = sequences_client['client']
-    tok = sequences_client['token_owner_w1']
-    wid = sequences_client['w1']
-    payload = b'ROUNDTRIP'
-    up = post_sequencing_file_upload(
-        c,
-        sequences_client['seq_w1_id'],
-        tok,
-        wid,
-        'round.ab1',
-        payload,
-    )
-    assert up.status_code == 200
-    file_id = up.json()[0]['id']
-    ok = c.get(
-        f"/sequencing_files/{file_id}/download",
-        headers=workspace_headers(tok, wid),
-    )
-    assert ok.status_code == 200
-    assert ok.content == payload
-
-    with Session(sequences_client['engine']) as session:
-        sf = session.get(SequencingFile, file_id)
-        storage_key = sf.storage_path
-    _storage(sequences_client['config']).delete_object(storage_key)
-    missing = c.get(
-        f"/sequencing_files/{file_id}/download",
-        headers=workspace_headers(tok, wid),
-    )
-    assert missing.status_code == 404
-    assert missing.json()['detail'] == 'File not found in object storage'
-
-
-def test_download_sequencing_file_object_storage_error_500(sequences_client):
-    from botocore.exceptions import ClientError
-
-    c = sequences_client['client']
-
-    def raise_value_error():
-        raise ClientError(error_response={'Error': {'Code': 'MockText'}}, operation_name='get_object')
-
-    monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr('opencloning_db.routers.sequences.get_storage', raise_value_error)
-    r = c.get(
-        f'/sequencing_files/{sequences_client["sequencing_file_id"]}/download',
-        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
-    )
-    monkeypatch.undo()
-    assert r.status_code == 500
-    assert 'MockText' in str(r.json()['detail'])
-
-
 @readonly_db
 def test_download_sequencing_file_unknown_id_404(sequences_client):
     c = sequences_client['client']
@@ -1874,114 +1821,6 @@ def test_post_sequences_bulk_sets_created_by(sequences_client):
         'display_name': 'Owner W1',
     }
     assert items[0]['created_at'] is not None
-
-
-def test_delete_sequence_missing_object_still_succeeds(sequences_client):
-    """Deleting a sequence whose stored GenBank object is already gone still succeeds."""
-    c = sequences_client['client']
-    tok = sequences_client['token_owner_w1']
-    wid = sequences_client['w1']
-    sid = sequences_client['seq_w1_id']
-    headers = workspace_headers(tok, wid)
-    config = sequences_client['config']
-
-    with Session(sequences_client['engine']) as session:
-        seq = session.get(Sequence, sid)
-        sequence_key = seq.file_path
-
-    assert _object_exists(config, sequence_key)
-    _storage(config).delete_object(sequence_key)
-    assert not _object_exists(config, sequence_key)
-
-    r = c.delete(f"/sequences/{sid}", headers=headers)
-    assert r.status_code == 200
-    assert r.json() == {'deleted': sid, 'data': None}
-
-
-class TestReplaceSequenceFile:
-    """Unit tests for _replace_sequence_file failure handling."""
-
-    @pytest.fixture(autouse=True)
-    def _setup(self, monkeypatch):
-        class FakeStorage:
-            def __init__(self):
-                self.new_key = 'sequences/new.gb'
-                self.objects = {'sequences/old.gb': 'old content'}
-
-            def new_sequence_key(self, extension='.gb'):
-                return self.new_key
-
-            def write_text(self, key, content, *, content_type='text/plain; charset=utf-8'):
-                self.objects[key] = content
-
-            def delete_object(self, key):
-                self.objects.pop(key, None)
-
-        self.storage = FakeStorage()
-        monkeypatch.setattr('opencloning_db.routers.sequences.get_storage', lambda: self.storage)
-        self.mock_seq = type('Seq', (), {'file_path': 'sequences/old.gb'})()
-        self.mock_session = type(
-            'S',
-            (),
-            {
-                'commit': lambda self: None,
-                'rollback': lambda self: None,
-                'refresh': lambda self, obj: None,
-            },
-        )()
-
-    def test_write_fails_raises_500(self, monkeypatch):
-        from fastapi import HTTPException
-        from opencloning_db.routers.sequences import _replace_sequence_file
-
-        monkeypatch.setattr(
-            self.storage, 'write_text', lambda *args, **kwargs: (_ for _ in ()).throw(OSError('disk full'))
-        )
-        with pytest.raises(HTTPException) as exc:
-            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-        assert exc.value.status_code == 500
-        assert 'Failed to write' in exc.value.detail
-
-    def test_commit_fails_cleans_up_new_file(self):
-        from opencloning_db.routers.sequences import _replace_sequence_file
-
-        self.mock_session.commit = lambda: (_ for _ in ()).throw(RuntimeError('db error'))
-
-        with pytest.raises(RuntimeError, match='db error'):
-            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-
-        assert 'sequences/old.gb' in self.storage.objects
-        assert self.storage.new_key not in self.storage.objects
-
-    def test_old_file_delete_error_is_ignored(self, monkeypatch):
-        from opencloning_db.routers.sequences import _replace_sequence_file
-
-        def fail_old_delete(key):
-            if key == 'sequences/old.gb':
-                raise OSError('permission denied')
-            self.storage.objects.pop(key, None)
-
-        monkeypatch.setattr(self.storage, 'delete_object', fail_old_delete)
-        _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-        assert self.storage.new_key in self.storage.objects
-
-    def test_new_file_delete_error_on_cleanup_is_logged_but_ignored(self, monkeypatch):
-        from opencloning_db.routers.sequences import _replace_sequence_file
-
-        self.mock_session.commit = lambda: (_ for _ in ()).throw(RuntimeError('db error'))
-
-        def fail_new_delete(key):
-            if key == 'sequences/new.gb':
-                raise OSError('permission denied')
-            self.storage.objects.pop(key, None)
-
-        monkeypatch.setattr(self.storage, 'delete_object', fail_new_delete)
-
-        with pytest.raises(RuntimeError, match='db error'):
-            _replace_sequence_file(self.mock_session, self.mock_seq, 'new content')
-
-        assert 'sequences/old.gb' in self.storage.objects
-        assert self.storage.new_key in self.storage.objects
 
 
 def test_post_sequences_bulk_integrity_error_returns_409(sequences_client, monkeypatch):

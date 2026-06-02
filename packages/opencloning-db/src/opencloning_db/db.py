@@ -2,14 +2,13 @@
 Database engine and conversion logic (Pydantic <-> ORM).
 """
 
-import os
 from typing import List
 
 import opencloning_linkml.datamodel.models as opencloning_models
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, undefer
 
 from opencloning_db.apimodels import (
     CloningStrategySyncResult,
@@ -26,7 +25,6 @@ from opencloning_db.models import (
     Tag,
     WorkspaceRole,
 )
-from opencloning_db.storage import get_storage, set_storage
 from opencloning_db.utils import guess_sequence_type
 from opencloning_db.models import require_real_sequence
 
@@ -40,7 +38,6 @@ def reset_runtime_state(config: Config | None = None) -> None:
         _engine.dispose()
     _engine = None
     _bound_database_url = None
-    set_storage(None)
     set_config(config)
 
 
@@ -58,17 +55,12 @@ def create_sequencing_file(
     sequence: 'Sequence',
     file_content: bytes,
     original_name: str,
-    content_type: str | None = None,
 ) -> SequencingFile:
-    """Create SequencingFile; write content to a unique object key."""
-    ext = os.path.splitext(original_name)[1]
-    storage = get_storage()
-    storage_filename = storage.new_sequencing_key(ext)
-    storage.write_bytes(storage_filename, file_content, content_type=content_type or 'application/octet-stream')
+    """Create a SequencingFile row backed directly by database storage."""
     return SequencingFile(
         sequence=sequence,
         original_name=original_name,
-        storage_path=storage_filename,
+        file_content=file_content,
     )
 
 
@@ -249,15 +241,15 @@ def get_db_sequences_from_database_ids(
 ) -> dict[int, Sequence]:
     if len(database_ids) == 0:
         return {}
-    return {
-        sequence.id: sequence
-        for sequence in session.scalars(
-            select(Sequence).where(
-                Sequence.workspace_id == workspace_id,
-                Sequence.id.in_(database_ids),
-            )
-        ).all()
-    }
+    stmt = (
+        select(Sequence)
+        .where(
+            Sequence.workspace_id == workspace_id,
+            Sequence.id.in_(database_ids),
+        )
+        .options(undefer(Sequence.file_content))
+    )
+    return {sequence.id: sequence for sequence in session.scalars(stmt).all()}
 
 
 def get_db_sequences_grouped_by_seguid(
@@ -268,12 +260,15 @@ def get_db_sequences_grouped_by_seguid(
     if len(seguids) == 0:
         return {}
     grouped: dict[str, list[Sequence]] = {}
-    for sequence in session.scalars(
-        select(Sequence).where(
+    stmt = (
+        select(Sequence)
+        .where(
             Sequence.workspace_id == workspace_id,
             Sequence.seguid.in_(seguids),
         )
-    ).all():
+        .options(undefer(Sequence.file_content))
+    )
+    for sequence in session.scalars(stmt).all():
         grouped.setdefault(sequence.seguid, []).append(sequence)
     return grouped
 

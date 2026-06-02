@@ -7,9 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 import opencloning_db.db as db_module
-from opencloning_db.models import User
+from opencloning_db.models import SequencingFile, User, Sequence
 from opencloning_db.migrations import reset_database
-from opencloning_db.storage import ObjectStorage
 from opencloning_cli.lifecycle import _STUB_CREATED_AT, _replace_created_at_in_json, seed
 
 
@@ -61,6 +60,5 @@ def test_seed_recreate_schema_rebuilds_broken_schema(temp_workspace, monkeypatch
 
     with Session(db_module.get_engine(config)) as session:
         assert session.query(User).count() > 0
-    storage = ObjectStorage(config)
-    assert len(storage.list_keys(config.sequence_objects_prefix)) == 48
-    assert len(storage.list_keys(config.sequencing_objects_prefix)) == 3
+        assert session.query(SequencingFile).count() == 3
+        assert session.query(Sequence).count() == 48

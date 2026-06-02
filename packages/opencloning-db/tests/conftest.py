@@ -1,8 +1,6 @@
 import os
 from typing import Generator
 
-import boto3
-from moto import mock_aws
 from sqlalchemy.orm import Session
 
 from opencloning_db.config import Config, _peek_config
@@ -26,9 +24,6 @@ _TEST_DATABASE_URL_READONLY = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL_READONLY',
     'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test_readonly',
 )
-_TEST_BUCKET = 'opencloning-test'
-_TEST_REGION = 'us-east-1'
-_TEST_ENDPOINT_URL = 'https://s3.amazonaws.com'
 
 
 @pytest.fixture(autouse=True)
@@ -44,28 +39,14 @@ def _disable_login_rate_limit_for_tests(monkeypatch):
 
 
 def _build_postgres_test_config(default_config: Config | None, database_url: str) -> Generator[Config, None, None]:
-    """Postgres test config backed by a Moto S3 bucket."""
-    with mock_aws():
-        boto3.client(
-            's3',
-            region_name=_TEST_REGION,
-            aws_access_key_id='test-access-key',
-            aws_secret_access_key='test-secret-key',
-        ).create_bucket(Bucket=_TEST_BUCKET)
-        test_config = Config(
-            database_url=database_url,
-            object_storage_endpoint_url=_TEST_ENDPOINT_URL,
-            object_storage_access_key_id='test-access-key',
-            object_storage_secret_access_key='test-secret-key',
-            object_storage_bucket=_TEST_BUCKET,
-            object_storage_region=_TEST_REGION,
-            object_storage_force_path_style=True,
-            sequence_objects_prefix='sequences/',
-            sequencing_objects_prefix='sequencing-files/',
-            jwt_secret=_JWT_SECRET,
-        )
-        db_module.reset_runtime_state(test_config)
-        yield test_config
+    """Postgres test config with DB-backed sequence content."""
+    test_config = Config(
+        database_url=database_url,
+        jwt_secret=_JWT_SECRET,
+        registration_whitelist_enabled=False,
+    )
+    db_module.reset_runtime_state(test_config)
+    yield test_config
     db_module.reset_runtime_state(default_config)
 
 

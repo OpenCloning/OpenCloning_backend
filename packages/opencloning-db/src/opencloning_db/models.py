@@ -17,7 +17,9 @@ from sqlalchemy import (
     Index,
     Integer,
     JSON,
+    LargeBinary,
     Table,
+    Text,
     UniqueConstraint,
     event,
     select,
@@ -41,7 +43,6 @@ from pydna.readers import read
 import re
 
 from opencloning_db.context import WriteContext
-from opencloning_db.storage import get_storage
 from fastapi import HTTPException
 
 # Source type union from CloningStrategy.sources (list[Union[Source, ...]])
@@ -128,6 +129,17 @@ class User(Base):
         if len(value) < DISPLAY_NAME_MIN_LENGTH:
             raise ValueError(f'display_name must be at least {DISPLAY_NAME_MIN_LENGTH} characters')
         return value
+
+
+class EmailWhitelist(Base):
+    __tablename__ = 'email_whitelist'
+    __table_args__ = (
+        UniqueConstraint('email', name='uq_email_whitelist_email'),
+        CheckConstraint("email <> ''", name='email_whitelist_email_not_empty'),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(nullable=False)
 
 
 class Workspace(Base):
@@ -266,13 +278,13 @@ class Sequence(BaseSequence):
 
     id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), primary_key=True)
     output_of_source: Mapped['Source'] = relationship(
-        back_populates='output_sequence', uselist=False, single_parent=True
+        back_populates='output_sequence', uselist=False, single_parent=True, cascade='all, delete-orphan'
     )
     overhang_crick_3prime: Mapped[int] = mapped_column(default=0)
     overhang_watson_3prime: Mapped[int] = mapped_column(default=0)
     seguid: Mapped[str] = mapped_column(nullable=False)
 
-    file_path: Mapped[str]
+    file_content: Mapped[str] = mapped_column(Text, nullable=False, deferred=True)
     sequencing_files: Mapped[List['SequencingFile']] = relationship(
         back_populates='sequence', cascade='all, delete-orphan'
     )
@@ -282,10 +294,8 @@ class Sequence(BaseSequence):
     }
 
     def to_pydantic_sequence(self) -> opencloning_models.TextFileSequence:
-        file_content = get_storage().read_text(self.file_path)
-
         # We do the renaming here when returning the sequence to prevent editing the original sequence file.
-        seqrecord = read(file_content)
+        seqrecord = read(self.file_content)
         seqrecord.name = sanitize_sequence_name(self.name)
 
         return opencloning_models.TextFileSequence(
@@ -301,7 +311,7 @@ class Sequence(BaseSequence):
         cls,
         *,
         name: str,
-        file_path: str,
+        file_content: str,
         seguid: str,
         ctx: WriteContext,
         overhang_crick_3prime: int = 0,
@@ -312,7 +322,7 @@ class Sequence(BaseSequence):
         return cls(
             name=name,
             workspace_id=ctx.workspace_id,
-            file_path=file_path,
+            file_content=file_content,
             seguid=seguid,
             created_by_id=ctx.user.id,
             overhang_crick_3prime=overhang_crick_3prime,
@@ -329,16 +339,14 @@ class Sequence(BaseSequence):
     ) -> Self:
         """
         Create a database sequence from a pydantic sequence. It does not persist the sequence to the database.
-        It writes the sequence to object storage as the ``file_path`` key is required.
+        The GenBank payload is stored directly in the database row.
         """
+        file_content = _require_value(pydantic_sequence.file_content, 'TextFileSequence.file_content is required.')
         seqrecord = read_dsrecord_from_json(pydantic_sequence)
         seguid = seqrecord.seq.seguid()
-        storage = get_storage()
-        sequence_file = storage.new_sequence_key('.gb')
-        storage.write_text(sequence_file, pydantic_sequence.file_content, content_type='text/plain; charset=utf-8')
         return cls.from_create(
             name=seqrecord.name,
-            file_path=sequence_file,
+            file_content=file_content,
             seguid=seguid,
             ctx=ctx,
             **pydantic_sequence.model_dump(include={'overhang_crick_3prime', 'overhang_watson_3prime'}),
@@ -501,6 +509,7 @@ class Source(Base):
         back_populates='source',
         order_by='SourceInput.position',
         collection_class=ordering_list('position'),
+        cascade='all, delete-orphan',
     )
 
     extra_fields: Mapped[dict] = mapped_column(JSON)
@@ -626,7 +635,7 @@ class SequencingFile(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sequence_id: Mapped[int] = mapped_column(ForeignKey('sequence.id'), nullable=False)
     original_name: Mapped[str] = mapped_column()
-    storage_path: Mapped[str] = mapped_column()
+    file_content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, deferred=True)
 
     sequence: Mapped['Sequence'] = relationship(back_populates='sequencing_files')
 

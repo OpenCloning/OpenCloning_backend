@@ -1,8 +1,4 @@
-"""
-OpenCloning API - main FastAPI application.
-"""
-
-from contextlib import asynccontextmanager
+"""OpenCloning API - main FastAPI application."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +8,6 @@ from starlette.types import ASGIApp
 
 from opencloning.app_settings import settings as opencloning_settings
 from opencloning_db.config import parse_bool
-from opencloning_db.storage import get_storage
 from opencloning_db.routers import (
     auth,
     lines,
@@ -26,14 +21,8 @@ from opencloning_db.routers import (
 )
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    get_storage().validate_bucket_exists()
-    yield
-
-
 def create_fastapi_app() -> FastAPI:
-    app = FastAPI(title='OpenCloningDB API', lifespan=lifespan)
+    app = FastAPI(title='OpenCloningDB API')
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)

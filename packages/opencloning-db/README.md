@@ -13,11 +13,8 @@ uv sync
 # If you are using mac, you may have to stop any local Postgres instances running on port 5432
 brew services stop postgresql
 
-# Start local Postgres with dev/test/e2e databases plus Garage for object storage
-docker compose \
-    -f docker/docker-compose.postgres.yml \
-    -f docker/docker-compose.garage.yml \
-    up -d postgres garage
+# Start local Postgres with dev/test/e2e databases
+docker compose -f docker/docker-compose.postgres.yml up -d postgres
 
 # Load required local runtime config
 source .env.dev
@@ -41,7 +38,7 @@ When the cloning app is served through `opencloning_db.combined`, the entire `/c
 
 ## Database migrations (Alembic)
 
-Schema changes are defined in **`opencloning_db.models`** and applied with **Alembic** in this package (`alembic/`, `alembic.ini`). Edit the models first, add or adjust a revision under `alembic/versions/`, then run migrations against each database.
+Schema changes are defined in **`opencloning_db.models`** and applied with **Alembic** in this package (`alembic/`, `alembic.ini`). Edit the models first, generate or adjust the revision under `alembic/versions/`, then run migrations against each database.
 
 Alembic reads the database URL from **`OPENCLONING_DB_URL`** (same as the app; load `.env.dev` for local work). Revision history is stored in the database table `alembic_version`, not in git.
 
@@ -133,12 +130,9 @@ docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manul
 Then run it for development:
 
 ```bash
-# Run the containers (Postgres + Garage + db API)
+# Run the containers (Postgres + db API)
 docker compose \
     -f docker/docker-compose.postgres.yml \
-    -f docker/docker-compose.garage.yml \
     -f docker/docker-compose.opencloning-db.yml \
     up -d
 ```
-
-That stack exposes Garage's S3-compatible API at [http://127.0.0.1:9000](http://127.0.0.1:9000). Garage does not provide a MinIO-style browser console in this setup, so use an S3 client such as `awscli` or `mc` if you need to inspect the local bucket. The local defaults in `.env.dev` point host-side `uv run ...` commands at the same Garage bucket used by the containerized db API.

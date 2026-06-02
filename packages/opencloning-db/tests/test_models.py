@@ -12,7 +12,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-import opencloning_db.config as app_config
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import (
@@ -39,7 +38,6 @@ from opencloning_db.models import (
     _require_value,
     _require_row,
 )
-from opencloning_db.storage import ObjectStorage
 from tests.cloning_strategy_examples import cs_pcr, pcr_product
 from opencloning_db.migrations import reset_database
 
@@ -175,7 +173,7 @@ class TestSequence(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            seq = Sequence(workspace_id=ws.id, file_path='s.gb', name='seq', seguid='SEGUID-SEQ', created_by_id=1)
+            seq = Sequence(workspace_id=ws.id, file_content='s.gb', name='seq', seguid='SEGUID-SEQ', created_by_id=1)
             line = Line(workspace_id=ws.id, uid='L-1', created_by_id=1)
             session.add_all([seq, line])
             session.flush()
@@ -215,9 +213,8 @@ class TestSequence(_MemoryDbTestCase):
         assert isinstance(linked_sequence, TemplateSequence)
 
     def test_to_pydantic_sequence_reads_genbank_file(self):
-        """Reads GenBank file text from configured object storage."""
-        rel = 'sub/test.gb'
-        ObjectStorage(app_config.get_config()).write_text(rel, pcr_product.format('genbank'))
+        """Reads GenBank file text from the sequence row itself."""
+        file_content = pcr_product.format('genbank')
 
         with Session(self.engine) as session:
             ws = Workspace(name='W')
@@ -225,7 +222,7 @@ class TestSequence(_MemoryDbTestCase):
             session.flush()
             seq = Sequence(
                 workspace_id=ws.id,
-                file_path=rel,
+                file_content=file_content,
                 name='n',
                 overhang_crick_3prime=3,
                 overhang_watson_3prime=5,
@@ -355,7 +352,7 @@ class TestSource(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            seq = Sequence(workspace_id=ws.id, file_path='o.gb', name='out', seguid='SEGUID-OUT', created_by_id=1)
+            seq = Sequence(workspace_id=ws.id, file_content='o.gb', name='out', seguid='SEGUID-OUT', created_by_id=1)
             session.add(seq)
             session.flush()
 
@@ -378,7 +375,7 @@ class TestSource(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            seq = Sequence(workspace_id=ws.id, file_path='e.gb', name='e', seguid='SEGUID-E', created_by_id=1)
+            seq = Sequence(workspace_id=ws.id, file_content='e.gb', name='e', seguid='SEGUID-E', created_by_id=1)
             session.add(seq)
             session.flush()
             pyd = opencloning_models.PCRSource.model_validate(
@@ -406,7 +403,7 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            ent = Sequence(workspace_id=ws.id, file_path='in.gb', name='in', seguid='SEGUID-IN', created_by_id=1)
+            ent = Sequence(workspace_id=ws.id, file_content='in.gb', name='in', seguid='SEGUID-IN', created_by_id=1)
             session.add(ent)
             session.flush()
             src_row = Source(
@@ -447,11 +444,11 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
-            ent = Sequence(workspace_id=ws.id, file_path='af.gb', name='af', seguid='SEGUID-AF', created_by_id=1)
+            ent = Sequence(workspace_id=ws.id, file_content='af.gb', name='af', seguid='SEGUID-AF', created_by_id=1)
             session.add(ent)
             session.flush()
             out_seq = Sequence(
-                workspace_id=ws.id, file_path='out.gb', name='out', seguid='SEGUID-OUT', created_by_id=1
+                workspace_id=ws.id, file_content='out.gb', name='out', seguid='SEGUID-OUT', created_by_id=1
             )
             session.add(out_seq)
             session.flush()
@@ -601,8 +598,8 @@ class TestSequenceSample(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            seq_w1 = Sequence(workspace_id=w1.id, file_path='q1.gb', seguid='SEGUID-Q1', created_by_id=1)
-            seq_w2 = Sequence(workspace_id=w2.id, file_path='q2.gb', seguid='SEGUID-Q2', created_by_id=1)
+            seq_w1 = Sequence(workspace_id=w1.id, file_content='q1.gb', seguid='SEGUID-Q1', created_by_id=1)
+            seq_w2 = Sequence(workspace_id=w2.id, file_content='q2.gb', seguid='SEGUID-Q2', created_by_id=1)
             session.add_all([seq_w1, seq_w2])
             session.flush()
             samp = SequenceSample(
@@ -624,7 +621,7 @@ class TestSequenceSample(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            seq = Sequence(workspace_id=w1.id, file_path='q.gb', seguid='SEGUID-Q', created_by_id=1)
+            seq = Sequence(workspace_id=w1.id, file_content='q.gb', seguid='SEGUID-Q', created_by_id=1)
             session.add(seq)
             session.flush()
             samp = SequenceSample(
@@ -659,7 +656,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             session.add_all([w1, w2])
             session.flush()
             line_w1 = Line(workspace_id=w1.id, uid='L-W1', created_by_id=1)
-            seq_w2 = Sequence(workspace_id=w2.id, file_path='s2.gb', name='S2', seguid='SEGUID-S2', created_by_id=1)
+            seq_w2 = Sequence(workspace_id=w2.id, file_content='s2.gb', name='S2', seguid='SEGUID-S2', created_by_id=1)
             session.add_all([line_w1, seq_w2])
             session.flush()
             session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w2.id))
@@ -672,7 +669,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             session.add(w1)
             session.flush()
             line_w1 = Line(workspace_id=w1.id, uid='L-W1', created_by_id=1)
-            seq_w1 = Sequence(workspace_id=w1.id, file_path='s1.gb', name='S1', seguid='SEGUID-S1', created_by_id=1)
+            seq_w1 = Sequence(workspace_id=w1.id, file_content='s1.gb', name='S1', seguid='SEGUID-S1', created_by_id=1)
             session.add_all([line_w1, seq_w1])
             session.flush()
             session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w1.id))
@@ -685,9 +682,9 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             session.add_all([w1, w2])
             session.flush()
             out_seq = Sequence(
-                workspace_id=w1.id, file_path='out.gb', name='Out', seguid='SEGUID-OUT', created_by_id=1
+                workspace_id=w1.id, file_content='out.gb', name='Out', seguid='SEGUID-OUT', created_by_id=1
             )
-            in_seq = Sequence(workspace_id=w2.id, file_path='in.gb', name='In', seguid='SEGUID-IN', created_by_id=1)
+            in_seq = Sequence(workspace_id=w2.id, file_content='in.gb', name='In', seguid='SEGUID-IN', created_by_id=1)
             session.add_all([out_seq, in_seq])
             session.flush()
             src = Source(
@@ -730,7 +727,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
             session.flush()
-            ent = Sequence(workspace_id=w1.id, file_path='e.gb', name='E', seguid='SEGUID-E', created_by_id=1)
+            ent = Sequence(workspace_id=w1.id, file_content='e.gb', name='E', seguid='SEGUID-E', created_by_id=1)
             tag_w2 = Tag(workspace_id=w2.id, name='T2')
             session.add_all([ent, tag_w2])
             session.flush()
@@ -744,7 +741,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             session.add(w1)
             session.flush()
             line = Line(workspace_id=w1.id, uid='L', created_by_id=1)
-            ent = Sequence(workspace_id=w1.id, file_path='e.gb', name='E', seguid='SEGUID-E', created_by_id=1)
+            ent = Sequence(workspace_id=w1.id, file_content='e.gb', name='E', seguid='SEGUID-E', created_by_id=1)
             tag = Tag(workspace_id=w1.id, name='T1')
             session.add_all([line, ent, tag])
             session.flush()
@@ -784,14 +781,14 @@ class TestLine(_MemoryDbTestCase):
             session.flush()
             allele_seq = Sequence(
                 workspace_id=ws.id,
-                file_path='a.gb',
+                file_content='a.gb',
                 sequence_type=SequenceType.allele,
                 seguid='SEGUID-ALLELE',
                 created_by_id=1,
             )
             plasmid_seq = Sequence(
                 workspace_id=ws.id,
-                file_path='p.gb',
+                file_content='p.gb',
                 sequence_type=SequenceType.plasmid,
                 seguid='SEGUID-PLASMID',
                 created_by_id=1,

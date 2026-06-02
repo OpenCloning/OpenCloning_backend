@@ -12,10 +12,6 @@ from sqlalchemy.engine import make_url
 
 _REQUIRED_ENV_VARS = (
     'OPENCLONING_DB_URL',
-    'OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL',
-    'OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID',
-    'OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY',
-    'OPENCLONING_OBJECT_STORAGE_BUCKET',
     'OPENCLONING_JWT_SECRET',
 )
 
@@ -34,16 +30,8 @@ def _load_config_from_env() -> 'Config':
 
     return Config(
         database_url=os.environ['OPENCLONING_DB_URL'],
-        object_storage_endpoint_url=os.environ['OPENCLONING_OBJECT_STORAGE_ENDPOINT_URL'],
-        object_storage_access_key_id=os.environ['OPENCLONING_OBJECT_STORAGE_ACCESS_KEY_ID'],
-        object_storage_secret_access_key=os.environ['OPENCLONING_OBJECT_STORAGE_SECRET_ACCESS_KEY'],
-        object_storage_bucket=os.environ['OPENCLONING_OBJECT_STORAGE_BUCKET'],
-        object_storage_region=os.environ.get('OPENCLONING_OBJECT_STORAGE_REGION', 'us-east-1'),
-        object_storage_force_path_style=parse_bool(os.environ.get('OPENCLONING_OBJECT_STORAGE_FORCE_PATH_STYLE', '1')),
-        sequence_objects_prefix=os.environ.get('OPENCLONING_SEQUENCE_OBJECTS_PREFIX', 'sequences/'),
-        sequencing_objects_prefix=os.environ.get('OPENCLONING_SEQUENCING_OBJECTS_PREFIX', 'sequencing-files/'),
         jwt_secret=os.environ['OPENCLONING_JWT_SECRET'],
-        registration_invites_object_key=os.environ.get('OPENCLONING_REGISTRATION_INVITES_OBJECT_KEY', '').strip(),
+        registration_whitelist_enabled=parse_bool(os.environ.get('OPENCLONING_REGISTRATION_WHITELIST_ENABLED', '0')),
     )
 
 
@@ -62,45 +50,8 @@ class Config(BaseModel):
             )
         return value
 
-    @field_validator('sequence_objects_prefix', 'sequencing_objects_prefix')
-    @classmethod
-    def _normalize_object_prefix(cls, value: str) -> str:
-        normalized = value.strip('/')
-        if not normalized:
-            raise ValueError('Object storage prefixes must not be empty.')
-        return f'{normalized}/'
-
     database_url: str = Field(
         description='SQLAlchemy PostgreSQL URL using the psycopg (v3) driver (postgresql+psycopg://...)',
-    )
-    object_storage_endpoint_url: str = Field(
-        description='S3-compatible endpoint URL used for object storage operations',
-        pattern=r'^https?://',
-    )
-    object_storage_access_key_id: str = Field(
-        description='Access key ID for the configured S3-compatible object storage',
-    )
-    object_storage_secret_access_key: str = Field(
-        description='Secret access key for the configured S3-compatible object storage',
-    )
-    object_storage_bucket: str = Field(
-        description='Bucket name used for both sequence and sequencing-file objects',
-    )
-    object_storage_region: str = Field(
-        default='us-east-1',
-        description='Region name for the configured S3-compatible object storage',
-    )
-    object_storage_force_path_style: bool = Field(
-        default=True,
-        description='Whether to force path-style S3 addressing (typically required for local S3-compatible endpoints)',
-    )
-    sequence_objects_prefix: str = Field(
-        default='sequences/',
-        description='Object-key prefix for sequence GenBank files',
-    )
-    sequencing_objects_prefix: str = Field(
-        default='sequencing-files/',
-        description='Object-key prefix for uploaded sequencing files',
     )
     jwt_secret: str = Field(
         description='HS256 signing key for JWT access tokens',
@@ -111,9 +62,9 @@ class Config(BaseModel):
         ge=1,
         description='Access token lifetime in minutes',
     )
-    registration_invites_object_key: str = Field(
-        default='',
-        description='S3 object key for signup allowlist (one email per line). Empty disables invite checks.',
+    registration_whitelist_enabled: bool = Field(
+        default=False,
+        description='Whether registration requires the email to appear in the database whitelist.',
     )
 
 

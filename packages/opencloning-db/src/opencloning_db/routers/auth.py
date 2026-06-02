@@ -33,7 +33,7 @@ def register(
     existing = session.scalar(select(User).where(User.email.ilike(f"%{email}%")))
     if existing is not None:
         raise HTTPException(status_code=400, detail='Email already registered')
-    require_invited_email(email, config)
+    require_invited_email(email, session, config)
     user = User(
         email=email,
         display_name=body.display_name,
