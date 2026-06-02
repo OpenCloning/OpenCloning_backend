@@ -1,5 +1,5 @@
 {
-    "packages/opencloning": "1.7.0",
-    "packages/opencloning-db": "1.7.0",
-    "packages/opencloning-cli": "1.7.0"
+    "packages/opencloning": "1.8.0",
+    "packages/opencloning-db": "1.8.0",
+    "packages/opencloning-cli": "1.8.0"
 }
