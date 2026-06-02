@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.7.0...opencloning-db-v1.8.0) (2026-06-02)
+
+
+### Features
+
+* drop S3 storage in favour of db storage of sequences and sequencing files ([#489](https://github.com/OpenCloning/OpenCloning_backend/issues/489)) ([87d4f32](https://github.com/OpenCloning/OpenCloning_backend/commit/87d4f329d7cd47f9433461e7772b1ce96a4bf1c0))
+
+
+### Bug Fixes
+
+* tag lines in bulk submit ([#492](https://github.com/OpenCloning/OpenCloning_backend/issues/492)) ([d5fea00](https://github.com/OpenCloning/OpenCloning_backend/commit/d5fea004d09218058a416222aa9ee894d042ad07))
+
 ## [1.7.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.6.1...opencloning-db-v1.7.0) (2026-06-01)
 
 

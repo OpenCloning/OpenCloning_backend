@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.7.0...opencloning-cli-v1.8.0) (2026-06-02)
+
+
+### Features
+
+* drop S3 storage in favour of db storage of sequences and sequencing files ([#489](https://github.com/OpenCloning/OpenCloning_backend/issues/489)) ([87d4f32](https://github.com/OpenCloning/OpenCloning_backend/commit/87d4f329d7cd47f9433461e7772b1ce96a4bf1c0))
+
 ## [1.7.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.6.1...opencloning-cli-v1.7.0) (2026-06-01)
 
 

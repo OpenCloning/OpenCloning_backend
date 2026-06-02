@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.7.0...opencloning-v1.8.0) (2026-06-02)
+
+
+### Miscellaneous Chores
+
+* **opencloning:** Synchronize backend-packages versions
+
 ## [1.7.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.6.1...opencloning-v1.7.0) (2026-06-01)
 
 
