@@ -64,9 +64,11 @@ def _invalid_pcr_strategy_bytes() -> bytes:
 
 
 def _invalid_pcr_strategy_dict() -> dict:
-    data = cs_pcr.model_dump()
-    pcr_source = next(s for s in data['sources'] if s['type'] == 'PCRSource')
-    pcr_source['input'][1]['left_location'] = '999999..1000000'
+    from pydna.dseq import Dseq
+
+    product = cs_pcr.to_dseqrecords()[0]
+    product.seq = Dseq('A')
+    data = pydna_opencloning_models.CloningStrategy.from_dseqrecords([product]).model_dump()
     return data
 
 

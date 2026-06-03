@@ -436,7 +436,7 @@ def _sync_sequences_via_dseqrecords(
     # Then normalize
     try:
         synced_strategy = synced_strategy.normalize()
-    except ValueError as e:  # pragma: no cover # This should never happen, as input is validated before syncing
+    except ValueError as e:
         raise ValueError(f"Error normalizing cloning strategy: {e}") from e
 
     return synced_strategy, mismatches
