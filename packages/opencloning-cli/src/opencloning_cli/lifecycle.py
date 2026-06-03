@@ -13,7 +13,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-import opencloning_db.db as _db_module
 from opencloning_db.config import get_config, parse_bool
 from opencloning_db.init_db import load_seed_data
 from opencloning_db.migrations import (
@@ -21,8 +20,7 @@ from opencloning_db.migrations import (
     truncate_application_tables,
     upgrade_head,
 )
-from opencloning_db.combined import app
-from fastapi.testclient import TestClient
+
 from .stubs import stubs, RecordedStub, StubRequest, StubResponse
 
 # Canonical timestamp for recorded HTTP stubs (avoids diffs from DB server_default times).
@@ -48,6 +46,8 @@ def _dispose_engine() -> None:
     ``opencloning_db.db`` caches a module-level engine keyed by URL; leaving
     it open risks stale connections after reseeding.
     """
+    import opencloning_db.db as _db_module
+
     if _db_module._engine is not None:
         _db_module._engine.dispose()
         _db_module._engine = None
@@ -72,6 +72,8 @@ def seed(*, recreate_schema: bool = False) -> None:
 
     This is destructive and only allowed when ``OPENCLONING_TESTING=1``.
     """
+    import opencloning_db.db as _db_module
+
     _require_testing_seed_enabled()
     config = get_config()
     _dispose_engine()
@@ -208,6 +210,8 @@ def _default_auth_headers(test_client: Any) -> dict[str, str]:
 
 def write_stubs(output_dir: Path):
     """Generate and persist one predefined DB test stub JSON."""
+    from fastapi.testclient import TestClient
+    from opencloning_db.combined import app
 
     seed()
 
