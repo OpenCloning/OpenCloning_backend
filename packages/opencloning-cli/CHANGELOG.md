@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.8.0...opencloning-cli-v1.8.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* improve cli speed ([#493](https://github.com/OpenCloning/OpenCloning_backend/issues/493)) ([1e093a7](https://github.com/OpenCloning/OpenCloning_backend/commit/1e093a7a56744b9e54d6185aac0a006a2646be15))
+
 ## [1.8.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.7.0...opencloning-cli-v1.8.0) (2026-06-02)
 
 
