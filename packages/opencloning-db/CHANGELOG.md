@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.8.0...opencloning-db-v1.8.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* small bug in bulk submit + speed up db sync + update pydna ([#495](https://github.com/OpenCloning/OpenCloning_backend/issues/495)) ([17035ba](https://github.com/OpenCloning/OpenCloning_backend/commit/17035ba3ca8f6c9466e4e722d06d2a59f9a2e2e5))
+
 ## [1.8.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.7.0...opencloning-db-v1.8.0) (2026-06-02)
 
 
