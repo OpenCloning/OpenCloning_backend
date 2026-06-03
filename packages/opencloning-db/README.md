@@ -97,10 +97,10 @@ Use `stamp` only when you are sure the live schema matches the migration chain a
 
 ### Useful commands
 
-| Command | Purpose |
-| --- | --- |
-| `uv run alembic -c "$ALEMBIC_CFG" history` | List revisions |
-| `uv run alembic -c "$ALEMBIC_CFG" downgrade -1` | Revert the last revision |
+| Command                                               | Purpose                                       |
+| ----------------------------------------------------- | --------------------------------------------- |
+| `uv run alembic -c "$ALEMBIC_CFG" history`            | List revisions                                |
+| `uv run alembic -c "$ALEMBIC_CFG" downgrade -1`       | Revert the last revision                      |
 | `uv run alembic -c "$ALEMBIC_CFG" upgrade head --sql` | Print SQL without executing (offline preview) |
 
 ## Running tests locally
@@ -125,6 +125,8 @@ The Dockerfile is shared with the cloning app, and the build arg `APP_TARGET` de
 
 ```bash
 docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloning-db-backend .
+# or
+docker buildx build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db -t manulera/opencloning-db-backend:prod --platform linux/amd64,linux/arm64 .
 ```
 
 Then run it for development:
