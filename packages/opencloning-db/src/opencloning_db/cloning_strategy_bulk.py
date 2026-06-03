@@ -6,8 +6,6 @@ from fastapi import HTTPException
 from opencloning.utils import validate_cloning_strategy_format_and_migrate
 from sqlalchemy.orm import Session
 
-import pydna.opencloning_models as pydna_opencloning_models
-
 from opencloning_db.apimodels import CloningStrategySyncResult
 from opencloning_db.context import ReadContext
 from opencloning_db.db import sync_cloning_strategy_with_db
@@ -33,15 +31,14 @@ def validate_and_sync_cloning_strategy_dict(
         cs = validate_cloning_strategy_format_and_migrate(data, parsing_warnings)
     except HTTPException as e:
         return CloningStrategySyncResult(file_name=file_name, parsing_errors=[e.detail])
+
     try:
-        pydna_opencloning_models.CloningStrategy.model_validate(cs.model_dump(mode='json')).validate()
+        sync_result = sync_cloning_strategy_with_db(cs, session, ctx=ctx)
     except ValueError as e:
         return CloningStrategySyncResult(
             file_name=file_name,
             parsing_errors=['Cloning strategy is not correct: ' + str(e)],
         )
-
-    sync_result = sync_cloning_strategy_with_db(cs, session, ctx=ctx)
     sync_result.file_name = file_name
     sync_result.parsing_warnings = parsing_warnings
     return sync_result

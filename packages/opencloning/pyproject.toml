@@ -4,9 +4,7 @@ version = "1.8.0"
 description = "Backend of OpenCloning, a web application to generate molecular cloning strategies in json format, and share them with others."
 readme = "README.md"
 license = "MIT"
-authors = [
-    { name = "Manuel Lera-Ramirez", email = "manulera14@gmail.com" },
-]
+authors = [{ name = "Manuel Lera-Ramirez", email = "manulera14@gmail.com" }]
 requires-python = ">=3.11,<4"
 dependencies = [
     "beautifulsoup4>=4.11.1,<5",
@@ -26,7 +24,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "primer3-py>=2.3",
     "pairwise-alignments-to-msa>=0.1.1",
-    "pydna>=5.5.11",
+    "pydna>=5.5.13",
     "starlette>=1.0.0",
     "gunicorn>=26.0.0",
 ]
@@ -46,4 +44,9 @@ allow-direct-references = true
 
 [tool.deptry]
 known_first_party = ["opencloning"]
-per_rule_ignores = { DEP002 = ["python-multipart", "gunicorn", "uvicorn", "openpyxl"] }
+per_rule_ignores = { DEP002 = [
+    "python-multipart",
+    "gunicorn",
+    "uvicorn",
+    "openpyxl",
+] }

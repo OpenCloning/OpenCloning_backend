@@ -5,6 +5,7 @@ Database engine and conversion logic (Pydantic <-> ORM).
 from typing import List
 
 import opencloning_linkml.datamodel.models as opencloning_models
+from pydna.dseq import Dseq
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy import create_engine, func, select
@@ -205,7 +206,8 @@ def _link_primers_by_sequence_match(
     existing_primers_by_sequence: dict[str, list[Primer]],
 ) -> None:
     for primer in primers:
-        assert primer.database_id is None
+        if primer.database_id is not None:
+            continue
         matches = existing_primers_by_sequence.get(primer_sequences[primer.id], [])
         if len(matches) >= 1:
             primer.database_id = matches[0].id
@@ -224,7 +226,6 @@ def _sync_primers_with_db(
     mismatches, primer_sequences, sequences_needing_match = _verify_incoming_primer_database_ids(
         primers, existing_primers_by_id
     )
-
     if len(sequences_needing_match) > 0:
         existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
             session, workspace_id, sequences_needing_match
@@ -311,13 +312,28 @@ def get_sequence_db_mismatch(
     return None
 
 
+SeguidCache = dict[tuple[bool, str, str, int], str]
+
+
+def _dseq_seguid_cached(dseq: Dseq, cache: SeguidCache) -> str:
+    """Return pydna SEGUID for ``dseq``, reusing results within one sync pass."""
+    key = (dseq.circular, dseq.watson, dseq.crick, dseq.ovhg)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+    value = dseq.seguid()
+    cache[key] = value
+    return value
+
+
 def _collect_dseqrecord_graph_lookups(
     dseqr: Dseqrecord,
     seguids: set[str],
     database_ids: set[int],
+    seguid_cache: SeguidCache,
 ) -> None:
     """Collect SEGUIDs and database IDs from a Dseqrecord graph."""
-    seguids.add(dseqr.seq.seguid())
+    seguids.add(_dseq_seguid_cached(dseqr.seq, seguid_cache))
     if dseqr.source is None:
         return
     if dseqr.source.database_id is not None:
@@ -326,7 +342,7 @@ def _collect_dseqrecord_graph_lookups(
     for source_input in dseqr.source.input:
         child = source_input.sequence
         if isinstance(child, Dseqrecord):
-            _collect_dseqrecord_graph_lookups(child, seguids, database_ids)
+            _collect_dseqrecord_graph_lookups(child, seguids, database_ids, seguid_cache)
 
 
 def _replace_sequence_source_if_exists_in_db(
@@ -335,6 +351,7 @@ def _replace_sequence_source_if_exists_in_db(
     existing_sequences_by_seguid: dict[str, list[Sequence]],
     mismatches: list[SequenceDatabaseIdMismatch],
     visited: set[int],
+    seguid_cache: SeguidCache,
 ) -> None:
     """Recursively navigate a Dseqrecord history graph up to the first ancestor that exists in the database.
     If it exists, replace the source with a DatabaseSource, otherwise keep going up the graph.
@@ -344,7 +361,7 @@ def _replace_sequence_source_if_exists_in_db(
         return
     visited.add(local_id)
 
-    seguid = dseqr.seq.seguid()
+    seguid = _dseq_seguid_cached(dseqr.seq, seguid_cache)
 
     # "provided" because it comes from the cloning strategy, and might not be correct
     provided_database_id = None if dseqr.source is None else dseqr.source.database_id
@@ -382,6 +399,7 @@ def _replace_sequence_source_if_exists_in_db(
                 existing_sequences_by_seguid,
                 mismatches,
                 visited,
+                seguid_cache,
             )
 
 
@@ -404,10 +422,11 @@ def _sync_sequences_via_dseqrecords(
     workspace_id: int,
 ) -> tuple[pydna_opencloning_models.CloningStrategy, list[SequenceDatabaseIdMismatch]]:
     terminals = pydna_strategy.to_dseqrecords()
+    seguid_cache: SeguidCache = {}
     seguids: set[str] = set()
     database_ids: set[int] = set()
     for terminal in terminals:
-        _collect_dseqrecord_graph_lookups(terminal, seguids, database_ids)
+        _collect_dseqrecord_graph_lookups(terminal, seguids, database_ids, seguid_cache)
 
     existing_sequences_by_id = get_db_sequences_from_database_ids(session, workspace_id, database_ids)
     existing_sequences_by_seguid = get_db_sequences_grouped_by_seguid(session, workspace_id, seguids)
@@ -421,6 +440,7 @@ def _sync_sequences_via_dseqrecords(
             existing_sequences_by_seguid,
             mismatches,
             visited,
+            seguid_cache,
         )
 
     synced_strategy = pydna_opencloning_models.CloningStrategy.from_dseqrecords(
@@ -436,7 +456,7 @@ def _sync_sequences_via_dseqrecords(
     # Then normalize
     try:
         synced_strategy = synced_strategy.normalize()
-    except ValueError as e:  # pragma: no cover # This should never happen, as input is validated before syncing
+    except ValueError as e:
         raise ValueError(f"Error normalizing cloning strategy: {e}") from e
 
     return synced_strategy, mismatches
