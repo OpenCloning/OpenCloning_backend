@@ -780,9 +780,13 @@ def test_bulk_submit_primers_only_works(sequences_client):
     cs.sources = []
     cs.sequences = []
     tag_id = _create_tag(c, sequences_client['token_owner_w1'], sequences_client['w1'], 'test_tag').json()['id']
+    primer1_id = sequences_client['primer1_id']
+    primer1 = cs.primers[0]
+    primer1.database_id = primer1_id
     cs.primers = [
         pydna_opencloning_models.PrimerModel(id=12, name='primer-only1', sequence='AAAAAAAAAA'),
         pydna_opencloning_models.PrimerModel(id=13, name='primer-only2', sequence='TTTTTTTTTT'),
+        primer1,
     ]
     payload = _sync_result_filled(cs.model_dump(), file_name='primers_only.json')
     r = _post_bulk_submit(

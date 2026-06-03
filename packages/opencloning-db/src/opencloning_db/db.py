@@ -205,7 +205,8 @@ def _link_primers_by_sequence_match(
     existing_primers_by_sequence: dict[str, list[Primer]],
 ) -> None:
     for primer in primers:
-        assert primer.database_id is None
+        if primer.database_id is not None:
+            continue
         matches = existing_primers_by_sequence.get(primer_sequences[primer.id], [])
         if len(matches) >= 1:
             primer.database_id = matches[0].id
@@ -224,7 +225,6 @@ def _sync_primers_with_db(
     mismatches, primer_sequences, sequences_needing_match = _verify_incoming_primer_database_ids(
         primers, existing_primers_by_id
     )
-
     if len(sequences_needing_match) > 0:
         existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
             session, workspace_id, sequences_needing_match
