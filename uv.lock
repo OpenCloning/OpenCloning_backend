@@ -1185,7 +1185,7 @@ wheels = [
 
 [[package]]
 name = "opencloning"
-version = "1.8.0"
+version = "1.8.1"
 source = { editable = "packages/opencloning" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1227,7 +1227,7 @@ requires-dist = [
     { name = "primer3-py", specifier = ">=2.3" },
     { name = "pydantic", specifier = ">=2.7.1" },
     { name = "pydantic-core", specifier = ">=2.41.5" },
-    { name = "pydna", specifier = ">=5.5.13" },
+    { name = "pydna", git = "https://github.com/pydna-group/pydna?branch=issue-329-2" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "starlette", specifier = ">=1.0.0" },
@@ -1236,7 +1236,7 @@ requires-dist = [
 
 [[package]]
 name = "opencloning-cli"
-version = "1.8.0"
+version = "1.8.1"
 source = { editable = "packages/opencloning-cli" }
 dependencies = [
     { name = "opencloning-db" },
@@ -1251,7 +1251,7 @@ requires-dist = [
 
 [[package]]
 name = "opencloning-db"
-version = "1.8.0"
+version = "1.8.1"
 source = { editable = "packages/opencloning-db" }
 dependencies = [
     { name = "alembic" },
@@ -1280,7 +1280,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.2.1,<0.3" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.7.1" },
-    { name = "pydna", specifier = ">=5.5.13" },
+    { name = "pydna", git = "https://github.com/pydna-group/pydna?branch=issue-329-2" },
     { name = "pyjwt", specifier = ">=2.10.1,<3" },
     { name = "sqlalchemy", specifier = ">=2.0.41,<3" },
     { name = "starlette", specifier = ">=1.0.0" },
@@ -1306,6 +1306,7 @@ dependencies = [
     { name = "opencloning" },
     { name = "opencloning-cli" },
     { name = "opencloning-db" },
+    { name = "pydna" },
 ]
 
 [package.dev-dependencies]
@@ -1335,6 +1336,7 @@ requires-dist = [
     { name = "opencloning", editable = "packages/opencloning" },
     { name = "opencloning-cli", editable = "packages/opencloning-cli" },
     { name = "opencloning-db", editable = "packages/opencloning-db" },
+    { name = "pydna", git = "https://github.com/pydna-group/pydna?branch=issue-329-2" },
 ]
 
 [package.metadata.requires-dev]
@@ -1877,8 +1879,8 @@ wheels = [
 
 [[package]]
 name = "pydna"
-version = "5.5.13"
-source = { registry = "https://pypi.org/simple" }
+version = "5.5.13.post8+743862"
+source = { git = "https://github.com/pydna-group/pydna?branch=issue-329-2#07438626b9ec54ac9317991e2e283150d3c60f14" }
 dependencies = [
     { name = "appdirs" },
     { name = "biopython" },
@@ -1891,10 +1893,6 @@ dependencies = [
     { name = "regex" },
     { name = "seguid" },
     { name = "sgffp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/76/2a/aabcee4adc36122c9106bbc153d69bb05008db0a034f7b3e819922b21b73/pydna-5.5.13.tar.gz", hash = "sha256:3db629b8452de5f1625ed4a6a3cb2d18c8de202cc22b361bd9fdbdbedf51dace", size = 188037, upload-time = "2026-06-03T10:51:35.198Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/bc/d5ea14d0c9bc0a5823112b653c28a55637619e4d2bcc8e08d2102af524e6/pydna-5.5.13-py3-none-any.whl", hash = "sha256:ebb7dc69ccb30c07130056c124aae9dbaffce1ae13e01e09b019895a11a3a4e9", size = 199162, upload-time = "2026-06-03T10:51:36.378Z" },
 ]
 
 [[package]]

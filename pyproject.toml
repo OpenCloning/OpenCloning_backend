@@ -2,7 +2,12 @@
 name = "opencloning-workspace"
 version = "0.0.0"
 requires-python = ">=3.11,<4"
-dependencies = ["opencloning", "opencloning-db", "opencloning-cli"]
+dependencies = [
+    "opencloning",
+    "opencloning-db",
+    "opencloning-cli",
+    "pydna",
+]
 
 [tool.uv]
 package = false
@@ -12,6 +17,7 @@ default-groups = ["dev", "test", "ipython"]
 opencloning = { workspace = true }
 opencloning-cli = { workspace = true }
 opencloning-db = { workspace = true }
+pydna = { git = "https://github.com/pydna-group/pydna", branch = "issue-329-2" }
 
 [tool.uv.workspace]
 members = [
