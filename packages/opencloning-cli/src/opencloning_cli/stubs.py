@@ -100,6 +100,24 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
         method='GET',
         params={'name': 'ase1_CDS_PCR'},
     )
+    yield StubRequest(
+        name='get_sequences_search_by_name_uid_query',
+        endpoint='/db/sequences',
+        method='GET',
+        params={'uid': 'ase1_CDS_PCR'},
+    )
+    yield StubRequest(
+        name='get_sequences_search_by_uid',
+        endpoint='/db/sequences',
+        method='GET',
+        params={'uid': 'example_sequencing-sample'},
+    )
+    yield StubRequest(
+        name='get_sequences_search_by_uid_name_query',
+        endpoint='/db/sequences',
+        method='GET',
+        params={'name': 'example_sequencing-sample'},
+    )
     selected_sequence_id = get_selected_sequence_id(dirname, 'get_sequences')
     yield StubRequest(
         name='get_sequence',

@@ -11,7 +11,7 @@
   "response": {
     "body": "U0VRVUVOQ0lORy1SVU4tMQ==",
     "headers": {
-      "content-disposition": "attachment; filename=\"run.ab1\"",
+      "content-disposition": "attachment; filename*=UTF-8''run.ab1",
       "content-type": "application/octet-stream"
     },
     "status_code": 200
