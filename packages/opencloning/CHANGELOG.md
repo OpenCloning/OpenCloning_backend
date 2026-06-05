@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.8.1...opencloning-v1.9.0) (2026-06-05)
+
+
+### Features
+
+* make uid unique case-insensitive ([#496](https://github.com/OpenCloning/OpenCloning_backend/issues/496)) ([9ad7675](https://github.com/OpenCloning/OpenCloning_backend/commit/9ad767500174c929845d607d612f8148d3b3388a))
+
+
+### Bug Fixes
+
+* support bulk upload snapgene files as sequences ([#499](https://github.com/OpenCloning/OpenCloning_backend/issues/499)) ([a314a9c](https://github.com/OpenCloning/OpenCloning_backend/commit/a314a9c23fec467df8fe8cd1f68bb109a391ad4b))
+
 ## [1.8.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.8.0...opencloning-v1.8.1) (2026-06-03)
 
 
