@@ -420,7 +420,7 @@ class Primer(InputEntity):
 
     __table_args__ = (
         CheckConstraint("uid IS NULL OR uid <> ''", name='primer_uid_not_empty'),
-        UniqueConstraint('workspace_id', 'uid', name='uq_primer_workspace_uid'),
+        Index('uq_primer_workspace_uid_ci', 'workspace_id', text('lower(uid)'), unique=True),
     )
 
     id: Mapped[int] = mapped_column(ForeignKey('input_entity.id'), primary_key=True)
@@ -675,7 +675,7 @@ class SequenceSample(SequenceInstance):
     """
 
     __tablename__ = 'sequence_sample'
-    __table_args__ = (UniqueConstraint('workspace_id', 'uid', name='uq_sequence_sample_workspace_uid'),)
+    __table_args__ = (Index('uq_sequence_sample_workspace_uid_ci', 'workspace_id', text('lower(uid)'), unique=True),)
 
     id: Mapped[int] = mapped_column(ForeignKey('sequence_instance.id'), primary_key=True)
     # Duplicates the owning sequence workspace to support workspace-scoped UID uniqueness.
@@ -720,7 +720,7 @@ class Line(Base):
     """Engineered strain / cell line."""
 
     __tablename__ = 'line'
-    __table_args__ = (UniqueConstraint('workspace_id', 'uid', name='uq_line_workspace_uid'),)
+    __table_args__ = (Index('uq_line_workspace_uid_ci', 'workspace_id', text('lower(uid)'), unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey('workspace.id'), nullable=False)

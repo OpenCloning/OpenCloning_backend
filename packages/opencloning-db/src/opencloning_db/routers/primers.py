@@ -174,7 +174,10 @@ def post_primer(
 
     if primer.uid is not None:
         existing_uid = session.scalar(
-            select(Primer).where(Primer.uid == primer.uid, Primer.workspace_id == workspace_id)
+            select(Primer).where(
+                func.lower(Primer.uid) == primer.uid.lower(),
+                Primer.workspace_id == workspace_id,
+            )
         )
         if existing_uid is not None:
             raise HTTPException(status_code=409, detail=f"Primer UID '{primer.uid}' already exists")
@@ -314,7 +317,10 @@ def patch_primer(
             primer.uid = None
         else:
             existing_primer = session.scalar(
-                select(Primer).where(Primer.uid == body.uid, Primer.workspace_id == workspace_id)
+                select(Primer).where(
+                    func.lower(Primer.uid) == body.uid.lower(),
+                    Primer.workspace_id == workspace_id,
+                )
             )
             if existing_primer is not None:
                 raise HTTPException(status_code=409, detail=f"Primer UID '{body.uid}' already exists")

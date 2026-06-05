@@ -58,7 +58,7 @@ def _find_line_ids_by_uid(session, workspace_id: int, uid: str) -> list[int]:
         session.scalars(
             select(Line.id).where(
                 Line.workspace_id == workspace_id,
-                Line.uid == uid,
+                func.lower(Line.uid) == uid.lower(),
             )
         ).all()
     )
@@ -113,9 +113,9 @@ def _line_bulk_rows_with_flags(
 
     db_uid_matches = set(
         session.scalars(
-            select(Line.uid).where(
+            select(func.lower(Line.uid)).where(
                 Line.workspace_id == workspace_id,
-                Line.uid.in_(set(uids)),
+                func.lower(Line.uid).in_({uid.lower() for uid in uids}),
             )
         ).all()
     )
@@ -129,7 +129,7 @@ def _line_bulk_rows_with_flags(
                 genotype=item.genotype,
                 plasmids=item.plasmids,
                 parent_uids=item.parent_uids,
-                uid_exists=item.uid in db_uid_matches,
+                uid_exists=item.uid.lower() in db_uid_matches,
                 uid_duplicated=item.uid.casefold() in duplicate_uids,
                 genotype_flags=_line_bulk_sequence_name_flags(
                     session, workspace_id, item.genotype, SequenceType.allele
@@ -249,7 +249,9 @@ def post_line(
     """Create a new engineered strain / cell line."""
     current_user, session, workspace_id = ctx.destructure()
 
-    existing = session.query(Line).filter_by(uid=body.uid, workspace_id=workspace_id).first()
+    existing = (
+        session.query(Line).filter(func.lower(Line.uid) == body.uid.lower(), Line.workspace_id == workspace_id).first()
+    )
     if existing:
         raise HTTPException(status_code=409, detail=f"Line UID '{body.uid}' already exists")
 
@@ -389,8 +391,12 @@ def patch_line_links(
     line = get_line_in_workspace_for_user(session, current_user, workspace_id, line_id, WorkspaceRole.editor)
     workspace_id = line.workspace_id
 
-    if body.uid is not None and body.uid != line.uid:
-        existing = session.query(Line).filter_by(uid=body.uid, workspace_id=workspace_id).first()
+    if body.uid is not None and body.uid.lower() != line.uid.lower():
+        existing = (
+            session.query(Line)
+            .filter(func.lower(Line.uid) == body.uid.lower(), Line.workspace_id == workspace_id)
+            .first()
+        )
         if existing:
             raise HTTPException(status_code=409, detail=f"Line UID '{body.uid}' already exists")
         line.uid = body.uid
