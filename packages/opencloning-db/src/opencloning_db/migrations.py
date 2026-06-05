@@ -28,11 +28,27 @@ def _alembic_config(database_url: str) -> AlembicConfig:
     return cfg
 
 
-def upgrade_head(database_url: str) -> None:
-    """Apply all pending Alembic revisions (creates schema from empty DB at head)."""
+def _quiet_alembic_logs() -> None:
     for logger_name in ('alembic', 'alembic.runtime.migration'):
         logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+
+def upgrade_head(database_url: str) -> None:
+    """Apply all pending Alembic revisions (creates schema from empty DB at head)."""
+    _quiet_alembic_logs()
     command.upgrade(_alembic_config(database_url), 'head')
+
+
+def migrate_to(engine: Engine, revision: str) -> None:
+    """Upgrade the database to a specific Alembic revision."""
+    _quiet_alembic_logs()
+    command.upgrade(_alembic_config(engine.url.render_as_string(hide_password=False)), revision)
+
+
+def downgrade_to(engine: Engine, revision: str) -> None:
+    """Downgrade the database to a specific Alembic revision."""
+    _quiet_alembic_logs()
+    command.downgrade(_alembic_config(engine.url.render_as_string(hide_password=False)), revision)
 
 
 def recreate_public_schema(engine: Engine) -> None:
