@@ -3,6 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 
 from opencloning_db.apimodels import (
     DeletedResponse,
@@ -61,7 +62,14 @@ def post_sequence_sample(
     # Validate that the sequence exists and the user has access to it
     get_sequence_in_workspace_for_user(session, current_user, workspace_id, body.sequence_id, WorkspaceRole.editor)
 
-    existing = session.query(SequenceSample).filter_by(uid_workspace_id=workspace_id, uid=body.uid).first()
+    existing = (
+        session.query(SequenceSample)
+        .filter(
+            SequenceSample.uid_workspace_id == workspace_id,
+            func.lower(SequenceSample.uid) == body.uid.lower(),
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=409, detail=f"UID '{body.uid}' already exists")
     ps = SequenceSample(

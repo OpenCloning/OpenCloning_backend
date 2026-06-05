@@ -17,7 +17,7 @@ from opencloning_db.cloning_strategy_bulk import (
 )
 import pydna.opencloning_models as pydna_opencloning_models
 from sqlalchemy.orm import selectinload, undefer
-from sqlalchemy import and_, exists, select, Select
+from sqlalchemy import and_, exists, func, select, Select
 from sqlalchemy.exc import IntegrityError
 
 from pydantic import create_model
@@ -331,7 +331,7 @@ def get_sequence_by_uid(
         .where(Sequence.workspace_id == workspace_id)
         .join(SequenceSample, SequenceSample.sequence_id == Sequence.id)
         .where(
-            SequenceSample.uid == uid,
+            func.lower(SequenceSample.uid) == uid.lower(),
             SequenceSample.uid_workspace_id == workspace_id,
         )
         .options(

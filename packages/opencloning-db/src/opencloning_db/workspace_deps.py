@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Header, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
@@ -142,7 +143,14 @@ def get_input_entity_in_workspace_for_user(
 def get_sequence_sample_in_workspace_for_user(
     session: Session, user: User, workspace_id: int, uid: str, min_role: WorkspaceRole
 ) -> SequenceSample:
-    sample = session.query(SequenceSample).filter_by(uid_workspace_id=workspace_id, uid=uid).first()
+    sample = (
+        session.query(SequenceSample)
+        .filter(
+            SequenceSample.uid_workspace_id == workspace_id,
+            func.lower(SequenceSample.uid) == uid.lower(),
+        )
+        .first()
+    )
     if sample is None:
         raise HTTPException(status_code=404, detail='Sequence sample not found')
 

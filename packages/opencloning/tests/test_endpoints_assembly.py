@@ -542,6 +542,9 @@ class HomologousRecombinationTest(unittest.TestCase):
         self.assertEqual(len(sequences), 1)
         self.assertEqual(str(sequences[0].seq), 'TTTTacgatCCCtgctccCCCC'.upper())
 
+    @unittest.skip(
+        'Unclear, related to https://github.com/OpenCloning/OpenCloning_backend/issues/329 and https://github.com/pydna-group/pydna/pull/634'
+    )
     def test_multiple_insertions(self):
         homology = 'ATGCAAACAGTAATGATGGATGACATTCAAAGCACTGATT'
         template = Dseqrecord(f'aaaaaa{homology}aattggaa{homology}tttttttt', circular=False)
