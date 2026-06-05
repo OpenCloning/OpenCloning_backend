@@ -1026,6 +1026,7 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
     assert rows[3]['duplicated_name'] is None
 
     assert rows[4]['file_name'] == 'circularize.dna'
+    assert rows[4]['name'] == 'circularize'
     assert rows[4]['reading_error'] is False
 
 

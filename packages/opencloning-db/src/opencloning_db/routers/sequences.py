@@ -21,7 +21,7 @@ from sqlalchemy import and_, exists, func, select, Select
 from sqlalchemy.exc import IntegrityError
 
 from pydantic import create_model
-from pydna.parsers import parse as pydna_parse
+from pydna.parsers import parse as pydna_parse, parse_snapgene as pydna_parse_snapgene
 
 from opencloning_db.apimodels import (
     CloningStrategyIdMapping,
@@ -402,7 +402,12 @@ def _sequence_validation_rows_with_flags(
 
     for file_name, file_content in submitted_files:
         try:
-            parsed_records = list(pydna_parse(file_content))
+            if isinstance(file_content, bytes):
+                parsed_records = pydna_parse_snapgene(file_content)
+                for record in parsed_records:
+                    record.name = file_name.removesuffix('.dna')
+            else:
+                parsed_records = pydna_parse(file_content)
             if len(parsed_records) != 1:
                 raise ValueError('Expected exactly one sequence in file')
             dseqr = parsed_records[0]
