@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.8.1...opencloning-cli-v1.9.0) (2026-06-05)
+
+
+### Features
+
+* make uid unique case-insensitive ([#496](https://github.com/OpenCloning/OpenCloning_backend/issues/496)) ([9ad7675](https://github.com/OpenCloning/OpenCloning_backend/commit/9ad767500174c929845d607d612f8148d3b3388a))
+
 ## [1.8.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.8.0...opencloning-cli-v1.8.1) (2026-06-03)
 
 
