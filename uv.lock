@@ -1227,7 +1227,7 @@ requires-dist = [
     { name = "primer3-py", specifier = ">=2.3" },
     { name = "pydantic", specifier = ">=2.7.1" },
     { name = "pydantic-core", specifier = ">=2.41.5" },
-    { name = "pydna", specifier = ">=5.5.13" },
+    { name = "pydna", specifier = ">=5.5.14" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "starlette", specifier = ">=1.0.0" },
