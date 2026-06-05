@@ -137,16 +137,17 @@ def test_get_sequence_samples_forbidden_for_non_member(seq_samples_client):
 
 @readonly_db
 def test_get_sequence_sample(seq_samples_client):
-    """GET /sequence_samples/{uid} returns sample in selected workspace."""
+    """GET /sequence_samples/{uid} returns sample in selected workspace (case-insensitive lookup)."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
+    stored_uid = seq_samples_client['sample_w1_uid']
     response = c.get(
-        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{stored_uid.swapcase()}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
     )
     assert response.status_code == 200
     body = response.json()
-    assert body['uid'] == seq_samples_client['sample_w1_uid']
+    assert body['uid'] == stored_uid
     assert body['sequence_id'] == seq_samples_client['seq_w1_id']
 
 
@@ -230,17 +231,19 @@ def test_patch_sequence_sample_viewer_forbidden(seq_samples_client):
 
 
 def test_patch_sequence_sample_owner_ok(seq_samples_client):
-    """Owner can PATCH sample to another sequence in same workspace."""
+    """Owner can PATCH sample to another sequence in same workspace (case-insensitive lookup)."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
+    stored_uid = seq_samples_client['sample_w1_uid']
     # Move the sample to the same workspace sequence (idempotent-ish).
     response = c.patch(
-        f"/sequence_samples/{seq_samples_client['sample_w1_uid']}",
+        f"/sequence_samples/{stored_uid.swapcase()}",
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={'sequence_id': seq_samples_client['seq_w1_id']},
     )
     assert response.status_code == 200
     body = response.json()
+    assert body['uid'] == stored_uid
     assert body['sequence_id'] == seq_samples_client['seq_w1_id']
 
 
@@ -293,7 +296,7 @@ def test_get_sequence_samples_unauthenticated_401(seq_samples_client):
 
 
 def test_post_sequence_sample_duplicate_uid_returns_409(seq_samples_client):
-    """Second sample with the same uid in the same workspace returns 409."""
+    """Second sample with the same uid (case-insensitive) in the same workspace returns 409."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     h = workspace_headers(tok, seq_samples_client['w1'])
@@ -306,7 +309,7 @@ def test_post_sequence_sample_duplicate_uid_returns_409(seq_samples_client):
     r2 = c.post(
         '/sequence_samples',
         headers=h,
-        json={'uid': 'S-DUP', 'sequence_id': seq_samples_client['seq_w1_id']},
+        json={'uid': 's-dup', 'sequence_id': seq_samples_client['seq_w1_id']},
     )
     assert r2.status_code == 409
     assert 'already exists' in r2.json()['detail']
@@ -340,23 +343,25 @@ def test_delete_sequence_sample_viewer_forbidden(seq_samples_client):
 
 
 def test_delete_sequence_sample_owner_ok(seq_samples_client):
-    """Owner can delete a sample; response includes id and metadata; GET then 404."""
+    """Owner can delete a sample via case-insensitive UID lookup; GET then 404."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     w1 = seq_samples_client['w1']
-    uid = seq_samples_client['sample_w1_uid']
+    stored_uid = seq_samples_client['sample_w1_uid']
+    lookup_uid = stored_uid.swapcase()
     h = workspace_headers(tok, w1)
-    sample_id = c.get(f'/sequence_samples/{uid}', headers=h).json()['id']
-    response = c.delete(f'/sequence_samples/{uid}', headers=h)
+    sample_id = c.get(f'/sequence_samples/{lookup_uid}', headers=h).json()['id']
+    response = c.delete(f'/sequence_samples/{lookup_uid}', headers=h)
     assert response.status_code == 200
     assert response.json() == {
         'deleted': sample_id,
         'data': {
             'sequence_id': seq_samples_client['seq_w1_id'],
-            'uid': uid,
+            # Delete response echoes the uid path param (not the stored casing).
+            'uid': lookup_uid,
         },
     }
-    get_after = c.get(f'/sequence_samples/{uid}', headers=h)
+    get_after = c.get(f'/sequence_samples/{lookup_uid}', headers=h)
     assert get_after.status_code == 404
     assert get_after.json()['detail'] == 'Sequence sample not found'
 

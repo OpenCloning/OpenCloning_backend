@@ -407,12 +407,14 @@ def test_post_line_accepts_template_sequence_id(lines_client):
 
 
 def test_post_line_duplicate_uid_409(lines_client):
+    """POST with an existing line UID (case-insensitive) returns 409."""
+
     c = lines_client['client']
     response = c.post(
         '/lines',
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
         json={
-            'uid': 'L-W1',
+            'uid': 'l-w1',
             'allele_ids': [lines_client['allele_w1_id']],
             'plasmid_ids': [lines_client['plasmid_w1_id']],
             'parent_ids': [],
@@ -593,11 +595,12 @@ def test_patch_line_uid_success(lines_client):
 
 
 def test_patch_line_uid_duplicate_409(lines_client):
+    """PATCH uid to one already used by another line (case-insensitive) returns 409."""
     c = lines_client['client']
     response = c.patch(
         f"/lines/{lines_client['line_w1_id']}",
         headers=workspace_headers(lines_client['token_owner_w1'], lines_client['w1']),
-        json={'uid': 'L-FILTER'},
+        json={'uid': 'l-filter'},
     )
     assert response.status_code == 409
     assert 'already exists' in response.json()['detail']
@@ -769,7 +772,7 @@ def test_validate_upload_lines_bulk(lines_client):
     viewer_headers = workspace_headers(lines_client['token_viewer_w1'], lines_client['w1'])
     payload = [
         {
-            'uid': 'L-W1',
+            'uid': 'l-w1',
             'genotype': ['allele-w1'],
             'plasmids': ['plasmid-w1'],
             'parent_uids': [],
@@ -802,7 +805,7 @@ def test_validate_upload_lines_bulk(lines_client):
             'uid': 'L-BULK-PARENT-OK',
             'genotype': [],
             'plasmids': [],
-            'parent_uids': ['L-W1'],
+            'parent_uids': ['l-w1'],
         },
         {
             'uid': 'L-BULK-PARENT-BAD',
@@ -814,7 +817,7 @@ def test_validate_upload_lines_bulk(lines_client):
             'uid': 'L-BULK-PARENT-DUP',
             'genotype': [],
             'plasmids': [],
-            'parent_uids': ['L-W1', 'L-W1'],
+            'parent_uids': ['l-w1', 'l-w1'],
         },
     ]
 

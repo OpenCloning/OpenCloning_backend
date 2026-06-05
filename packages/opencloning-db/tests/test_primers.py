@@ -397,13 +397,13 @@ def test_patch_primer_updates_uid_only(primers_client):
 
 
 def test_patch_primer_uid_conflict_returns_409(primers_client):
-    """PATCH uid to one already used by another primer in the workspace returns 409."""
+    """PATCH uid to one already used by another primer (case-insensitive) returns 409."""
     c = primers_client['client']
     pid = primers_client['primer_id']
     r = c.patch(
         f"/primers/{pid}",
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
-        json={'uid': 'UID-PRIMER-1'},
+        json={'uid': 'uid-primer-1'},
     )
     assert r.status_code == 409
     assert 'already exists' in r.json()['detail']
@@ -537,9 +537,9 @@ def test_post_primer_wrong_sequence_rejected(primers_client):
 
 @readonly_db
 def test_post_primer_repeated_uid_returns_409(primers_client):
-    """POSTing a primer with a repeated UID returns 409."""
+    """POSTing a primer with a repeated UID (case-insensitive) returns 409."""
     c = primers_client['client']
-    body = {**_VALID_PRIMER_JSON, 'uid': 'UID-PRIMER-1'}
+    body = {**_VALID_PRIMER_JSON, 'uid': 'uid-primer-1'}
     r = c.post(
         '/primers',
         headers=workspace_headers(primers_client['token_owner_w1'], primers_client['w1']),
@@ -815,7 +815,7 @@ def test_post_primers_bulk_non_strict_still_rejects_uid_and_invalid_sequence(pri
     headers = workspace_headers(primers_client['token_owner_w1'], primers_client['w1'])
     ok_payload = [{'name': 'non_strict_ok', 'sequence': 'GGTT', 'uid': 'NON-STRICT-OK'}]
     for wrong_payload in [
-        [{'name': 'non_strict_bad_uid', 'sequence': 'AAAAAAAAAAA', 'uid': 'UID-PRIMER-1'}],  # Existing UID
+        [{'name': 'non_strict_bad_uid', 'sequence': 'AAAAAAAAAAA', 'uid': 'uid-primer-1'}],  # Existing UID
         [{'name': 'non_strict_bad_seq', 'sequence': 'AX', 'uid': 'NON-STRICT'}],  # Invalid sequence
         [{'name': 'non_strict_duplicated_UID', 'sequence': 'AAA', 'uid': 'NON-STRICT-OK'}],  # Duplicated name
     ]:

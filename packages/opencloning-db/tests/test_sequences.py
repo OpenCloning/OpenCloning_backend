@@ -877,11 +877,12 @@ def test_change_annotation_unauthenticated_401(sequences_client):
 
 @readonly_db
 def test_get_sequence_by_uid_scoped_to_workspace(sequences_client):
-    """Resolve sequence by lab sample UID within the selected workspace."""
+    """Resolve sequence by lab sample UID within the selected workspace (case-insensitive lookup)."""
     c = sequences_client['client']
     tok = sequences_client['token_owner_w1']
     response = c.get(
-        f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=workspace_headers(tok, sequences_client['w1'])
+        f"/sequences/by-uid/{sequences_client['uid_w1'].swapcase()}",
+        headers=workspace_headers(tok, sequences_client['w1']),
     )
     assert response.status_code == 200
     assert response.json()['id'] == sequences_client['seq_w1_id']
