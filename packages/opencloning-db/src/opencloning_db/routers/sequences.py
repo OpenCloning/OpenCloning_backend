@@ -374,12 +374,15 @@ def _has_any_sequence_warning(rows: list[SequenceValidationRow], strict: bool) -
     )
 
 
-async def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str]]:
-    loaded_files: list[tuple[str, str]] = []
+async def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str | bytes]]:
+    loaded_files: list[tuple[str, str | bytes]] = []
     for file in files:
         file_name = file.filename or 'unnamed'
         file_bytes = await file.read()
-        loaded_files.append((file_name, file_bytes.decode('utf-8', errors='replace')))
+        if file_name.lower().endswith('.dna'):
+            loaded_files.append((file_name, file_bytes))
+        else:
+            loaded_files.append((file_name, file_bytes.decode('utf-8', errors='replace')))
     return loaded_files
 
 
@@ -405,7 +408,7 @@ def _sequence_validation_rows_with_flags(
             dseqr = parsed_records[0]
             dseqr.source = pydna_opencloning_models.UploadedFileSource(
                 file_name=file_name,
-                sequence_file_format='genbank',
+                sequence_file_format=str(dseqr.annotations['pydna_parse_sequence_file_format']),
                 index_in_file=0,
             )
             records.append(dseqr)

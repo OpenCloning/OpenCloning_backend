@@ -44,6 +44,10 @@ from .helpers import (
 )
 from opencloning_db.routers.sequences import _search_rotation
 
+from pathlib import Path
+
+TEST_FOLDER = Path(__file__).parent / '../../opencloning/tests/test_files'
+
 
 def _write_ctx(workspace_id: int, user_id: int) -> WriteContext:
     """Build a WriteContext from raw id values used by the standard test fixtures."""
@@ -975,12 +979,13 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
         ('dup2.gb', dup.format('genbank').encode('utf-8')),
         ('linear.gb', linear_same_as_existing_circular.format('genbank').encode('utf-8')),
         ('bad.gb', invalid_content),
+        ('circularize.dna', (TEST_FOLDER / 'circularize.dna').read_bytes()),
     ]
 
     r = _post_validate_upload_sequences(c, h_token, wid, files)
     assert r.status_code == 200
     rows = r.json()
-    assert len(rows) == 4
+    assert len(rows) == 5
 
     assert rows[0]['file_name'] == 'dup1.gb'
     assert rows[0]['reading_error'] is False
@@ -1019,6 +1024,9 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
     assert rows[3]['name_exists'] is None
     assert rows[3]['duplicated_seguid'] is None
     assert rows[3]['duplicated_name'] is None
+
+    assert rows[4]['file_name'] == 'circularize.dna'
+    assert rows[4]['reading_error'] is False
 
 
 @readonly_db
