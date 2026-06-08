@@ -17,7 +17,7 @@ dependencies = [
     "alembic>=1.18.4",
     "PyJWT>=2.10.1,<3",
     "pwdlib[argon2]>=0.2.1,<0.3",
-    "pydna>=5.5.15",
+    "pydna@git+https://github.com/pydna-group/pydna@0620bcee64b559aab2a85f6f1d33a0acf38a110a",
     "starlette>=1.0.0",
     "gunicorn>=26.0.0",
 ]

@@ -2,14 +2,12 @@ from fastapi import Body, Query, HTTPException, Response, UploadFile, File
 from opencloning.app_settings import settings
 from pydantic import create_model
 import io
-import os
 import warnings
 import asyncio
 from fastapi.responses import RedirectResponse
 from Bio import BiopythonParserWarning
 from typing import Annotated
 from pydna.utils import location_boundaries
-import tempfile
 from pydna.opencloning_models import CloningStrategy as PydnaCloningStrategy
 
 from opencloning.endpoints.endpoint_utils import format_products
@@ -50,7 +48,6 @@ from ..dna_functions import (
 from .. import request_examples
 from .. import ncbi_requests
 from ..http_client import ConnectError
-
 
 router = get_router()
 
@@ -230,17 +227,13 @@ async def read_from_file(
 async def read_snapgene_history(response: Response, file: UploadFile = File(...)):
     file_content = await file.read()
     try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = os.path.join(temp_dir, file.filename)
-            with open(file_path, 'wb') as f:
-                f.write(file_content)
-            with warnings.catch_warnings(record=True, category=SnapgeneHistoryParserWarning) as warnings_captured:
-                seqr = parse_snapgene_history(file_path)
-            if warnings_captured:
-                warning_messages = [str(w.message) for w in warnings_captured]
-                response.headers['x-warning'] = '; '.join(warning_messages)
-            cloning_strategy = PydnaCloningStrategy.from_dseqrecords([seqr])
-            return cloning_strategy.model_dump()
+        with warnings.catch_warnings(record=True, category=SnapgeneHistoryParserWarning) as warnings_captured:
+            seqr = parse_snapgene_history(file_content, file.filename or 'file.dna')
+        if warnings_captured:
+            warning_messages = [str(w.message) for w in warnings_captured]
+            response.headers['x-warning'] = '; '.join(warning_messages)
+        cloning_strategy = PydnaCloningStrategy.from_dseqrecords([seqr])
+        return cloning_strategy.model_dump()
     except Exception as e:
         raise HTTPException(
             501, f'We could not read the history from the file, use the read_from_file endpoint instead: {e}'
@@ -388,7 +381,7 @@ async def get_from_repository_id_wekwikgene(source: WekWikGeneIdSource):
     ),
 )
 async def get_from_benchling_url(
-    source: Annotated[BenchlingUrlSource, Body(openapi_examples=request_examples.benchling_url_examples)]
+    source: Annotated[BenchlingUrlSource, Body(openapi_examples=request_examples.benchling_url_examples)],
 ):
     try:
         dseq = await get_sequence_from_benchling_url(source.repository_id)
@@ -404,7 +397,7 @@ async def get_from_benchling_url(
     ),
 )
 async def get_from_repository_id_snapgene(
-    source: Annotated[SnapGenePlasmidSource, Body(openapi_examples=request_examples.snapgene_plasmid_examples)]
+    source: Annotated[SnapGenePlasmidSource, Body(openapi_examples=request_examples.snapgene_plasmid_examples)],
 ):
     try:
         plasmid_set, plasmid_name = source.repository_id.split('/')
@@ -493,7 +486,7 @@ async def get_from_repository_id_open_dna_collections(source: OpenDNACollections
     ),
 )
 async def genome_coordinates(
-    source: Annotated[GenomeCoordinatesSource, Body(openapi_examples=request_examples.genome_region_examples)]
+    source: Annotated[GenomeCoordinatesSource, Body(openapi_examples=request_examples.genome_region_examples)],
 ):
 
     # Validate that coordinates make sense

@@ -1185,7 +1185,7 @@ wheels = [
 
 [[package]]
 name = "opencloning"
-version = "1.8.1"
+version = "1.9.0"
 source = { editable = "packages/opencloning" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -1227,7 +1227,7 @@ requires-dist = [
     { name = "primer3-py", specifier = ">=2.3" },
     { name = "pydantic", specifier = ">=2.7.1" },
     { name = "pydantic-core", specifier = ">=2.41.5" },
-    { name = "pydna", specifier = ">=5.5.15" },
+    { name = "pydna", git = "https://github.com/pydna-group/pydna?rev=0620bcee64b559aab2a85f6f1d33a0acf38a110a" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "starlette", specifier = ">=1.0.0" },
@@ -1236,7 +1236,7 @@ requires-dist = [
 
 [[package]]
 name = "opencloning-cli"
-version = "1.8.1"
+version = "1.9.0"
 source = { editable = "packages/opencloning-cli" }
 dependencies = [
     { name = "opencloning-db" },
@@ -1251,7 +1251,7 @@ requires-dist = [
 
 [[package]]
 name = "opencloning-db"
-version = "1.8.1"
+version = "1.9.0"
 source = { editable = "packages/opencloning-db" }
 dependencies = [
     { name = "alembic" },
@@ -1280,7 +1280,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.2.1,<0.3" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.7.1" },
-    { name = "pydna", specifier = ">=5.5.15" },
+    { name = "pydna", git = "https://github.com/pydna-group/pydna?rev=0620bcee64b559aab2a85f6f1d33a0acf38a110a" },
     { name = "pyjwt", specifier = ">=2.10.1,<3" },
     { name = "sqlalchemy", specifier = ">=2.0.41,<3" },
     { name = "starlette", specifier = ">=1.0.0" },
@@ -1877,8 +1877,8 @@ wheels = [
 
 [[package]]
 name = "pydna"
-version = "5.5.15"
-source = { registry = "https://pypi.org/simple" }
+version = "5.5.15.post4+0620bce"
+source = { git = "https://github.com/pydna-group/pydna?rev=0620bcee64b559aab2a85f6f1d33a0acf38a110a#0620bcee64b559aab2a85f6f1d33a0acf38a110a" }
 dependencies = [
     { name = "appdirs" },
     { name = "biopython" },
@@ -1891,10 +1891,6 @@ dependencies = [
     { name = "regex" },
     { name = "seguid" },
     { name = "sgffp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/66/5325c3134f095df9625aade6e06791c1115510039a24099e92876a1e2dfb/pydna-5.5.15.tar.gz", hash = "sha256:835aec32f21835a532d6d5d65ec8ed91ee49df6b3c5ef602cf5420c20909e5ab", size = 190842, upload-time = "2026-06-05T11:31:51.442Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/76/9648389378634d7a1827e89316c71c9a8134e0fa08b1aec8ea4f7001d2dc/pydna-5.5.15-py3-none-any.whl", hash = "sha256:0610b741bbdfb9dce81ee3ca97c7924ffd01a0f43bdfaad6579a3f2afa39cea8", size = 202038, upload-time = "2026-06-05T11:31:53.012Z" },
 ]
 
 [[package]]
