@@ -21,6 +21,7 @@ from pydna.primer import Primer as PydnaPrimer
 pytest_plugins = ['tests.test_sequences']
 
 _TEST_FILES = Path(__file__).resolve().parents[2] / 'opencloning' / 'tests' / 'test_files'
+_GATEWAY_FILES = _TEST_FILES / 'gateway_manual_cloning'
 _OLD_FORMAT_FILE = _TEST_FILES / 'homologous_recombination_old_format.json'
 
 readonly_db = pytest.mark.readonly_db
@@ -42,11 +43,18 @@ def shifted_pcr_template_and_product() -> tuple[Dseqrecord, Dseqrecord, Dseqreco
     return pcr_template, new_template, new_product
 
 
-def _post_bulk_validate(client, token: str, workspace_id: int, files: list[tuple[str, bytes]]):
+def _post_bulk_validate(
+    client,
+    token: str,
+    workspace_id: int,
+    files: list[tuple[str, bytes]],
+    *,
+    content_type: str = 'application/json',
+):
     return client.post(
         '/sequences/cloning_strategy/bulk/validate',
         headers=workspace_headers(token, workspace_id),
-        files=[('files', (name, body, 'application/json')) for name, body in files],
+        files=[('files', (name, body, content_type)) for name, body in files],
     )
 
 
@@ -591,6 +599,69 @@ def test_bulk_validate_multiple_files_in_one_request(sequences_client):
     assert rows[5]['parsing_errors'] == []
     assert rows[5]['cloning_strategy'] is not None
     assert rows[5]['already_synced'] is True
+
+
+@readonly_db
+def test_bulk_validate_snapgene_dna_files(sequences_client):
+    c = sequences_client['client']
+    token = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    # Submit pDONR so that it's picked up as already synced
+    resp = c.post(
+        '/sequences/bulk',
+        headers=workspace_headers(token, wid),
+        files={
+            'files': ('pDONRtm221.dna', (_GATEWAY_FILES / 'pDONRtm221.dna').read_bytes(), 'application/octet-stream')
+        },
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+    pdonr_id = resp.json()[0]['id']
+
+    files = [
+        ('entry-attP1_1-attP2_1.dna', (_GATEWAY_FILES / 'entry-attP1_1-attP2_1.dna').read_bytes()),
+        ('circularize.dna', (_TEST_FILES / 'circularize.dna').read_bytes()),
+        ('pDONRtm221.dna', (_GATEWAY_FILES / 'pDONRtm221.dna').read_bytes()),
+        ('malformed.dna', b'not a valid snapgene history file'),
+    ]
+    r = _post_bulk_validate(c, token, wid, files, content_type='application/octet-stream')
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == len(files)
+    assert [row['file_name'] for row in rows] == [name for name, _ in files]
+
+    entry = rows[0]
+    assert entry['parsing_errors'] == []
+    assert entry['parsing_warnings'] == []
+    assert entry['cloning_strategy'] is not None
+    assert {s['type'] for s in entry['cloning_strategy']['sources']} == {
+        'GatewaySource',
+        'UploadedFileSource',
+        'PCRSource',
+        'DatabaseSource',
+    }
+    pdonr_in_entry = list(s for s in entry['cloning_strategy']['sources'] if s['type'] == 'DatabaseSource')
+    assert len(pdonr_in_entry) == 1
+    assert pdonr_in_entry[0]['database_id'] == pdonr_id
+
+    circularize = rows[1]
+    assert circularize['parsing_errors'] == []
+    assert any('Stopped at change topology operation' in w for w in circularize['parsing_warnings'])
+    assert circularize['cloning_strategy'] is not None
+
+    pdonr = rows[2]
+    assert pdonr['parsing_errors'] == []
+    assert pdonr['parsing_warnings'] == []
+    assert pdonr['cloning_strategy'] is not None
+    assert len(pdonr['cloning_strategy']['sequences']) == 1
+    assert len(pdonr['cloning_strategy']['sources']) == 1
+    assert pdonr['cloning_strategy']['sources'][0]['type'] == 'DatabaseSource'
+    assert pdonr['already_synced'] is True
+
+    malformed = rows[3]
+    assert len(malformed['parsing_errors']) == 1
+    assert malformed['parsing_errors'][0].startswith('Error parsing snapgene history file:')
+    assert malformed['cloning_strategy'] is None
 
 
 def _create_tag(client, token: str, workspace_id: int, name: str):
