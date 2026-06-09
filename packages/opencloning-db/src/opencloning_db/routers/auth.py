@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opencloning_db.apimodels import RegisterBody, Token, UserPublic
-from opencloning_db.auth.rate_limit import check_login_rate_limit
+from opencloning_db.auth.rate_limit import check_login_rate_limit, check_register_rate_limit
 from opencloning_db.auth.invites import normalize_email, require_invited_email
 from opencloning_db.auth.security import (
     create_access_token,
@@ -25,6 +25,7 @@ router = APIRouter(prefix='/auth', tags=['auth'])
 
 @router.post('/register', response_model=Token)
 def register(
+    _rate_limit: Annotated[None, Depends(check_register_rate_limit)],
     body: RegisterBody,
     session: Annotated[Session, Depends(get_db)],
     config: Annotated[Config, Depends(get_config)],

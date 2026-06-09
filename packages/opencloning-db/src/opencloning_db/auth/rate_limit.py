@@ -7,9 +7,11 @@ import time
 from dataclasses import dataclass
 from typing import Annotated
 
+import os
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-import os
+
 from opencloning_db.config import parse_bool
 
 _lock = threading.Lock()
@@ -30,8 +32,22 @@ class LoginRateLimitConfig:
 LOGIN_RATE_LIMIT = LoginRateLimitConfig()
 
 
+@dataclass(frozen=True, slots=True)
+class RegisterRateLimitConfig:
+    """Hard-coded limits for ``POST /auth/register``."""
+
+    enabled: bool = parse_bool(os.environ.get('OPENCLONING_RATE_LIMIT_ENABLED', True))
+    per_ip: int = 10
+    window_seconds: int = 60
+    per_email: int = 3
+    email_window_seconds: int = 300
+
+
+REGISTER_RATE_LIMIT = RegisterRateLimitConfig()
+
+
 def reset_login_rate_limiter() -> None:
-    """Clear tracked login attempts (for tests)."""
+    """Clear tracked auth rate-limit attempts (for tests)."""
     with _lock:
         _hits.clear()
 
@@ -68,7 +84,7 @@ def check_login_rate_limit(
         limit=limits.per_ip,
         window_seconds=limits.window_seconds,
     ):
-        raise _too_many_requests()
+        raise _too_many_login_requests()
 
     email = form_data.username.strip().lower()
     if email and _is_limited(
@@ -76,11 +92,47 @@ def check_login_rate_limit(
         limit=limits.per_email,
         window_seconds=limits.email_window_seconds,
     ):
-        raise _too_many_requests()
+        raise _too_many_login_requests()
 
 
-def _too_many_requests() -> HTTPException:
+async def check_register_rate_limit(request: Request) -> None:
+    """Reject excessive registration attempts by client IP and submitted email."""
+    limits = REGISTER_RATE_LIMIT
+    if not limits.enabled:
+        return
+
+    if _is_limited(
+        key=f'register:ip:{_client_ip(request)}',
+        limit=limits.per_ip,
+        window_seconds=limits.window_seconds,
+    ):
+        raise _too_many_register_requests()
+
+    email = ''
+    try:
+        payload = await request.json()
+        if isinstance(payload, dict) and payload.get('email'):
+            email = str(payload['email']).strip().lower()
+    except Exception:
+        pass
+
+    if email and _is_limited(
+        key=f'register:email:{email}',
+        limit=limits.per_email,
+        window_seconds=limits.email_window_seconds,
+    ):
+        raise _too_many_register_requests()
+
+
+def _too_many_login_requests() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail='Too many login attempts. Please try again later.',
+    )
+
+
+def _too_many_register_requests() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail='Too many registration attempts. Please try again later.',
     )
