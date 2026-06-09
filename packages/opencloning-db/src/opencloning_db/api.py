@@ -10,6 +10,7 @@ from opencloning.app_settings import settings as opencloning_settings
 from opencloning_db.config import parse_bool
 from opencloning_db.routers import (
     auth,
+    export,
     lines,
     primers,
     sequence_samples,
@@ -32,6 +33,7 @@ def create_fastapi_app() -> FastAPI:
     app.include_router(template_sequences.router)
     app.include_router(lines.router)
     app.include_router(sequence_samples.router)
+    app.include_router(export.router)
     if parse_bool(os.getenv('OPENCLONING_TESTING', False)):
         app.include_router(test_tools.router)
 

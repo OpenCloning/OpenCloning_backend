@@ -641,3 +641,34 @@ def get_cloning_strategy_from_db(
             description='',
             files=[],
         )
+
+
+def build_workspace_cloning_strategy(
+    session: Session,
+    ctx: WriteContext,
+    sequences: list[Sequence],
+) -> opencloning_models.CloningStrategy:
+    """Merge recursive cloning strategies for leaf sequences (no children) in *sequences*."""
+    exported_sequences: list[opencloning_models.Sequence] = []
+    exported_sources: list[opencloning_models.Source] = []
+    exported_primers: list[opencloning_models.Primer] = []
+
+    for db_sequence in sequences:
+        if not isinstance(db_sequence, Sequence):
+            continue
+        if db_sequence.source_inputs:
+            continue
+        if db_sequence.output_of_source is None:
+            continue
+        cs = get_cloning_strategy_from_db(session, ctx, db_sequence.id, recursive=True)
+        exported_sequences.extend(cs.sequences)
+        exported_sources.extend(cs.sources)
+        exported_primers.extend(cs.primers)
+
+    return opencloning_models.CloningStrategy(
+        sequences=unique_and_sorted(exported_sequences),
+        sources=unique_and_sorted(exported_sources),
+        primers=unique_and_sorted(exported_primers),
+        description='',
+        files=[],
+    )
