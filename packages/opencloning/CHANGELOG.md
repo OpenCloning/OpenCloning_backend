@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.0...opencloning-v1.9.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* Bulk update SnapGene history ([#502](https://github.com/OpenCloning/OpenCloning_backend/issues/502)) ([c1b0154](https://github.com/OpenCloning/OpenCloning_backend/commit/c1b015462674c39ac55754f3faf01c205ca77529))
+* use new parse_snapgene_history requiring no temp file ([#500](https://github.com/OpenCloning/OpenCloning_backend/issues/500)) ([752ec3e](https://github.com/OpenCloning/OpenCloning_backend/commit/752ec3eab75c6b39dc418d24e06bb08a4f5278dd))
+
 ## [1.9.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.8.1...opencloning-v1.9.0) (2026-06-05)
 
 
