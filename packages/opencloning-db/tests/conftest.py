@@ -12,7 +12,11 @@ from sqlalchemy.engine import Engine
 import pytest
 
 import opencloning_db.auth.rate_limit as login_rate_limit
-from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rate_limiter
+from opencloning_db.auth.rate_limit import (
+    LoginRateLimitConfig,
+    RegisterRateLimitConfig,
+    reset_login_rate_limiter,
+)
 from opencloning_db.migrations import reset_database
 
 _JWT_SECRET = 'test-jwt-secret-not-for-production'
@@ -27,12 +31,17 @@ _TEST_DATABASE_URL_READONLY = os.environ.get(
 
 
 @pytest.fixture(autouse=True)
-def _disable_login_rate_limit_for_tests(monkeypatch):
+def _disable_auth_rate_limit_for_tests(monkeypatch):
     reset_login_rate_limiter()
     monkeypatch.setattr(
         login_rate_limit,
         'LOGIN_RATE_LIMIT',
         LoginRateLimitConfig(enabled=False),
+    )
+    monkeypatch.setattr(
+        login_rate_limit,
+        'REGISTER_RATE_LIMIT',
+        RegisterRateLimitConfig(enabled=False),
     )
     yield
     reset_login_rate_limiter()

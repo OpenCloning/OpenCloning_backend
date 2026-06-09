@@ -7,7 +7,11 @@ import jwt
 import pytest
 
 import opencloning_db.auth.rate_limit as login_rate_limit
-from opencloning_db.auth.rate_limit import LoginRateLimitConfig, reset_login_rate_limiter
+from opencloning_db.auth.rate_limit import (
+    LoginRateLimitConfig,
+    RegisterRateLimitConfig,
+    reset_login_rate_limiter,
+)
 from opencloning_db.config import get_config
 
 readonly_db = pytest.mark.readonly_db
@@ -310,3 +314,57 @@ def test_login_rate_limited_by_email(auth_client, monkeypatch):
         )
     assert response.status_code == 429
     assert response.json()['detail'] == 'Too many login attempts. Please try again later.'
+
+
+def test_register_rate_limited_by_ip(auth_client, monkeypatch):
+    """Repeated registration attempts from one client are rejected with 429."""
+    reset_login_rate_limiter()
+    monkeypatch.setattr(
+        login_rate_limit,
+        'REGISTER_RATE_LIMIT',
+        RegisterRateLimitConfig(
+            enabled=True,
+            per_ip=2,
+            window_seconds=60,
+            per_email=100,
+            email_window_seconds=300,
+        ),
+    )
+    for attempt in range(3):
+        response = auth_client.post(
+            '/auth/register',
+            json={
+                'email': f'user-{attempt}@example.com',
+                'password': 'secret-password',
+                'display_name': 'User',
+            },
+        )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'Too many registration attempts. Please try again later.'
+
+
+def test_register_rate_limited_by_email(auth_client, monkeypatch):
+    """Repeated registration attempts for one email are rejected with 429."""
+    reset_login_rate_limiter()
+    monkeypatch.setattr(
+        login_rate_limit,
+        'REGISTER_RATE_LIMIT',
+        RegisterRateLimitConfig(
+            enabled=True,
+            per_ip=100,
+            window_seconds=60,
+            per_email=2,
+            email_window_seconds=60,
+        ),
+    )
+    for attempt in range(3):
+        response = auth_client.post(
+            '/auth/register',
+            json={
+                'email': 'same@example.com',
+                'password': 'secret-password',
+                'display_name': f'User {attempt}',
+            },
+        )
+    assert response.status_code == 429
+    assert response.json()['detail'] == 'Too many registration attempts. Please try again later.'
