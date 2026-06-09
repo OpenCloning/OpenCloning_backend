@@ -24,7 +24,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "primer3-py>=2.3",
     "pairwise-alignments-to-msa>=0.1.1",
-    "pydna@git+https://github.com/pydna-group/pydna@0620bcee64b559aab2a85f6f1d33a0acf38a110a",
+    "pydna>=5.5.16",
     "starlette>=1.0.0",
     "gunicorn>=26.0.0",
 ]
