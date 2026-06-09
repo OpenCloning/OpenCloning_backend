@@ -102,7 +102,8 @@ def test_export_w1_payload(sequences_client):
         assert strategy_r.status_code == 200, strategy_r.text
         _cloning_strategy_subset(exported, strategy_r.json())
 
-    sequence_ids_in_db = {seq.id for seq in session.scalars(select(Sequence).where(Sequence.workspace_id == w1))}
+    with Session(sequences_client['engine']) as session:
+        sequence_ids_in_db = {seq.id for seq in session.scalars(select(Sequence).where(Sequence.workspace_id == w1))}
     assert len(exported['sequences']) == len(sequence_ids_in_db)
     assert len(exported['sources']) == len(sequence_ids_in_db)
     cs = CloningStrategy.model_validate(exported)
