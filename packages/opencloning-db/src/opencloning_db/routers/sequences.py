@@ -1,5 +1,6 @@
 """Sequence, sequencing files, and cloning strategy endpoints."""
 
+import warnings
 from typing import Annotated, List, TypeVar
 from urllib.parse import quote
 from opencloning.dna_functions import read_dsrecord_from_json
@@ -70,6 +71,7 @@ from opencloning_db.workspace_deps import (
 
 from pydna.dseq import Dseq
 from opencloning_db.db import get_db_sequences_from_database_ids
+from pydna.snapgene_history_parser import parse_snapgene_history, SnapgeneHistoryParserWarning
 
 router = APIRouter(tags=['sequences'])
 
@@ -518,19 +520,36 @@ async def post_sequences_bulk(
     return [sequence_ref(s) for s in db_sequences]
 
 
+def _parse_snapgene_history_file(content: bytes, file_name: str) -> tuple[dict | None, list[str], list[str]]:
+    try:
+        with warnings.catch_warnings(record=True, category=SnapgeneHistoryParserWarning) as warnings_captured:
+            seqr = parse_snapgene_history(content, file_name)
+        warning_messages = [str(w.message) for w in warnings_captured]
+        cs_out = pydna_opencloning_models.CloningStrategy.from_dseqrecords([seqr])
+        return cs_out.model_dump(), [], warning_messages
+    except Exception as e:
+        return None, ['Error parsing snapgene history file: ' + str(e)], []
+
+
 @router.post('/sequences/cloning_strategy/bulk/validate', response_model=list[CloningStrategySyncResult])
 async def validate_cloning_strategy_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
     files: List[UploadFile] = File(...),
 ):
     _, session, _workspace_id = ctx.destructure()
-    output = list()
+    output: list[CloningStrategySyncResult] = list()
+    warning_list = list()
     for file in files:
-        data, json_errors = parse_cloning_strategy_file(await file.read())
+        if file.filename.endswith('.dna'):
+            data, json_errors, warning_list = _parse_snapgene_history_file(await file.read(), file.filename)
+        else:
+            data, json_errors = parse_cloning_strategy_file(await file.read())
         if data is None:
             output.append(CloningStrategySyncResult(file_name=file.filename, parsing_errors=json_errors))
             continue
-        output.append(validate_and_sync_cloning_strategy_dict(data, session, ctx, file_name=file.filename))
+        out = validate_and_sync_cloning_strategy_dict(data, session, ctx, file_name=file.filename)
+        out.parsing_warnings.extend(warning_list)
+        output.append(out)
     return output
 
 
