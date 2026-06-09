@@ -138,3 +138,13 @@ docker compose \
     -f docker/docker-compose.opencloning-db.yml \
     up -d
 ```
+
+## Database backup worker
+
+To create backups, you can use [this dockerfile](../../docker/postgres-aws-cli.Dockerfile) for a worker.
+
+To build it:
+
+```bash
+docker build -f docker/postgres-aws-cli.Dockerfile -t manulera/postgres-aws-cli .
+```
