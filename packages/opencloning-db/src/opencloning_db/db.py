@@ -26,7 +26,7 @@ from opencloning_db.models import (
     Tag,
     WorkspaceRole,
 )
-from opencloning_db.utils import guess_sequence_type
+from opencloning_db.utils import guess_sequence_type, unique_and_sorted
 from opencloning_db.models import require_real_sequence
 
 _engine = None
@@ -577,3 +577,98 @@ def cloning_strategy_to_db(
 
     id_mappings = {k: v.id for k, v in entity_mapping.items()}
     return sequences, id_mappings
+
+
+def get_cloning_strategy_from_db(
+    session: Session,
+    ctx: WriteContext,
+    sequence_id: int,
+    recursive: bool = False,
+) -> opencloning_models.CloningStrategy:
+    from opencloning_db.workspace_deps import get_sequence_in_workspace_for_user
+
+    db_sequence = get_sequence_in_workspace_for_user(
+        session, ctx.user, ctx.workspace_id, sequence_id, WorkspaceRole.viewer
+    )
+    db_sequence = require_real_sequence(db_sequence, detail='cloning_strategy endpoint only supports real sequences.')
+    parent_source = db_sequence.output_of_source
+    parent_sequences = [
+        source_input.input_entity
+        for source_input in parent_source.input
+        if isinstance(source_input.input_entity, Sequence)
+        and source_input.input_entity.workspace_id == db_sequence.workspace_id  # TODO: Maybe remove?
+    ]
+    primers: list[Primer] = [
+        source_input.input_entity
+        for source_input in parent_source.input
+        if isinstance(source_input.input_entity, Primer)
+        and source_input.input_entity.workspace_id == db_sequence.workspace_id  # TODO: Maybe remove?
+    ]
+
+    sequence_ids = {db_sequence.id}
+    sequence_ids.update(sequence.id for sequence in parent_sequences)
+    loaded_sequences = get_db_sequences_from_database_ids(session, ctx.workspace_id, sequence_ids)
+
+    grandparent_sources: list[Source] = []
+    grandparent_sources += [s.output_of_source for s in parent_sequences]
+
+    all_sequences = [loaded_sequences[db_sequence.id]] + [
+        loaded_sequences[sequence.id] for sequence in parent_sequences
+    ]
+    all_sources = [parent_source] + grandparent_sources
+
+    exported_sequences = [seq.to_pydantic_sequence() for seq in unique_and_sorted(all_sequences)]
+    exported_primers = [primer.to_pydantic_primer() for primer in unique_and_sorted(primers)]
+    exported_sources = [source.to_pydantic_source() for source in unique_and_sorted(all_sources)]
+    if not recursive:
+        return opencloning_models.CloningStrategy(
+            sequences=exported_sequences,
+            sources=exported_sources,
+            primers=exported_primers,
+            description='',
+            files=[],
+        )
+    else:
+        for sequence in parent_sequences:
+            cs = get_cloning_strategy_from_db(session, ctx, sequence.id, recursive=True)
+            exported_sequences.extend(cs.sequences)
+            exported_sources.extend(cs.sources)
+            exported_primers.extend(cs.primers)
+        return opencloning_models.CloningStrategy(
+            sequences=unique_and_sorted(exported_sequences),
+            sources=unique_and_sorted(exported_sources),
+            primers=unique_and_sorted(exported_primers),
+            description='',
+            files=[],
+        )
+
+
+def build_workspace_cloning_strategy(
+    session: Session,
+    ctx: WriteContext,
+    sequences: list[Sequence],
+) -> opencloning_models.CloningStrategy:
+    """Merge recursive cloning strategies for leaf sequences (no children) in *sequences*."""
+    exported_sequences: list[opencloning_models.Sequence] = []
+    exported_sources: list[opencloning_models.Source] = []
+    exported_primers: list[opencloning_models.Primer] = []
+
+    for db_sequence in sequences:
+        if not isinstance(db_sequence, Sequence):
+            continue
+        if db_sequence.source_inputs:
+            continue
+        if db_sequence.output_of_source is None:
+            continue
+        cs = get_cloning_strategy_from_db(session, ctx, db_sequence.id, recursive=True)
+        exported_sequences.extend(cs.sequences)
+        exported_sources.extend(cs.sources)
+        exported_primers.extend(cs.primers)
+
+    return opencloning_models.CloningStrategy(
+        sequences=unique_and_sorted(exported_sequences),
+        sources=unique_and_sorted(exported_sources),
+        primers=unique_and_sorted(exported_primers),
+        description='',
+        files=[],
+    )

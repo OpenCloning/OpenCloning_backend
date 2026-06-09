@@ -373,6 +373,86 @@ def line_ref(line: Line) -> LineRef:
     )
 
 
+# --- Export (id-based refs; nested entities live in top-level lists) ---
+class ExportSequenceRef(ApiModel):
+    id: int
+    type: str
+    name: str | None
+    sequence_type: SequenceType
+    tag_ids: list[int] = []
+    sample_uids: list[str] = []
+    seguid: str | None = None
+    created_at: datetime
+    created_by_id: int
+
+
+class ExportPrimerRef(ApiModel):
+    id: int
+    name: str | None
+    sequence: str
+    uid: str | None = None
+    tag_ids: list[int] = []
+    created_at: datetime
+    created_by_id: int
+
+
+class ExportLineRef(ApiModel):
+    id: int
+    uid: str
+    sequence_ids: list[int]
+    parent_ids: list[int]
+    tag_ids: list[int]
+    created_at: datetime
+    created_by_id: int
+
+
+def export_sequence_ref(sequence: BaseSequence) -> ExportSequenceRef:
+    return ExportSequenceRef(
+        id=sequence.id,
+        type=sequence.type,
+        name=sequence.name,
+        sequence_type=sequence.sequence_type,
+        tag_ids=[t.id for t in sequence.tags],
+        sample_uids=sequence.sample_uids,
+        seguid=sequence.seguid if isinstance(sequence, Sequence) else None,
+        created_at=sequence.created_at,
+        created_by_id=sequence.created_by_id,
+    )
+
+
+def export_primer_ref(primer: Primer) -> ExportPrimerRef:
+    return ExportPrimerRef(
+        id=primer.id,
+        name=primer.name,
+        sequence=primer.sequence,
+        uid=primer.uid,
+        tag_ids=[t.id for t in primer.tags],
+        created_at=primer.created_at,
+        created_by_id=primer.created_by_id,
+    )
+
+
+def export_line_ref(line: Line) -> ExportLineRef:
+    return ExportLineRef(
+        id=line.id,
+        uid=line.uid,
+        sequence_ids=[sil.sequence_id for sil in line.sequences_in_line],
+        parent_ids=line.parent_ids,
+        tag_ids=[tag.id for tag in line.tags],
+        created_at=line.created_at,
+        created_by_id=line.created_by_id,
+    )
+
+
+class WorkspaceExport(ApiModel):
+    lines: list[ExportLineRef]
+    primers: list[ExportPrimerRef]
+    sequences: list[ExportSequenceRef]
+    tags: list[TagRead]
+    users: list[UserRef]
+    cloning_strategy: opencloning_models.CloningStrategy
+
+
 class SequenceSearchResult(ApiModel):
     sequence_ref: SequenceRef
     sequence: opencloning_models.TextFileSequence

@@ -1,6 +1,7 @@
 from opencloning_linkml.datamodel.models import TextFileSequence, Source
 from opencloning_db.models import SequenceType
 from opencloning.dna_functions import read_dsrecord_from_json
+from typing import TypeVar
 
 
 def guess_sequence_type(sequence: TextFileSequence, source: Source) -> SequenceType:
@@ -20,3 +21,17 @@ def guess_sequence_type(sequence: TextFileSequence, source: Source) -> SequenceT
         return SequenceType.restriction_fragment
     else:
         return SequenceType.linear_dna
+
+
+T = TypeVar('T')
+
+
+def unique_and_sorted(items: list[T]) -> list[T]:
+    seen_ids = set()
+    out = list()
+    for item in items:
+        if item.id in seen_ids:
+            continue
+        out.append(item)
+        seen_ids.add(item.id)
+    return list(sorted(out, key=lambda x: x.id))
