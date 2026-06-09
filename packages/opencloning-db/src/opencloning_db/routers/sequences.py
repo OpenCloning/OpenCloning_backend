@@ -1,7 +1,7 @@
 """Sequence, sequencing files, and cloning strategy endpoints."""
 
 import warnings
-from typing import Annotated, List, TypeVar
+from typing import Annotated, List
 from urllib.parse import quote
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
@@ -41,7 +41,7 @@ from opencloning_db.apimodels import (
     primer_ref,
     sequence_ref,
 )
-from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
+from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file, get_cloning_strategy_from_db
 from opencloning_db.models import (
     InputEntity,
     Primer,
@@ -70,16 +70,10 @@ from opencloning_db.workspace_deps import (
 )
 
 from pydna.dseq import Dseq
-from opencloning_db.db import get_db_sequences_from_database_ids
+from opencloning_db.utils import unique_and_sorted
 from pydna.snapgene_history_parser import parse_snapgene_history, SnapgeneHistoryParserWarning
 
 router = APIRouter(tags=['sequences'])
-
-T = TypeVar('T')
-
-
-def unique_and_sorted(items: List[T]) -> List[T]:
-    return list(sorted(set(items), key=lambda x: x.id))
 
 
 @router.get('/sequences', response_model=Page[SequenceRef])
@@ -658,49 +652,11 @@ def get_text_file_sequence(
 def get_cloning_strategy(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    recursive: bool = Query(default=False, description='Whether to include all ancestors, or just immediate parents.'),
 ):
     current_user, session, workspace_id = ctx.destructure()
-    db_sequence = get_sequence_in_workspace_for_user(
-        session, current_user, workspace_id, sequence_id, WorkspaceRole.viewer
-    )
-    db_sequence = require_real_sequence(db_sequence, detail='cloning_strategy endpoint only supports real sequences.')
-    parent_source = db_sequence.output_of_source
-    parent_sequences = [
-        source_input.input_entity
-        for source_input in parent_source.input
-        if isinstance(source_input.input_entity, Sequence)
-        and source_input.input_entity.workspace_id == db_sequence.workspace_id  # TODO: Maybe remove?
-    ]
-    primers: list[Primer] = [
-        source_input.input_entity
-        for source_input in parent_source.input
-        if isinstance(source_input.input_entity, Primer)
-        and source_input.input_entity.workspace_id == db_sequence.workspace_id  # TODO: Maybe remove?
-    ]
 
-    sequence_ids = {db_sequence.id}
-    sequence_ids.update(sequence.id for sequence in parent_sequences)
-    loaded_sequences = get_db_sequences_from_database_ids(session, workspace_id, sequence_ids)
-
-    grandparent_sources: list[Source] = []
-    grandparent_sources += [s.output_of_source for s in parent_sequences]
-
-    all_sequences = [loaded_sequences[db_sequence.id]] + [
-        loaded_sequences[sequence.id] for sequence in parent_sequences
-    ]
-    all_sources = [parent_source] + grandparent_sources
-
-    exported_sequences = [seq.to_pydantic_sequence() for seq in unique_and_sorted(all_sequences)]
-    exported_primers = [primer.to_pydantic_primer() for primer in unique_and_sorted(primers)]
-    exported_sources = [source.to_pydantic_source() for source in unique_and_sorted(all_sources)]
-
-    return opencloning_models.CloningStrategy(
-        sequences=exported_sequences,
-        sources=exported_sources,
-        primers=exported_primers,
-        description='',
-        files=[],
-    )
+    return get_cloning_strategy_from_db(session, ctx, sequence_id, recursive=recursive)
 
 
 @router.get('/sequences/{sequence_id}/children', response_model=list[SequenceRef])
