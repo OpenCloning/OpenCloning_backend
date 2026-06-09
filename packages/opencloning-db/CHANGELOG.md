@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.1...opencloning-db-v1.9.2) (2026-06-09)
+
+
+### Bug Fixes
+
+* bulk export workspace + allow recursive export of cloning strategy via parameter ([#505](https://github.com/OpenCloning/OpenCloning_backend/issues/505)) ([500d8bf](https://github.com/OpenCloning/OpenCloning_backend/commit/500d8bf58a4b83466df8029d2745fa36c294ac5e))
+
 ## [1.9.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.0...opencloning-db-v1.9.1) (2026-06-09)
 
 
