@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.2...opencloning-db-v1.9.3) (2026-06-10)
+
+
+### Bug Fixes
+
+* add workspace user admin accessible to owners ([#508](https://github.com/OpenCloning/OpenCloning_backend/issues/508)) ([7774141](https://github.com/OpenCloning/OpenCloning_backend/commit/7774141fe0a32878f603309cdd657673695f78b2))
+
 ## [1.9.2](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.1...opencloning-db-v1.9.2) (2026-06-09)
 
 
