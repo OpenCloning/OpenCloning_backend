@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.4](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.3...opencloning-v1.9.4) (2026-06-10)
+
+
+### Miscellaneous Chores
+
+* **opencloning:** Synchronize backend-packages versions
+
 ## [1.9.3](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.2...opencloning-v1.9.3) (2026-06-10)
 
 
