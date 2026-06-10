@@ -9,6 +9,7 @@ _STANDARD_EMAILS = {
     'owner_both': 'owner-both@test.com',
     'owner_w1_viewer_w2': 'owner-w1-viewer-w2@test.com',
     'instance_admin': 'instance-admin@test.com',
+    'editor_w1': 'editor-w1@test.com',
 }
 
 _STANDARD_PASSWORDS = {
@@ -18,6 +19,7 @@ _STANDARD_PASSWORDS = {
     'owner_both': 'pw-owner-both',
     'owner_w1_viewer_w2': 'pw-owner-w1-viewer-w2',
     'instance_admin': 'pw-instance-admin',
+    'editor_w1': 'pw-editor-w1',
 }
 
 
@@ -181,10 +183,17 @@ def seed_standard_users(session) -> dict:
         password_hash=get_password_hash(_STANDARD_PASSWORDS['instance_admin']),
         is_instance_admin=True,
     )
+    editor_w1 = User(
+        email=_STANDARD_EMAILS['editor_w1'],
+        display_name='Editor W1',
+        password_hash=get_password_hash(_STANDARD_PASSWORDS['editor_w1']),
+    )
     w1 = Workspace(name='Workspace One')
     w2 = Workspace(name='Workspace Two')
     w3 = Workspace(name='Workspace Three')
-    session.add_all([owner_w1, owner_w2, viewer_w1, owner_both, owner_w1_viewer_w2, instance_admin, w1, w2, w3])
+    session.add_all(
+        [owner_w1, owner_w2, viewer_w1, owner_both, owner_w1_viewer_w2, instance_admin, w1, w2, w3, editor_w1]
+    )
     session.flush()
 
     session.add_all(
@@ -193,6 +202,11 @@ def seed_standard_users(session) -> dict:
                 user_id=owner_w1.id,
                 workspace_id=w1.id,
                 role=WorkspaceRole.owner,
+            ),
+            WorkspaceMembership(
+                user_id=editor_w1.id,
+                workspace_id=w1.id,
+                role=WorkspaceRole.editor,
             ),
             WorkspaceMembership(
                 user_id=owner_w2.id,
@@ -249,6 +263,9 @@ def seed_standard_users(session) -> dict:
         'instance_admin_id': instance_admin.id,
         'instance_admin_email': _STANDARD_EMAILS['instance_admin'],
         'instance_admin_pw': _STANDARD_PASSWORDS['instance_admin'],
+        'editor_w1_id': editor_w1.id,
+        'editor_w1_email': _STANDARD_EMAILS['editor_w1'],
+        'editor_w1_pw': _STANDARD_PASSWORDS['editor_w1'],
     }
 
 
@@ -272,6 +289,7 @@ def attach_standard_tokens(ctx: dict, client) -> dict:
     ctx['token_owner_w2'] = fetch_token(client, ctx['owner_w2_email'], ctx['owner_w2_pw'])
     ctx['token_viewer_w1'] = fetch_token(client, ctx['viewer_w1_email'], ctx['viewer_w1_pw'])
     ctx['token_owner_both'] = fetch_token(client, ctx['owner_both_email'], ctx['owner_both_pw'])
+    ctx['token_editor_w1'] = fetch_token(client, ctx['editor_w1_email'], ctx['editor_w1_pw'])
     ctx['token_instance_admin'] = fetch_token(
         client,
         ctx['instance_admin_email'],

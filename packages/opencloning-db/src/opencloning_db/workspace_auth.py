@@ -1,6 +1,6 @@
 """Workspace membership checks for API routes."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fastapi import HTTPException, status
@@ -39,3 +39,22 @@ def assert_workspace_access(
     if not has_at_least(membership.role, min_role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Not allowed for this workspace')
     return membership
+
+
+def would_remove_last_owner(
+    session: Session,
+    workspace_id: int,
+    membership: WorkspaceMembership,
+    new_role: WorkspaceRole,
+) -> bool:
+    if membership.role != WorkspaceRole.owner or new_role == WorkspaceRole.owner:
+        return False
+    owner_count = session.scalar(
+        select(func.count())
+        .select_from(WorkspaceMembership)
+        .where(
+            WorkspaceMembership.workspace_id == workspace_id,
+            WorkspaceMembership.role == WorkspaceRole.owner,
+        )
+    )
+    return (owner_count or 0) <= 1
