@@ -54,7 +54,7 @@ jobs:
       - name: Sync uv.lock on release PR
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         env:
-          RELEASE_BRANCH: ${{ fromJson(steps.release.outputs.pr).headBranchName }}
+          RELEASE_BRANCH: ${{ steps.release.outputs.pr_head_branch }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
