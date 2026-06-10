@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.4](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.3...opencloning-db-v1.9.4) (2026-06-10)
+
+
+### Bug Fixes
+
+* trigger release [skip ci] ([#512](https://github.com/OpenCloning/OpenCloning_backend/issues/512)) ([9d88196](https://github.com/OpenCloning/OpenCloning_backend/commit/9d8819619d2eca9613caddfd231274050c58ba70))
+
 ## [1.9.3](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.2...opencloning-db-v1.9.3) (2026-06-10)
 
 
