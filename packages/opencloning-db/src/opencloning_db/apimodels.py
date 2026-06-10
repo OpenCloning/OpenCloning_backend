@@ -15,6 +15,7 @@ from opencloning_db.models import (
     Primer,
     Line,
     SequenceInLine,
+    WorkspaceRole,
 )
 
 
@@ -53,6 +54,12 @@ class UserRef(ApiModel):
     display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
 
 
+class UserWithRoleRef(UserRef):
+    """User reference with workspace membership role."""
+
+    role: str
+
+
 class WorkspaceRef(ApiModel):
     id: int
     name: str
@@ -65,6 +72,11 @@ class WorkspaceCreate(ApiModel):
 
 class WorkspaceRename(ApiModel):
     name: StrippedStr = Field(min_length=1)
+
+
+class WorkspaceMemberAdd(ApiModel):
+    email: EmailStr
+    role: WorkspaceRole
 
 
 class RegisterBody(ApiModel):
@@ -324,6 +336,10 @@ def _user_ref(user) -> UserRef | None:
     if user is None:
         return None
     return UserRef(id=user.id, display_name=user.display_name)
+
+
+def user_with_role_ref(user, role: WorkspaceRole) -> UserWithRoleRef:
+    return UserWithRoleRef(id=user.id, display_name=user.display_name, role=role.value)
 
 
 def sequence_ref(sequence: BaseSequence) -> SequenceRef:

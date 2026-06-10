@@ -84,12 +84,13 @@ def test_export_w1_payload(sequences_client):
     primer = next(p for p in payload['primers'] if p['id'] == sequences_client['primer1_id'])
     assert primer['created_by_id'] == sequences_client['owner_w1_id']
 
-    assert len(payload['users']) == 4
+    assert len(payload['users']) == 5
     assert {user['display_name'] for user in payload['users']} == {
         'Owner W1',
         'Viewer W1',
         'Owner Both',
         'Owner W1 Viewer W2',
+        'Editor W1',
     }
 
     exported = payload['cloning_strategy']
