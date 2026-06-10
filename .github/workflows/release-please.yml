@@ -24,6 +24,12 @@ jobs:
       opencloning_db_release_created: ${{ steps.release.outputs['packages/opencloning-db--release_created'] }}
       opencloning_db_version: ${{ steps.release.outputs['packages/opencloning-db--version'] }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@v4
@@ -31,6 +37,36 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Install uv
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 0.11.5
+          enable-cache: true
+
+      - name: Set up Python
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync uv.lock on release PR
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        env:
+          RELEASE_BRANCH: ${{ fromJson(steps.release.outputs.pr).headBranchName }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout "$RELEASE_BRANCH"
+          uv lock
+          if git diff --quiet uv.lock; then
+            echo "uv.lock already up to date"
+            exit 0
+          fi
+          git add uv.lock
+          git commit -m "chore: sync uv.lock for release"
+          git push
 
   publish_pypi:
     runs-on: ubuntu-latest
