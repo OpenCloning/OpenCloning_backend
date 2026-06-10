@@ -117,7 +117,7 @@ uv run pytest packages/opencloning-db/tests -v -ks
 
 ## Frontend testing
 
-Frontend testing using the database requires reseeding after tests that modify the database. You can do this by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`, and it delegates to the guarded `opencloning-cli db seed` command.
+Frontend testing using the database requires reseeding after tests that modify the database. This is done by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`, and it delegates to the guarded `opencloning-cli db seed` command.
 
 ## Building and running the Docker image
 
