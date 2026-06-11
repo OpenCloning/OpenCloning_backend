@@ -424,23 +424,41 @@ SPBC15D4.01c</textarea>
                 </div>
             </div>
             <script>
-                const DEFAULT_INTEGRATION_BINDING_FORWARD = "CGGATCCCCGGGTTAATTAA";
-                const DEFAULT_INTEGRATION_BINDING_REVERSE = "GAATTCGAGCTCGTTTAAAC";
+                const DEFAULT_INTEGRATION_BINDING = {
+                    gene_deletion: {
+                        forward: "CGGATCCCCGGGTTAATTAA",
+                        reverse: "GAATTCGAGCTCGTTTAAAC",
+                    },
+                    gene_cterm_tagging: {
+                        forward: "GTGAGCAAGGGCGAG",
+                        reverse: "GAATTCGAGCTCGTTTAAAC",
+                    },
+                };
 
                 const DEFAULT_PLASMIDS = {
                     gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
                     gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-psfGFPcp-natMX6, pFA6a-mCherry-hphMX6",
                 };
 
+                function getCloningType() {
+                    return document.querySelector('input[name="cloning_type"]:checked').value;
+                }
+
+                function applyIntegrationBindingDefaults() {
+                    var binding = DEFAULT_INTEGRATION_BINDING[getCloningType()];
+                    document.getElementById("integration_binding_forward").value = binding.forward;
+                    document.getElementById("integration_binding_reverse").value = binding.reverse;
+                }
+
                 function toggleCloningType() {
-                    var cloningType = document.querySelector('input[name="cloning_type"]:checked').value;
+                    var cloningType = getCloningType();
                     document.getElementById("default_plasmid_label").textContent =
                         "Default plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
+                    applyIntegrationBindingDefaults();
                 }
 
                 function restoreIntegrationBindingDefaults() {
-                    document.getElementById("integration_binding_forward").value = DEFAULT_INTEGRATION_BINDING_FORWARD;
-                    document.getElementById("integration_binding_reverse").value = DEFAULT_INTEGRATION_BINDING_REVERSE;
+                    applyIntegrationBindingDefaults();
                 }
 
                 function restoreCloningSimulationDefaults() {

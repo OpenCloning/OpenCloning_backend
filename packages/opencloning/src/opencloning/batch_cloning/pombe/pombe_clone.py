@@ -5,7 +5,7 @@ from opencloning.ncbi_requests import get_annotations_from_query, get_genome_reg
 from pydna.primer import Primer
 from pydna.opencloning_models import CloningStrategy
 from pydna.utils import location_boundaries
-
+from typing import Literal
 from opencloning.primer_design import primer_to_amplify_fragment_of_given_size_knowing_other_primer
 
 
@@ -15,8 +15,9 @@ async def main(
     output_dir: str,
     plasmid: Dseqrecord,
     common_primers: list[Primer],
-    integration_binding_forward: str = 'CGGATCCCCGGGTTAATTAA',
-    integration_binding_reverse: str = 'GAATTCGAGCTCGTTTAAAC',
+    integration_binding_forward: str,
+    integration_binding_reverse: str,
+    cloning_type: Literal['gene_deletion', 'gene_cterm_tagging'],
 ):
     print(f"\033[92mCloning {gene}\033[0m")
     # Parse primers =================================================================================

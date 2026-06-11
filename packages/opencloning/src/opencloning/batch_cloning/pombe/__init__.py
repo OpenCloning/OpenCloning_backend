@@ -103,6 +103,7 @@ async def post_batch_cloning(
                 common_primers,
                 integration_binding_forward,
                 integration_binding_reverse,
+                cloning_type,
             )
 
         try:
