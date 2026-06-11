@@ -208,9 +208,14 @@
             <li>Select a marker plasmid.</li>
             <li>Specify verification primers.</li>
             <li>The pipeline designs primers for integration and checking.</li>
+            <li>You can decide if you just want the primers or if you want to simulate the cloning.</li>
         </ul>
 
         <h3>What it returns</h3>
+
+        <h4>Primers only</h4>
+        <p>Shows you a table with the primers.</p>
+        <h4>Simulate cloning</h4>
         <p>After a delay (can be long), it returns a ZIP archive with:</p>
 
         <ul>
@@ -238,7 +243,8 @@
             <code>SPAPB1A10.09/cloning_strategy.json</code>
             into <a href="https://app.opencloning.org" target="_blank" rel="noopener">OpenCloning</a> to visualize the
             strategy.
-            Check also the file <code>summary.xlsx</code> file to see the primers.
+            Check also the file <code>summary.xlsx</code> file to see the primers, and the multiple genbank files with
+            the sequences involved, you can open those in SnapGene, Benchling, etc.
         </p>
 
         <form>

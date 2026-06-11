@@ -92,7 +92,7 @@ async def post_batch_cloning(
         if plasmid_file.filename.endswith('.dna'):
             plasmid = parse_snapgene(file_content)[0]
         else:
-            plasmid = pydna_parse(file_content)[0]
+            plasmid = pydna_parse(file_content.decode('utf-8'))[0]
             plasmid.source = UploadedFileSource(
                 file_name=plasmid_file.filename,
                 sequence_file_format=plasmid.annotations['pydna_parse_sequence_file_format'],
