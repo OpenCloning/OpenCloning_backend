@@ -289,3 +289,31 @@ def primer_to_amplify_fragment_of_given_size_knowing_other_primer(
     except IndexError:
         print(result)
         raise ValueError(f'Primers for checking could not be designed: {result}')
+
+
+def primer_in_region(sequence: Dseqrecord, forward: bool) -> Primer:
+    """
+    Design a forward or reverse primer constrained to lie within a subsequence of a template.
+    """
+
+    settings = PrimerDesignSettings()
+
+    result = primer3_design_primers(
+        str(sequence.seq).upper(),
+        seq_args={},
+        global_args={
+            'PRIMER_PICK_LEFT_PRIMER': int(forward),
+            'PRIMER_PICK_RIGHT_PRIMER': int(not forward),
+            'PRIMER_OPT_TM': 60,
+            'PRIMER_MIN_TM': 56,
+            'PRIMER_MAX_TM': 64,
+            **settings.to_primer3_args(),
+        },
+    )
+    try:
+        if forward:
+            return Primer(result['PRIMER_LEFT'][0]['SEQUENCE'], name=f'{sequence.name}_fwd')
+        else:
+            return Primer(result['PRIMER_RIGHT'][0]['SEQUENCE'], name=f'{sequence.name}_rvs')
+    except (IndexError, KeyError):
+        raise ValueError(f'Primer could not be designed in region: {result}')

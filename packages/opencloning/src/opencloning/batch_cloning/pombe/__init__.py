@@ -42,11 +42,6 @@ DEFAULT_PLASMID_OPTIONS = {
         'natmx6': ('euroscarf', 'P30425', None),  # pFA6a-natMX6-P3nmt1
         'hphmx6': ('addgene', '105162', None),  # pFA6a-hphMX6-3nmt1
     },
-    'promoter_with_tag': {
-        'kanmx6': ('addgene', '39289', None),  # pFA6a-kanMX6-P3nmt1-GFP
-        'natmx6': ('addgene', '19345', None),  # pFA6a-natMX6-P3nmt1-3FLAG
-        'hphmx6': ('addgene', '19348', None),  # pFA6a-hphMX6-P3nmt1-3FLAG
-    },
 }
 
 
@@ -84,7 +79,7 @@ async def post_batch_cloning(
             elif mode == 'euroscarf':
                 plasmid = await get_sequence_from_euroscarf_url(first)
             else:
-                plasmid = await request_from_snapgene(second, first)
+                plasmid = await request_from_snapgene(first, second)
         except KeyError:
             raise HTTPException(
                 status_code=400, detail=f'Resistance marker {resistance_marker} is not supported for default plasmid'

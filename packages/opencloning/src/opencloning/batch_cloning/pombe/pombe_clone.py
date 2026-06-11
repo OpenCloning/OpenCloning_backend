@@ -8,7 +8,7 @@ from pydna.primer import Primer
 from pydna.opencloning_models import CloningStrategy
 from pydna.utils import location_boundaries
 from typing import Literal
-from opencloning.primer_design import primer_to_amplify_fragment_of_given_size_knowing_other_primer
+from opencloning.primer_design import primer_in_region
 from .pombe_naming import allele_name, integration_primer_name
 from Bio.SeqFeature import SeqFeature
 
@@ -31,6 +31,50 @@ def get_homology_arms(locus: Dseqrecord, feature: SeqFeature, cloning_type: str)
         raise ValueError(f'Unsupported cloning type: {cloning_type}')
 
     return left_homology_arm, right_homology_arm
+
+
+def get_checking_primers(
+    locus: Dseqrecord, feature: SeqFeature, gene: str, cloning_type: str, region_length: int = 200
+) -> tuple[Primer, Primer]:
+    start, end = (int(i) for i in location_boundaries(feature.location))
+
+    def get_upstream_primer():
+        padding = 200
+        primer = primer_in_region(locus[(start - padding - region_length) : (start - padding)], forward=True)
+        primer.name = f'{gene}_check_upstream_fwd'
+        return primer
+
+    def get_downstream_primer():
+        padding = 200
+        primer = primer_in_region(locus[(end + padding) : (end + padding + region_length)], forward=False)
+        primer.name = f'{gene}_check_downstream_rvs'
+        return primer
+
+    def get_inside_forward_primer():
+        padding = 200
+        primer = primer_in_region(locus[(end - padding - region_length) : (end - padding)], forward=True)
+        primer.name = f'{gene}_check_inside_fwd'
+        return primer
+
+    def get_inside_reverse_primer():
+        padding = 200
+        primer = primer_in_region(locus[(start + padding) : (start + padding + region_length)], forward=False)
+        primer.name = f'{gene}_check_inside_rvs'
+        return primer
+
+    if cloning_type == 'gene_deletion':
+        fwd = get_upstream_primer()
+        rvs = get_downstream_primer()
+    elif cloning_type == 'gene_cterm_tagging':
+        fwd = get_inside_forward_primer()
+        rvs = get_downstream_primer()
+    elif cloning_type in ('promoter_not_tag', 'promoter_with_tag'):
+        fwd = get_upstream_primer()
+        rvs = get_inside_reverse_primer()
+    else:
+        raise ValueError(f'Unsupported cloning type: {cloning_type}')
+
+    return fwd, rvs
 
 
 async def main(
@@ -83,6 +127,7 @@ async def main(
         right_homology_arm + integration_binding_reverse.upper(),
         name=integration_primer_name(gene, 'rvs', cloning_type),
     )
+    left_check_primer, right_check_primer = get_checking_primers(locus, feature, gene, cloning_type)
     # PCR ================================================================================================
     pcr_products = pcr_assembly(plasmid, left_primer, right_primer, limit=14, mismatches=0)
     pcr_products[0].name = 'amplified_marker'
@@ -92,14 +137,6 @@ async def main(
     if len(alleles) > 1:
         raise ValueError(f'Multiple insertions possible for {gene}')
     # Check PCR ======================================================================================
-    right_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[0], True, [1000, 1300]
-    )
-    right_check_primer.name = f'{gene}_check_pcr_right'
-    left_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[1], False, [1000, 1300]
-    )
-    left_check_primer.name = f'{gene}_check_pcr_left'
     pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)[0]
     pcr_check1.name = 'check_pcr_left'
     pcr_check2 = pcr_assembly(alleles[0], common_primers[0], right_check_primer, limit=14, mismatches=0)[0]
