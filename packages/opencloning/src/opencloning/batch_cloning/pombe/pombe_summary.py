@@ -83,8 +83,16 @@ def process_folder(working_dir: str):
         primer_dict[name + '_bound'] = aligned_seq
         primer_dict[name + '_tm'] = tm.tm_default(aligned_seq)
 
+    metadata_path = os.path.join(working_dir, 'metadata.json')
+    metadata = {}
+    if os.path.exists(metadata_path):
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+
     summary = {
         'gene': os.path.basename(working_dir),
+        'cloning_type': metadata.get('cloning_type', 'gene_deletion'),
+        'allele_name': metadata.get('allele_name'),
         'chromosome': chromosome,
         'insertion_start': insertion_start,
         'insertion_end': insertion_end,

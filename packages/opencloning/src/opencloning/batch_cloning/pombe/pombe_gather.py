@@ -5,6 +5,8 @@ import argparse
 import json
 from collections import OrderedDict
 
+from .pombe_naming import primer_summary_name
+
 
 def represent_ordereddict(dumper, data):
     return dumper.represent_mapping('tag:yaml.org,2002:map', data.items())
@@ -36,9 +38,10 @@ def main(input_dir: str):
 
     for _, row in df.iterrows():
         gene = row['gene']
+        cloning_type = row.get('cloning_type', 'gene_deletion')
         for primer_name in primer_names:
             primer_row = OrderedDict()
-            primer_row['name'] = primer_name.replace('primer_', gene + '_')
+            primer_row['name'] = primer_summary_name(gene, primer_name, cloning_type)
             primer_row['sequence'] = row[primer_name]
             primer_row['bound'] = row[primer_name + '_bound']
             primer_row['tm'] = row[primer_name + '_tm']

@@ -1,3 +1,4 @@
+import json
 import os
 from pydna.dseqrecord import Dseqrecord
 from pydna.assembly2 import homologous_recombination_integration, pcr_assembly
@@ -7,6 +8,7 @@ from pydna.opencloning_models import CloningStrategy
 from pydna.utils import location_boundaries
 from typing import Literal
 from opencloning.primer_design import primer_to_amplify_fragment_of_given_size_knowing_other_primer
+from .pombe_naming import allele_name, integration_primer_name
 
 
 async def main(
@@ -53,17 +55,18 @@ async def main(
     right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
     left_primer = Primer(
         left_homology_arm + integration_binding_forward.upper(),
-        name=f'{gene}_deletion_fwd',
+        name=integration_primer_name(gene, 'fwd', cloning_type),
     )
     right_primer = Primer(
         right_homology_arm + integration_binding_reverse.upper(),
-        name=f'{gene}_deletion_rvs',
+        name=integration_primer_name(gene, 'rvs', cloning_type),
     )
     # PCR ================================================================================================
     pcr_products = pcr_assembly(plasmid, left_primer, right_primer, limit=14, mismatches=0)
     pcr_products[0].name = 'amplified_marker'
     alleles = homologous_recombination_integration(locus, [pcr_products[0]], 40)
-    alleles[0].name = f'{gene}Δ'
+    modified_allele_name = allele_name(gene, cloning_type)
+    alleles[0].name = modified_allele_name
     # Check PCR ======================================================================================
     right_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
         alleles[0], common_primers[0], True, [1100, 1300]
@@ -83,5 +86,8 @@ async def main(
     if not os.path.exists(os.path.join(output_dir, gene)):
         os.makedirs(os.path.join(output_dir, gene))
 
-    with open(os.path.join(output_dir, gene, 'cloning_strategy.json'), 'w') as f:
+    gene_dir = os.path.join(output_dir, gene)
+    with open(os.path.join(gene_dir, 'cloning_strategy.json'), 'w') as f:
         f.write(cs.model_dump_json(indent=2))
+    with open(os.path.join(gene_dir, 'metadata.json'), 'w') as f:
+        json.dump({'cloning_type': cloning_type, 'allele_name': modified_allele_name}, f)
