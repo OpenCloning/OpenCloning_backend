@@ -251,11 +251,13 @@
             <legend>Cloning type</legend>
             <div class="radio-list">
                 <label class="radio-label" for="gene_deletion">
-                    <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked>
+                    <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked
+                        onchange="toggleCloningType()">
                     Gene deletion
                 </label>
                 <label class="radio-label" for="gene_cterm_tagging">
-                    <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging">
+                    <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging"
+                        onchange="toggleCloningType()">
                     Gene C-term tagging
                 </label>
             </div>
@@ -324,7 +326,7 @@ SPBC15D4.01c</textarea>
                     <label class="radio-label" for="plasmid_default">
                         <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
                             onchange="togglePlasmidInput()">
-                        Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)
+                        <span id="default_plasmid_label">Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)</span>
                     </label>
                     <label class="radio-label" for="plasmid_addgene">
                         <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
@@ -423,6 +425,17 @@ SPBC15D4.01c</textarea>
             const DEFAULT_INTEGRATION_BINDING_FORWARD = "CGGATCCCCGGGTTAATTAA";
             const DEFAULT_INTEGRATION_BINDING_REVERSE = "GAATTCGAGCTCGTTTAAAC";
 
+            const DEFAULT_PLASMIDS = {
+                gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
+                gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-psfGFPcp-natMX6, pFA6a-mCherry-hphMX6",
+            };
+
+            function toggleCloningType() {
+                var cloningType = document.querySelector('input[name="cloning_type"]:checked').value;
+                document.getElementById("default_plasmid_label").textContent =
+                    "Default plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
+            }
+
             function restoreIntegrationBindingDefaults() {
                 document.getElementById("integration_binding_forward").value = DEFAULT_INTEGRATION_BINDING_FORWARD;
                 document.getElementById("integration_binding_reverse").value = DEFAULT_INTEGRATION_BINDING_REVERSE;
@@ -485,6 +498,7 @@ SPBC15D4.01c</textarea>
             }
 
             window.onload = () => {
+                toggleCloningType();
                 toggleDesiredOutput();
                 togglePrimerCheck();
                 togglePlasmidInput();

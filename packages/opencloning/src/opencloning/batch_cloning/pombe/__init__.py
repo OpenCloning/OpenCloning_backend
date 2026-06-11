@@ -26,6 +26,19 @@ async def get_batch_cloning_page(request: Request):
 
 ASSEMBLY_ACCESSION = 'GCF_000002945.2'
 
+DEFAULT_PLASMID_OPTIONS = {
+    'gene_deletion': {
+        'kanmx6': ('addgene', '39296', None),
+        'natmx6': ('snapgene', 'yeast_plasmids', 'pFA6a-natMX6'),
+        'hphmx6': ('snapgene', 'yeast_plasmids', 'pFA6a-hphMX6'),
+    },
+    'gene_cterm_tagging': {
+        'kanmx6': ('addgene', '87023', None),
+        'natmx6': ('addgene', '39296', None),
+        'hphmx6': ('addgene', '240557', None),
+    },
+}
+
 
 @router.post('/batch_cloning/pombe')
 async def post_batch_cloning(
@@ -52,15 +65,16 @@ async def post_batch_cloning(
     ]
 
     if plasmid_option == 'default':
-        if resistance_marker == 'kanmx6':
-            addgene_id = '39296'
-            plasmid_option = 'addgene'
-        elif resistance_marker == 'natmx6':
-            plasmid = await request_from_snapgene('yeast_plasmids', 'pFA6a-natMX6')
-        elif resistance_marker == 'hphmx6':
-            plasmid = await request_from_snapgene('yeast_plasmids', 'pFA6a-hphMX6')
-        else:
-            raise HTTPException(status_code=400, detail='resistance_marker other is not supported for default plasmid')
+        try:
+            mode, first, second = DEFAULT_PLASMID_OPTIONS[cloning_type][resistance_marker]
+            if mode == 'addgene':
+                plasmid = await request_from_addgene(first)
+            else:
+                plasmid = await request_from_snapgene(second, first)
+        except KeyError:
+            raise HTTPException(
+                status_code=400, detail=f'Resistance marker {resistance_marker} is not supported for default plasmid'
+            )
 
     elif plasmid_option == 'file':
         assert plasmid_file is not None
