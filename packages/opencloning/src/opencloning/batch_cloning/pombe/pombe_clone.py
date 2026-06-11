@@ -66,11 +66,11 @@ async def main(
     alleles[0].name = f'{gene}Δ'
     # Check PCR ======================================================================================
     right_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[0], True, [1100, 1200]
+        alleles[0], common_primers[0], True, [1100, 1300]
     )
     right_check_primer.name = f'{gene}_check_pcr_right'
     left_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[1], False, [1100, 1200]
+        alleles[0], common_primers[1], False, [1100, 1300]
     )
     left_check_primer.name = f'{gene}_check_pcr_left'
     pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)[0]
