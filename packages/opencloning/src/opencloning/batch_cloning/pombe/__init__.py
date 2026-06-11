@@ -28,6 +28,7 @@ ASSEMBLY_ACCESSION = 'GCF_000002945.2'
 
 @router.post('/batch_cloning/pombe')
 async def post_batch_cloning(
+    cloning_type: Annotated[Literal['gene_deletion', 'gene_cterm_tagging'], Form(...)],
     gene_list: str = Form(...),
     plasmid_file: UploadFile | None = File(None),
     addgene_id: str | None = Form(None),
@@ -49,6 +50,7 @@ async def post_batch_cloning(
     if plasmid_option == 'default':
         if resistance_marker == 'kanmx6':
             addgene_id = '39296'
+            plasmid_option = 'addgene'
         elif resistance_marker == 'natmx6':
             plasmid = await request_from_snapgene('yeast_plasmids', 'pFA6a-natMX6')
         elif resistance_marker == 'hphmx6':

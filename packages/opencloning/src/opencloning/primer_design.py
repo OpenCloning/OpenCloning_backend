@@ -255,7 +255,8 @@ def primer_to_amplify_fragment_of_given_size_knowing_other_primer(
     """
     Design primers to amplify a DNA fragment of a given size, knowing one primer.
     """
-    other_primer_tm = primer3_calc_tm(str(known_primer.seq), PrimerDesignSettings())
+    settings = PrimerDesignSettings()
+
     if known_is_forward:
         seq_args = {
             'SEQUENCE_PRIMER': str(known_primer.seq),
@@ -266,17 +267,18 @@ def primer_to_amplify_fragment_of_given_size_knowing_other_primer(
         }
 
     result = primer3_design_primers(
-        str(template.seq),
+        str(template.seq).upper(),
         seq_args=seq_args,
         global_args={
             'PRIMER_PRODUCT_SIZE_RANGE': [fragment_size_range],  # ~500 bp band
             'PRIMER_OPT_SIZE': 20,
             'PRIMER_MIN_SIZE': 18,
             'PRIMER_MAX_SIZE': 30,
-            'PRIMER_OPT_TM': other_primer_tm,
-            'PRIMER_MIN_TM': other_primer_tm - 2,
-            'PRIMER_MAX_TM': other_primer_tm + 2,
+            'PRIMER_PAIR_MAX_DIFF_TM': 3,
             'PRIMER_PICK_ANYWAY': 1,
+            'GC_CONTENT_MIN': 10,
+            'GC_CONTENT_MAX': 90,
+            **settings.to_primer3_args(),
         },
     )
     try:

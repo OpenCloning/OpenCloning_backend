@@ -53,7 +53,7 @@ async def main(gene: str, assembly_accession: str, output_dir: str, plasmid: Dse
     alleles[0].name = f'{gene}Δ'
     # Check PCR ======================================================================================
     right_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[0], True, [900, 1200]
+        alleles[0], common_primers[0], True, [1100, 1200]
     )
     right_check_primer.name = f'{gene}_check_pcr_right'
     left_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(

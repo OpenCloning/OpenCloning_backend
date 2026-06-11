@@ -13,20 +13,95 @@
             padding: 20px;
         }
 
-        textarea {
-            width: 100%;
-            height: 200px;
-            margin-bottom: 10px;
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
 
-        #checking_primers input {
-            font-family: monospace;
+        .form-section {
+            border: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-section legend,
+        .field-label {
+            font-weight: bold;
+            padding: 0;
+        }
+
+        .nested-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-left: 16px;
+            border-left: 2px solid #e8e8e8;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .radio-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        .primer_pair_row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .primer_pair_field {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .primer_pair_field .field-label {
+            font-weight: bold;
+        }
+
+        textarea,
+        input[type="text"],
+        input[type="file"] {
             width: 100%;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            height: 200px;
+        }
+
+        .primer_pair_field input[type="text"] {
+            font-family: monospace;
+        }
+
+        button {
+            cursor: pointer;
         }
 
         p.explanation {
             font-size: 0.9em;
-            margin: 5px 0;
+            margin: 0;
             color: #666;
         }
 
@@ -34,12 +109,21 @@
             color: #0066cc;
         }
 
+        .form-footer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
         input[type="submit"] {
-            display: block;
-            margin: 20px auto 40px;
             padding: 12px 30px;
             font-size: 1.1em;
             cursor: pointer;
+        }
+
+        #loading-message {
+            color: #666;
         }
     </style>
 </head>
@@ -47,15 +131,21 @@
 <body>
     <h1>Batch Cloning Gene List</h1>
     <p class="explanation" style="margin-bottom: 24px;">
-    <p>Design gene-deletion clones for <em>Schizosaccharomyces pombe</em> in batch.</p>
+        Design PCR-based cloning strategies for <em>Schizosaccharomyces pombe</em> in batch.
     </p>
     <h3>How to use</h3>
     <ul>
+        <li>Select the cloning type</li>
         <li>Enter S.&nbsp;pombe systematic gene IDs (e.g. SPBC15D4.01c).</li>
         <li>Select a marker plasmid.</li>
-        <li>Specify verification primers (optional).</li>
-        <li>The pipeline fetches cloning primers from the Pombe Primer Project (PPPP).</li>
-        <li>Designs homologous-recombination strategies for each gene.</li>
+        <li>Specify verification primers.</li>
+        <li>The pipeline designs primers for integration and checking.</li>
+        <li>Note: Integration primers assume the same binding sequence on the plasmid always:
+            <ul>
+                <li><code>CGGATCCCCGGGTTAATTAA</code> for forward primer</li>
+                <li><code>GAATTCGAGCTCGTTTAAAC</code> for reverse primer</li>
+            </ul>
+        </li>
     </ul>
 
     <h3>What it returns</h3>
@@ -89,98 +179,167 @@
     </p>
 
     <form>
-        <label for="gene_list">Gene list (one gene per line):</label><br>
-        <p class="explanation">
-            S. pombe systematic IDs only (e.g. SPAPB1A10.09, SPBC15D4.01c). One gene ID per line; empty lines are
-            ignored.
-        </p>
-        <textarea id="gene_list" name="gene_list" required>SPAPB1A10.09
-SPBC15D4.01c</textarea><br>
-        <br><br>
-        <label for="plasmid_option">Plasmid source</label><br>
-        <p class="explanation">
-            The plasmid supplies the marker cassette (e.g. KanMX6, NatMX6) to be PCR-amplified and integrated into each
-            gene locus via homologous recombination.
-        </p>
-        <div>
-            <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
-                onchange="togglePlasmidInput()">
-            <label for="plasmid_default">Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)</label>
-            <br>
-            <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
-                onchange="togglePlasmidInput()">
-            <label for="plasmid_addgene">Provide Addgene Identifier</label>
-            <br>
-            <input type="radio" id="plasmid_file" name="plasmid_option" value="file" onchange="togglePlasmidInput()">
-            <label for="plasmid_file">Upload Plasmid File</label>
-        </div><br>
+        <fieldset class="form-section">
+            <legend>Cloning type</legend>
+            <div class="radio-list">
+                <label class="radio-label" for="gene_deletion">
+                    <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked>
+                    Gene deletion
+                </label>
+                <label class="radio-label" for="gene_cterm_tagging">
+                    <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging">
+                    Gene C-term tagging
+                </label>
+            </div>
+        </fieldset>
 
-        <div id="plasmid_file_input" style="display: none;">
-            <label for="plasmid_file_upload">Upload plasmid sequence file</label><br>
+        <fieldset class="form-section">
+            <legend>Gene list (one gene per line)</legend>
             <p class="explanation">
-                Accepted formats: GenBank (.gb, .gbk, .genbank), FASTA (.fasta, .fa), or snapgene (.dna).
+                S. pombe systematic IDs only (e.g. SPAPB1A10.09, SPBC15D4.01c). One gene ID per line; empty lines are
+                ignored.
             </p>
-            <input type="file" id="plasmid_file_upload" name="plasmid_file"
-                accept=".gb,.gbk,.genbank,.fasta,.fa,.seq,.dna"><br><br>
-        </div>
+            <textarea id="gene_list" name="gene_list" required>SPAPB1A10.09
+SPBC15D4.01c</textarea>
+        </fieldset>
 
-        <div id="addgene_input">
-            <label for="addgene_id">Addgene identifier</label><br>
+        <fieldset class="form-section" id="integration_binding_primers">
+            <legend>Plasmid primer binding</legend>
+            <div class="section-header">
+                <button type="button" onclick="restoreIntegrationBindingDefaults()">Restore defaults</button>
+            </div>
             <p class="explanation">
-                Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
-                <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
+                Primer part that binds to the plasmid. By default, values for pFA6a-derived plasmids are used.
             </p>
-            <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296"><br><br>
-        </div>
+            <div class="primer_pair_row">
+                <div class="primer_pair_field">
+                    <label class="field-label" for="integration_binding_forward">Forward primer binding</label>
+                    <input type="text" id="integration_binding_forward" name="integration_binding_forward"
+                        value="CGGATCCCCGGGTTAATTAA" pattern="[ACGTacgt]+" required minlength="1"
+                        placeholder="e.g. CGGATCCCCGGGTTAATTAA">
+                </div>
+                <div class="primer_pair_field">
+                    <label class="field-label" for="integration_binding_reverse">Reverse primer binding</label>
+                    <input type="text" id="integration_binding_reverse" name="integration_binding_reverse"
+                        value="GAATTCGAGCTCGTTTAAAC" pattern="[ACGTacgt]+" required minlength="1"
+                        placeholder="e.g. GAATTCGAGCTCGTTTAAAC">
+                </div>
+            </div>
+        </fieldset>
 
-        <div>
-            <label for="resistance_marker">Resistance marker</label><br>
+        <fieldset class="form-section">
+            <legend>Plasmid source</legend>
+            <p class="explanation">
+                The plasmid supplies the marker cassette (e.g. KanMX6, NatMX6) to be PCR-amplified and integrated into
+                each gene locus via homologous recombination.
+            </p>
+            <div class="radio-list">
+                <label class="radio-label" for="plasmid_default">
+                    <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
+                        onchange="togglePlasmidInput()">
+                    Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)
+                </label>
+                <label class="radio-label" for="plasmid_addgene">
+                    <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
+                        onchange="togglePlasmidInput()">
+                    Provide Addgene Identifier
+                </label>
+                <label class="radio-label" for="plasmid_file">
+                    <input type="radio" id="plasmid_file" name="plasmid_option" value="file"
+                        onchange="togglePlasmidInput()">
+                    Upload Plasmid File
+                </label>
+            </div>
+
+            <div id="plasmid_file_input" class="nested-section" style="display: none;">
+                <label class="field-label" for="plasmid_file_upload">Upload plasmid sequence file</label>
+                <p class="explanation">
+                    Accepted formats: GenBank (.gb, .gbk, .genbank), FASTA (.fasta, .fa), or snapgene (.dna).
+                </p>
+                <input type="file" id="plasmid_file_upload" name="plasmid_file"
+                    accept=".gb,.gbk,.genbank,.fasta,.fa,.seq,.dna">
+            </div>
+
+            <div id="addgene_input" class="nested-section" style="display: none;">
+                <label class="field-label" for="addgene_id">Addgene identifier</label>
+                <p class="explanation">
+                    Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
+                    <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
+                </p>
+                <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296">
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+            <legend>Resistance marker</legend>
             <p class="explanation">
                 Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
                 Automatic check primers will be provided for standard cassettes.
             </p>
-            <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
-                onchange="togglePrimerCheck()">
-            <label for="kanmx6">KanMx6</label>
-            <br>
-            <input type="radio" id="natmx6" name="resistance_marker" value="natmx6" onchange="togglePrimerCheck()">
-            <label for="natmx6">NatMx6</label>
-            <br>
-            <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6" onchange="togglePrimerCheck()">
-            <label for="hphmx6">HphMx6</label>
-            <br>
-            <input type="radio" id="other" name="resistance_marker" value="other" onchange="togglePrimerCheck()">
-            <label for="other">Other</label>
-        </div>
-        <br>
-        <div id="checking_primers">
-            <label for="checking-primer-forward">Checking primer (forward)</label><br>
-            <p class="explanation">
-                Aligns to the top strand of the modified allele and pairs with a right-side primer. DNA bases only
-                (A, C, G, T).
-            </p>
-            <input type="text" id="checking-primer-forward" name="checking_primer_forward" pattern="[ACGTacgt]+"
-                required minlength="1" placeholder="e.g. GTACCACTCTTGACGACACG"><br><br>
+            <div class="radio-list">
+                <label class="radio-label" for="kanmx6">
+                    <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
+                        onchange="togglePrimerCheck()">
+                    KanMx6
+                </label>
+                <label class="radio-label" for="natmx6">
+                    <input type="radio" id="natmx6" name="resistance_marker" value="natmx6"
+                        onchange="togglePrimerCheck()">
+                    NatMx6
+                </label>
+                <label class="radio-label" for="hphmx6">
+                    <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6"
+                        onchange="togglePrimerCheck()">
+                    HphMx6
+                </label>
+                <label class="radio-label" for="other">
+                    <input type="radio" id="other" name="resistance_marker" value="other"
+                        onchange="togglePrimerCheck()">
+                    Other
+                </label>
+            </div>
 
-            <label for="checking-primer-reverse">Checking primer (reverse)</label><br>
-            <p class="explanation">
-                Aligns to the bottom strand of the modified allele and pairs with a left-side primer. DNA bases only
-                (A, C, G, T).
-            </p>
-            <input type="text" id="checking-primer-reverse" name="checking_primer_reverse" pattern="[ACGTacgt]+"
-                required minlength="1" placeholder="e.g. GCATGCTCATGTAGAGCGCC"><br><br>
-        </div>
+            <div id="checking_primers" class="nested-section">
+                <div class="primer_pair_row">
+                    <div class="primer_pair_field">
+                        <label class="field-label" for="checking-primer-forward">Checking primer (forward)</label>
+                        <p class="explanation">
+                            Aligns to the top strand of the inserted cassette.
+                        </p>
+                        <input type="text" id="checking-primer-forward" name="checking_primer_forward"
+                            pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GTACCACTCTTGACGACACG">
+                    </div>
+                    <div class="primer_pair_field">
+                        <label class="field-label" for="checking-primer-reverse">Checking primer (reverse)</label>
+                        <p class="explanation">
+                            Aligns to the bottom strand of the inserted cassette.
+                        </p>
+                        <input type="text" id="checking-primer-reverse" name="checking_primer_reverse"
+                            pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GCATGCTCATGTAGAGCGCC">
+                    </div>
+                </div>
+            </div>
+        </fieldset>
 
-        <p class="explanation" style="margin-top: 16px;">
-            Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning
-            strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).
-        </p>
-        <br>
-        <input type="submit" value="Submit" id="submit-button">
-        <div id="loading-message" style="display: none;">
-            Processing request, please wait...
+        <div class="form-footer">
+            <p class="explanation">
+                Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning
+                strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).
+            </p>
+            <input type="submit" value="Submit" id="submit-button">
+            <div id="loading-message" style="display: none;">
+                Processing request, please wait...
+            </div>
         </div>
         <script>
+            const DEFAULT_INTEGRATION_BINDING_FORWARD = "CGGATCCCCGGGTTAATTAA";
+            const DEFAULT_INTEGRATION_BINDING_REVERSE = "GAATTCGAGCTCGTTTAAAC";
+
+            function restoreIntegrationBindingDefaults() {
+                document.getElementById("integration_binding_forward").value = DEFAULT_INTEGRATION_BINDING_FORWARD;
+                document.getElementById("integration_binding_reverse").value = DEFAULT_INTEGRATION_BINDING_REVERSE;
+            }
+
             function togglePlasmidInput() {
                 var selectedOption = document.querySelector('input[name="plasmid_option"]:checked').value;
                 document.getElementById("plasmid_file_input").style.display = selectedOption === "file" ? "block" : "none";
