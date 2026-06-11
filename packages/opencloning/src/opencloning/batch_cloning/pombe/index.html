@@ -259,10 +259,20 @@
                             onchange="toggleCloningType()">
                         Promoter insertion (no tag)
                     </label>
-                    <label class="radio-label" for="promoter_with_tag">
-                        <input type="radio" id="promoter_with_tag" name="cloning_type" value="promoter_with_tag"
+                    <label class="radio-label" for="promoter_with_tag_GFP">
+                        <input type="radio" id="promoter_with_tag_GFP" name="cloning_type" value="promoter_with_tag_GFP"
                             onchange="toggleCloningType()">
-                        Promoter insertion (with tag)
+                        Promoter insertion (with tag, GFP)
+                    </label>
+                    <label class="radio-label" for="promoter_with_tag_3HA">
+                        <input type="radio" id="promoter_with_tag_3HA" name="cloning_type" value="promoter_with_tag_3HA"
+                            onchange="toggleCloningType()">
+                        Promoter insertion (with tag, 3HA)
+                    </label>
+                    <label class="radio-label" for="promoter_with_tag_GST">
+                        <input type="radio" id="promoter_with_tag_GST" name="cloning_type" value="promoter_with_tag_GST"
+                            onchange="toggleCloningType()">
+                        Promoter insertion (with tag, GST)
                     </label>
                 </div>
             </fieldset>
@@ -362,7 +372,8 @@ SPBC15D4.01c</textarea>
                             Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
                             <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
                         </p>
-                        <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296">
+                        <input type="text" id="addgene_id" name="addgene_id" pattern="[0-9]+" minlength="1"
+                            placeholder="e.g. 39296">
                     </div>
                 </fieldset>
 
@@ -447,9 +458,17 @@ SPBC15D4.01c</textarea>
                         forward: "GAATTCGAGCTCGTTTAAAC",
                         reverse: "CATGATTTAACAAAGCGACTATA",
                     },
-                    promoter_with_tag: {
+                    promoter_with_tag_GFP: {
                         forward: "GAATTCGAGCTCGTTTAAAC",
                         reverse: "TTTGTATAGTTCATCCATGC",
+                    },
+                    promoter_with_tag_3HA: {
+                        forward: "GAATTCGAGCTCGTTTAAAC",
+                        reverse: "GCACTGAGCAGCGTAATCTG",
+                    },
+                    promoter_with_tag_GST: {
+                        forward: "GAATTCGAGCTCGTTTAAAC",
+                        reverse: "ACGCGGAACCAGATCCGATT",
                     },
                 };
 
@@ -474,17 +493,49 @@ SPBC15D4.01c</textarea>
                 const DEFAULT_PLASMIDS = {
                     gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
                     gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-natMX-(3xFLAG)-TEV-ProtA, pFA6a-mCherry-hphMX6",
-                    promoter_not_tag: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
-                    promoter_with_tag: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
+                    promoter_not_tag: "pFA6a-kanMX6-P3nmt1, pFA6a-natMX6-P3nmt1, pFA6a-hphMX6-3nmt1",
                 };
 
                 function getCloningType() {
                     return document.querySelector('input[name="cloning_type"]:checked').value;
                 }
 
+                function cloningTypeForSubmit(cloningType) {
+                    if (cloningType.startsWith("promoter_with_tag_")) {
+                        return "promoter_with_tag";
+                    }
+                    return cloningType;
+                }
+
                 function isPromoterCloning() {
                     var cloningType = getCloningType();
-                    return cloningType === "promoter_not_tag" || cloningType === "promoter_with_tag";
+                    return cloningType === "promoter_not_tag" || cloningType.startsWith("promoter_with_tag_");
+                }
+
+                function isPromoterWithTagCloning() {
+                    return getCloningType().startsWith("promoter_with_tag_");
+                }
+
+                function updateDefaultPlasmidLabel() {
+                    var cloningType = getCloningType();
+                    var label = document.getElementById("default_plasmid_label");
+                    if (isPromoterWithTagCloning()) {
+                        label.textContent = "No example available, you must provide a plasmid";
+                    } else if (DEFAULT_PLASMIDS[cloningType]) {
+                        label.textContent = "Example plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
+                    }
+                }
+
+                function updateDefaultPlasmidOption() {
+                    var defaultPlasmid = document.getElementById("plasmid_default");
+                    var resistanceMarker = document.querySelector('input[name="resistance_marker"]:checked').value;
+                    var disableDefault = resistanceMarker === "other" || isPromoterWithTagCloning();
+                    defaultPlasmid.disabled = disableDefault;
+                    if (disableDefault && defaultPlasmid.checked) {
+                        document.getElementById("plasmid_addgene").checked = true;
+                    }
+                    updateDefaultPlasmidLabel();
+                    togglePlasmidInput();
                 }
 
                 function applyIntegrationBindingDefaults() {
@@ -494,9 +545,6 @@ SPBC15D4.01c</textarea>
                 }
 
                 function toggleCloningType() {
-                    var cloningType = getCloningType();
-                    document.getElementById("default_plasmid_label").textContent =
-                        "Example plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
                     applyIntegrationBindingDefaults();
                     togglePrimerCheck();
                 }
@@ -506,8 +554,11 @@ SPBC15D4.01c</textarea>
                 }
 
                 function restoreCloningSimulationDefaults() {
-                    document.getElementById("plasmid_default").checked = true;
-                    document.getElementById("plasmid_default").disabled = false;
+                    if (isPromoterWithTagCloning()) {
+                        document.getElementById("plasmid_addgene").checked = true;
+                    } else {
+                        document.getElementById("plasmid_default").checked = true;
+                    }
                     document.getElementById("addgene_id").value = "39296";
                     document.getElementById("plasmid_file_upload").value = "";
                     document.getElementById("kanmx6").checked = true;
@@ -531,22 +582,22 @@ SPBC15D4.01c</textarea>
 
                 function togglePlasmidInput() {
                     var selectedOption = document.querySelector('input[name="plasmid_option"]:checked').value;
+                    var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
+                    var fileUpload = document.getElementById("plasmid_file_upload");
+                    var addgeneId = document.getElementById("addgene_id");
                     document.getElementById("plasmid_file_input").style.display = selectedOption === "file" ? "block" : "none";
                     document.getElementById("addgene_input").style.display = selectedOption === "addgene" ? "block" : "none";
+                    var requirePlasmidFields = !primersOnly;
+                    fileUpload.required = requirePlasmidFields && selectedOption === "file";
+                    addgeneId.required = requirePlasmidFields && selectedOption === "addgene";
                 }
 
                 function togglePrimerCheck() {
                     var selectedOption = document.querySelector('input[name="resistance_marker"]:checked').value;
-                    var defaultPlasmid = document.getElementById("plasmid_default");
                     if (selectedOption === "other") {
                         document.getElementById("checking-primer-forward").value = "";
                         document.getElementById("checking-primer-reverse").value = "";
-                        defaultPlasmid.disabled = true;
-                        if (defaultPlasmid.checked) {
-                            document.getElementById("plasmid_addgene").checked = true;
-                        }
                     } else {
-                        defaultPlasmid.disabled = false;
                         var markerPrimers = CHECKING_PRIMERS[selectedOption];
                         if (isPromoterCloning()) {
                             document.getElementById("checking-primer-forward").value = CHECKING_PRIMERS.pnmt1.forward;
@@ -556,7 +607,7 @@ SPBC15D4.01c</textarea>
                             document.getElementById("checking-primer-reverse").value = markerPrimers.reverse;
                         }
                     }
-                    togglePlasmidInput();
+                    updateDefaultPlasmidOption();
                 }
 
                 window.onload = () => {
@@ -568,8 +619,12 @@ SPBC15D4.01c</textarea>
                     // Add form submit handler
                     document.querySelector('form').addEventListener('submit', async function (e) {
                         e.preventDefault();
+                        if (!this.reportValidity()) {
+                            return;
+                        }
 
                         const formData = new FormData(this);
+                        formData.set('cloning_type', cloningTypeForSubmit(formData.get('cloning_type')));
                         const primersOnly = formData.get('desired_output') === 'primers_only';
 
                         document.getElementById('submit-button').style.display = 'none';
