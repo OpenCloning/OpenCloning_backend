@@ -103,15 +103,16 @@ SPBC15D4.01c</textarea><br>
             gene locus via homologous recombination.
         </p>
         <div>
-            <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene" checked
+            <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
+                onchange="togglePlasmidInput()">
+            <label for="plasmid_default">Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)</label>
+            <br>
+            <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
                 onchange="togglePlasmidInput()">
             <label for="plasmid_addgene">Provide Addgene Identifier</label>
-
             <br>
             <input type="radio" id="plasmid_file" name="plasmid_option" value="file" onchange="togglePlasmidInput()">
-            <label for="plasmid_file">Upload Plasmid File</label><br>
-
-
+            <label for="plasmid_file">Upload Plasmid File</label>
         </div><br>
 
         <div id="plasmid_file_input" style="display: none;">
@@ -126,25 +127,29 @@ SPBC15D4.01c</textarea><br>
         <div id="addgene_input">
             <label for="addgene_id">Addgene identifier</label><br>
             <p class="explanation">
-                Numeric Addgene ID of the plasmid (e.g. 19343 for pFA6a-KanMX6). Find IDs at
+                Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
                 <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
             </p>
-            <input value="19343" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 19343"><br><br>
+            <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296"><br><br>
         </div>
 
         <div>
-            <label for="primer_check">Checking primers</label><br>
+            <label for="resistance_marker">Resistance marker</label><br>
             <p class="explanation">
-                Primers used for PCR verification of marker cassette integration. Choose NatMX6 or KanMX6 for
-                standard cassettes, or &quot;Other&quot; to enter custom primers (e.g. for HygMX6 or another marker).
+                Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
+                Automatic check primers will be provided for standard cassettes.
             </p>
-            <input type="radio" id="natmx6" name="primer_check" value="natmx6" checked onchange="togglePrimerCheck()">
-            <label for="natmx6">NatMx6</label>
-            <br>
-            <input type="radio" id="kanmx6" name="primer_check" value="kanmx6" onchange="togglePrimerCheck()">
+            <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
+                onchange="togglePrimerCheck()">
             <label for="kanmx6">KanMx6</label>
             <br>
-            <input type="radio" id="other" name="primer_check" value="other" onchange="togglePrimerCheck()">
+            <input type="radio" id="natmx6" name="resistance_marker" value="natmx6" onchange="togglePrimerCheck()">
+            <label for="natmx6">NatMx6</label>
+            <br>
+            <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6" onchange="togglePrimerCheck()">
+            <label for="hphmx6">HphMx6</label>
+            <br>
+            <input type="radio" id="other" name="resistance_marker" value="other" onchange="togglePrimerCheck()">
             <label for="other">Other</label>
         </div>
         <br>
@@ -183,19 +188,29 @@ SPBC15D4.01c</textarea><br>
             }
 
             function togglePrimerCheck() {
-                var selectedOption = document.querySelector('input[name="primer_check"]:checked').value;
+                var selectedOption = document.querySelector('input[name="resistance_marker"]:checked').value;
+                var defaultPlasmid = document.getElementById("plasmid_default");
                 if (selectedOption === "other") {
-                    // Clear the content of primer inputs
                     document.getElementById("checking-primer-forward").value = "";
                     document.getElementById("checking-primer-reverse").value = "";
+                    defaultPlasmid.disabled = true;
+                    if (defaultPlasmid.checked) {
+                        document.getElementById("plasmid_addgene").checked = true;
+                    }
+                } else {
+                    defaultPlasmid.disabled = false;
+                    if (selectedOption === "kanmx6") {
+                        document.getElementById("checking-primer-forward").value = "CGCTATACTGCTGTCGATTCG";
+                        document.getElementById("checking-primer-reverse").value = "CGGATGTGATGTGAGAACTGTATCCTAGC";
+                    } else if (selectedOption === "hphmx6") {
+                        document.getElementById("checking-primer-forward").value = "GCGCAGAAAGTAATATCATGCG";
+                        document.getElementById("checking-primer-reverse").value = "GCTCCATACAAGCCAACCACG";
+                    } else if (selectedOption === "natmx6") {
+                        document.getElementById("checking-primer-forward").value = "GTACCACTCTTGACGACACG";
+                        document.getElementById("checking-primer-reverse").value = "GCATGCTCATGTAGAGCGCC";
+                    }
                 }
-                else if (selectedOption === "kanmx6") {
-                    document.getElementById("checking-primer-forward").value = "CGCTATACTGCTGTCGATTCG";
-                    document.getElementById("checking-primer-reverse").value = "CGGATGTGATGTGAGAACTGTATCCTAGC";
-                } else if (selectedOption === "natmx6") {
-                    document.getElementById("checking-primer-forward").value = "GTACCACTCTTGACGACACG";
-                    document.getElementById("checking-primer-reverse").value = "GCATGCTCATGTAGAGCGCC";
-                }
+                togglePlasmidInput();
             }
 
             window.onload = () => {

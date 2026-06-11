@@ -8,7 +8,7 @@ from Bio.Seq import reverse_complement
 from Bio.Restriction.Restriction import RestrictionType
 from Bio.Data.IUPACData import ambiguous_dna_values as _ambiguous_dna_values
 from typing import Callable
-from .primer3_functions import primer3_calc_tm, PrimerDesignSettings
+from .primer3_functions import primer3_calc_tm, PrimerDesignSettings, primer3_design_primers
 
 ambiguous_dna_values = _ambiguous_dna_values.copy()
 # Remove acgt
@@ -246,38 +246,44 @@ def simple_pair_primers(
     return (Primer(fwd_primer_seq, name=fwd_primer_name), Primer(rvs_primer_seq, name=rvs_primer_name))
 
 
-# def gateway_attB_primers(
-#     template: Dseqrecord,
-#     minimal_hybridization_length: int,
-#     target_tm: float,
-#     sites: tuple[str, str],
-#     spacers: tuple[str, str],
-#     filler_bases: str = 'GGGG',
-# ) -> tuple[PrimerModel, PrimerModel]:
-#     if spacers is None:
-#         spacers = ['', '']
+def primer_to_amplify_fragment_of_given_size_knowing_other_primer(
+    template: Dseqrecord,
+    known_primer: Primer,
+    known_is_forward: bool,
+    fragment_size_range: list[int, int],
+) -> Primer:
+    """
+    Design primers to amplify a DNA fragment of a given size, knowing one primer.
+    """
+    other_primer_tm = primer3_calc_tm(str(known_primer.seq), PrimerDesignSettings())
+    if known_is_forward:
+        seq_args = {
+            'SEQUENCE_PRIMER': str(known_primer.seq),
+        }
+    else:
+        seq_args = {
+            'SEQUENCE_PRIMER_REVCOMP': str(known_primer.seq),
+        }
 
-#     if len(spacers) != 2:
-#         raise ValueError("The 'spacers' list must contain exactly two elements.")
-
-#     if sites[0] not in primer_design_attB or sites[1] not in primer_design_attB:
-#         raise ValueError('Invalid attB site.')
-
-#     amplicon = primer_design(template, limit=minimal_hybridization_length, target_tm=target_tm)
-#     fwd_primer, rvs_primer = amplicon.primers()
-
-#     if fwd_primer is None or rvs_primer is None:
-#         raise ValueError('Primers could not be designed, try changing settings.')
-
-#     template_name = template.name if template.name != 'name' else f'seq_{template.id}'
-
-#     left_site = primer_design_attB[sites[0]]
-#     right_site = primer_design_attB[sites[1]]
-
-#     fwd_primer_seq = filler_bases + left_site + spacers[0] + fwd_primer.seq
-#     rvs_primer_seq = filler_bases + right_site + reverse_complement(spacers[1]) + rvs_primer.seq
-
-#     return (
-#         PrimerModel(id=0, name=f'{template_name}_{sites[0]}_fwd', sequence=str(fwd_primer_seq)),
-#         PrimerModel(id=0, name=f'{template_name}_{sites[1]}_rvs', sequence=str(rvs_primer_seq)),
-#     )
+    result = primer3_design_primers(
+        str(template.seq),
+        seq_args=seq_args,
+        global_args={
+            'PRIMER_PRODUCT_SIZE_RANGE': [fragment_size_range],  # ~500 bp band
+            'PRIMER_OPT_SIZE': 20,
+            'PRIMER_MIN_SIZE': 18,
+            'PRIMER_MAX_SIZE': 30,
+            'PRIMER_OPT_TM': other_primer_tm,
+            'PRIMER_MIN_TM': other_primer_tm - 2,
+            'PRIMER_MAX_TM': other_primer_tm + 2,
+            'PRIMER_PICK_ANYWAY': 1,
+        },
+    )
+    try:
+        if known_is_forward:
+            return Primer(result['PRIMER_RIGHT'][0]['SEQUENCE'], name=f'{template.name}_fwd')
+        else:
+            return Primer(result['PRIMER_LEFT'][0]['SEQUENCE'], name=f'{template.name}_rvs')
+    except IndexError:
+        print(result)
+        raise ValueError(f'Primers for checking could not be designed: {result}')

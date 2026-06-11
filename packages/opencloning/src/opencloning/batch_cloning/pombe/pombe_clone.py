@@ -1,40 +1,18 @@
 import os
+from pydna.dseqrecord import Dseqrecord
 from pydna.assembly2 import homologous_recombination_integration, pcr_assembly
-from opencloning.dna_functions import request_from_addgene
 from opencloning.ncbi_requests import get_annotations_from_query, get_genome_region_from_annotation
-import asyncio
-from Bio import SeqIO
 from pydna.primer import Primer
 from pydna.opencloning_models import CloningStrategy
-from fastapi.datastructures import UploadFile
-from pydna.parsers import parse as pydna_parse
-from opencloning.dna_functions import custom_file_parser
-import io
+from pydna.utils import location_boundaries
+
+from opencloning.primer_design import primer_to_amplify_fragment_of_given_size_knowing_other_primer
 
 
-async def main(
-    gene: str,
-    assembly_accession: str,
-    output_dir: str,
-    plasmid_input: UploadFile | str = '19343',
-    padding: int = 1000,
-):
+async def main(gene: str, assembly_accession: str, output_dir: str, plasmid: Dseqrecord, common_primers: list[Primer]):
     print(f"\033[92mCloning {gene}\033[0m")
     # Parse primers =================================================================================
-    primers = [Primer(p) for p in SeqIO.parse(os.path.join(output_dir, gene, 'primers.fa'), 'fasta')]
-    common_primers = [Primer(p) for p in SeqIO.parse(os.path.join(output_dir, 'checking_primers.fa'), 'fasta')]
-
-    # Get plasmid sequence =================================================================================
-    if isinstance(plasmid_input, UploadFile):
-        file_content = await plasmid_input.read()
-        if plasmid_input.filename.endswith('.dna'):
-            file_streamer = io.BytesIO(file_content)
-            plasmid = custom_file_parser(file_streamer, 'snapgene')[0]
-        else:
-            plasmid = pydna_parse(file_content)[0]
-
-    else:
-        plasmid = await request_from_addgene(plasmid_input)
+    # Primers have to be: clone_fwd, clone_rvs, check_fwd, check_rvs
 
     # Get genome region =====================================================================
     annotations = await get_annotations_from_query(gene, assembly_accession)
@@ -42,20 +20,50 @@ async def main(
         raise ValueError(f'No annotations found for {gene}')
 
     annotations = [a for a in annotations if gene.upper() in a['locus_tag'].upper()]
-    if len(annotations) != 1:
+    if len(annotations) == 0:
         raise ValueError(f'No right annotation found for {gene}')
+    if len(annotations) > 1:
+        raise ValueError(f'Multiple annotations found for {gene}')
 
-    locus = await get_genome_region_from_annotation(annotations[0], 1000, 1000)
+    annotation = annotations[0]
+    if annotation['gene_type'] != 'protein-coding':
+        raise ValueError(f'{gene} is not a protein-coding gene')
+    if 'gene_id' not in annotation or not annotation['gene_id']:
+        raise ValueError(f'{gene} has no gene_id')
 
+    # Get homology arms ================================================================================
+
+    locus = await get_genome_region_from_annotation(annotation, 1000, 1000)
+    feature = next(
+        f
+        for f in locus.features
+        if (f.type == 'CDS') and (f"GeneID:{annotation['gene_id']}" in f.qualifiers['db_xref'])
+    )
+    start, end = (int(i) for i in location_boundaries(feature.location))
+    left_homology_arm = str(locus.seq[start - 80 : start]).lower()
+    right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
+    left_seq = 'CGGATCCCCGGGTTAATTAA'
+    right_seq = 'GAATTCGAGCTCGTTTAAAC'
+    left_primer = Primer(left_homology_arm + left_seq, name=f'{gene}_deletion_fwd')
+    right_primer = Primer(right_homology_arm + right_seq, name=f'{gene}_deletion_rvs')
     # PCR ================================================================================================
-    pcr_products = pcr_assembly(plasmid, primers[0], primers[1], limit=14, mismatches=0)
+    pcr_products = pcr_assembly(plasmid, left_primer, right_primer, limit=14, mismatches=0)
     pcr_products[0].name = 'amplified_marker'
     alleles = homologous_recombination_integration(locus, [pcr_products[0]], 40)
-    pcr_check1 = pcr_assembly(alleles[0], primers[2], common_primers[1], limit=14, mismatches=0)[0]
+    alleles[0].name = f'{gene}Δ'
+    # Check PCR ======================================================================================
+    right_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
+        alleles[0], common_primers[0], True, [900, 1200]
+    )
+    right_check_primer.name = f'{gene}_check_pcr_right'
+    left_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
+        alleles[0], common_primers[1], False, [1100, 1200]
+    )
+    left_check_primer.name = f'{gene}_check_pcr_left'
+    pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)[0]
     pcr_check1.name = 'check_pcr_left'
-    pcr_check2 = pcr_assembly(alleles[0], primers[3], common_primers[0], limit=14, mismatches=0)[0]
+    pcr_check2 = pcr_assembly(alleles[0], common_primers[0], right_check_primer, limit=14, mismatches=0)[0]
     pcr_check2.name = 'check_pcr_right'
-    alleles[0].name = 'deletion_allele'
 
     cs = CloningStrategy.from_dseqrecords([pcr_check1, pcr_check2])
 
@@ -64,46 +72,3 @@ async def main(
 
     with open(os.path.join(output_dir, gene, 'cloning_strategy.json'), 'w') as f:
         f.write(cs.model_dump_json(indent=2))
-
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser(description='List of genes to delete from S. pombe')
-    parser.add_argument(
-        '--genes', type=str, required=True, help='Path to a file containing a list of genes, one per line'
-    )
-    args = parser.parse_args()
-
-    parser.add_argument(
-        '--assembly_accession',
-        type=str,
-        default='GCF_000002945.2',
-        help='Assembly accession for S. pombe genome (default: GCF_000002945.2)',
-    )
-
-    parser.add_argument(
-        '--output_dir',
-        type=str,
-        default='batch_cloning_output',
-        help='Directory to save the output files (default: batch_cloning_output)',
-    )
-
-    parser.add_argument(
-        '--plasmid',
-        type=str,
-        default='19343',
-        help='Addgene ID for the plasmid (default: 19343)',
-    )
-
-    args = parser.parse_args()
-    assembly_accession = args.assembly_accession
-
-    with open(args.genes, 'r') as f:
-        genes = [line.strip() for line in f if line.strip()]
-
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
-
-    for gene in genes:
-        asyncio.run(main(gene, assembly_accession, args.output_dir, args.plasmid))
