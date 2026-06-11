@@ -197,373 +197,375 @@
 
 <body>
     <div class="form-container">
-    <h1>Batch Cloning Gene List</h1>
-    <p class="explanation" style="margin-bottom: 24px;">
-        Design PCR-based cloning strategies for <em>Schizosaccharomyces pombe</em> in batch.
-    </p>
-    <h3>How to use</h3>
-    <ul>
-        <li>Select the cloning type</li>
-        <li>Enter S.&nbsp;pombe systematic gene IDs (e.g. SPBC15D4.01c).</li>
-        <li>Select a marker plasmid.</li>
-        <li>Specify verification primers.</li>
-        <li>The pipeline designs primers for integration and checking.</li>
-        <li>Note: Integration primers assume the same binding sequence on the plasmid always:
-            <ul>
-                <li><code>CGGATCCCCGGGTTAATTAA</code> for forward primer</li>
-                <li><code>GAATTCGAGCTCGTTTAAAC</code> for reverse primer</li>
-            </ul>
-        </li>
-    </ul>
+        <h1>Batch Cloning Gene List</h1>
+        <p class="explanation" style="margin-bottom: 24px;">
+            Design PCR-based cloning strategies for <em>Schizosaccharomyces pombe</em> in batch.
+        </p>
+        <h3>How to use</h3>
+        <ul>
+            <li>Select the cloning type</li>
+            <li>Enter S.&nbsp;pombe systematic gene IDs (e.g. SPBC15D4.01c).</li>
+            <li>Select a marker plasmid.</li>
+            <li>Specify verification primers.</li>
+            <li>The pipeline designs primers for integration and checking.</li>
+        </ul>
 
-    <h3>What it returns</h3>
-    <p>After a delay (can be long), it returns a ZIP archive with:</p>
+        <h3>What it returns</h3>
+        <p>After a delay (can be long), it returns a ZIP archive with:</p>
 
-    <ul>
-        <li>Per-gene folders that contain:
-            <ul>
-                <li>Genbank files with the sequences involved</li>
-                <li>A json file containing the entire cloning strategy. You can drag-and-drop
-                    it into the <a href="https://app.opencloning.org" target="_blank" rel="noopener">OpenCloning
-                        website</a> to visualize the strategy.
-                    It will look similar to <a
-                        href="https://app.opencloning.org/?source=example&example=homologous_recombination.json"
-                        target="_blank" rel="noopener">this</a>.
-                </li>
+        <ul>
+            <li>Per-gene folders that contain:
+                <ul>
+                    <li>Genbank files with the sequences involved</li>
+                    <li>A json file containing the entire cloning strategy. You can drag-and-drop
+                        it into the <a href="https://app.opencloning.org" target="_blank" rel="noopener">OpenCloning
+                            website</a> to visualize the strategy.
+                        It will look similar to <a
+                            href="https://app.opencloning.org/?source=example&example=homologous_recombination.json"
+                            target="_blank" rel="noopener">this</a>.
+                    </li>
 
-            </ul>
-        </li>
+                </ul>
+            </li>
 
-        <li>Summary tables (TSV, Excel, YAML)</li>
-    </ul>
+            <li>Summary tables (TSV, Excel, YAML)</li>
+        </ul>
 
-    <h3>Best way to get started</h3>
+        <h3>Best way to get started</h3>
 
-    <p>
-        Just try with the below example, it will return a zip file and you can drag-and-drop the json file
-        into <a href="https://app.opencloning.org" target="_blank" rel="noopener">OpenCloning</a> to visualize the
-        strategy.
-        Check also the summary.xlsx file to see the primers.
-    </p>
+        <p>
+            Just try with the below example, it will return a zip file and you can drag-and-drop the json file
+            into <a href="https://app.opencloning.org" target="_blank" rel="noopener">OpenCloning</a> to visualize the
+            strategy.
+            Check also the summary.xlsx file to see the primers.
+        </p>
 
-    <form>
-        <fieldset class="form-section">
-            <legend>Cloning type</legend>
-            <div class="radio-list">
-                <label class="radio-label" for="gene_deletion">
-                    <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked
-                        onchange="toggleCloningType()">
-                    Gene deletion
-                </label>
-                <label class="radio-label" for="gene_cterm_tagging">
-                    <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging"
-                        onchange="toggleCloningType()">
-                    Gene C-term tagging
-                </label>
-            </div>
-        </fieldset>
-
-        <fieldset class="form-section">
-            <legend>Gene list (one gene per line)</legend>
-            <p class="explanation">
-                S. pombe systematic IDs only (e.g. SPAPB1A10.09, SPBC15D4.01c). One gene ID per line; empty lines are
-                ignored.
-            </p>
-            <textarea id="gene_list" name="gene_list" required>SPAPB1A10.09
-SPBC15D4.01c</textarea>
-        </fieldset>
-
-        <fieldset class="form-section" id="integration_binding_primers">
-            <legend class="legend-with-action">
-                Plasmid primer binding
-                <button type="button" class="section-action" onclick="restoreIntegrationBindingDefaults()">Restore
-                    defaults</button>
-            </legend>
-            <p class="explanation">
-                Primer part that binds to the plasmid. By default, values for pFA6a-derived plasmids are used.
-            </p>
-            <div class="primer_pair_row">
-                <div class="primer_pair_field">
-                    <label class="field-label" for="integration_binding_forward">Forward primer binding</label>
-                    <input type="text" id="integration_binding_forward" name="integration_binding_forward"
-                        value="CGGATCCCCGGGTTAATTAA" pattern="[ACGTacgt]+" required minlength="1"
-                        placeholder="e.g. CGGATCCCCGGGTTAATTAA">
-                </div>
-                <div class="primer_pair_field">
-                    <label class="field-label" for="integration_binding_reverse">Reverse primer binding</label>
-                    <input type="text" id="integration_binding_reverse" name="integration_binding_reverse"
-                        value="GAATTCGAGCTCGTTTAAAC" pattern="[ACGTacgt]+" required minlength="1"
-                        placeholder="e.g. GAATTCGAGCTCGTTTAAAC">
-                </div>
-            </div>
-        </fieldset>
-
-        <fieldset class="form-section">
-            <legend>Desired output</legend>
-            <div class="radio-list">
-                <label class="radio-label" for="output_simulate">
-                    <input type="radio" id="output_simulate" name="desired_output" value="simulate_cloning" checked
-                        onchange="toggleDesiredOutput()">
-                    Design primers and simulate cloning
-                </label>
-                <label class="radio-label" for="output_primers_only">
-                    <input type="radio" id="output_primers_only" name="desired_output" value="primers_only"
-                        onchange="toggleDesiredOutput()">
-                    Design primers only
-                </label>
-            </div>
-        </fieldset>
-
-        <div id="cloning_simulation_sections" class="form-section-group">
+        <form>
             <fieldset class="form-section">
-                <legend>Plasmid source</legend>
-                <p class="explanation">
-                    The plasmid supplies the marker cassette (e.g. KanMX6, NatMX6) to be PCR-amplified and integrated
-                    into
-                    each gene locus via homologous recombination.
-                </p>
+                <legend>Cloning type</legend>
                 <div class="radio-list">
-                    <label class="radio-label" for="plasmid_default">
-                        <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
-                            onchange="togglePlasmidInput()">
-                        <span id="default_plasmid_label">Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)</span>
+                    <label class="radio-label" for="gene_deletion">
+                        <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked
+                            onchange="toggleCloningType()">
+                        Gene deletion
                     </label>
-                    <label class="radio-label" for="plasmid_addgene">
-                        <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
-                            onchange="togglePlasmidInput()">
-                        Provide Addgene Identifier
+                    <label class="radio-label" for="gene_cterm_tagging">
+                        <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging"
+                            onchange="toggleCloningType()">
+                        Gene C-term tagging
                     </label>
-                    <label class="radio-label" for="plasmid_file">
-                        <input type="radio" id="plasmid_file" name="plasmid_option" value="file"
-                            onchange="togglePlasmidInput()">
-                        Upload Plasmid File
-                    </label>
-                </div>
-
-                <div id="plasmid_file_input" class="nested-section" style="display: none;">
-                    <label class="field-label" for="plasmid_file_upload">Upload plasmid sequence file</label>
-                    <p class="explanation">
-                        Accepted formats: GenBank (.gb, .gbk, .genbank), FASTA (.fasta, .fa), or snapgene (.dna).
-                    </p>
-                    <input type="file" id="plasmid_file_upload" name="plasmid_file"
-                        accept=".gb,.gbk,.genbank,.fasta,.fa,.seq,.dna">
-                </div>
-
-                <div id="addgene_input" class="nested-section" style="display: none;">
-                    <label class="field-label" for="addgene_id">Addgene identifier</label>
-                    <p class="explanation">
-                        Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
-                        <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
-                    </p>
-                    <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296">
                 </div>
             </fieldset>
 
             <fieldset class="form-section">
-                <legend>Resistance marker</legend>
+                <legend>Gene list (one gene per line)</legend>
                 <p class="explanation">
-                    Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
-                    Automatic check primers will be provided for standard cassettes.
+                    S. pombe systematic IDs only (e.g. SPAPB1A10.09, SPBC15D4.01c). One gene ID per line; empty lines
+                    are
+                    ignored.
                 </p>
-                <div class="radio-list">
-                    <label class="radio-label" for="kanmx6">
-                        <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
-                            onchange="togglePrimerCheck()">
-                        KanMx6
-                    </label>
-                    <label class="radio-label" for="natmx6">
-                        <input type="radio" id="natmx6" name="resistance_marker" value="natmx6"
-                            onchange="togglePrimerCheck()">
-                        NatMx6
-                    </label>
-                    <label class="radio-label" for="hphmx6">
-                        <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6"
-                            onchange="togglePrimerCheck()">
-                        HphMx6
-                    </label>
-                    <label class="radio-label" for="other">
-                        <input type="radio" id="other" name="resistance_marker" value="other"
-                            onchange="togglePrimerCheck()">
-                        Other
-                    </label>
-                </div>
+                <textarea id="gene_list" name="gene_list" required>SPAPB1A10.09
+SPBC15D4.01c</textarea>
+            </fieldset>
 
-                <div id="checking_primers" class="nested-section">
-                    <div class="primer_pair_row">
-                        <div class="primer_pair_field">
-                            <label class="field-label" for="checking-primer-forward">Checking primer (forward)</label>
-                            <p class="explanation">
-                                Aligns to the top strand of the inserted cassette.
-                            </p>
-                            <input type="text" id="checking-primer-forward" name="checking_primer_forward"
-                                pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GTACCACTCTTGACGACACG">
-                        </div>
-                        <div class="primer_pair_field">
-                            <label class="field-label" for="checking-primer-reverse">Checking primer (reverse)</label>
-                            <p class="explanation">
-                                Aligns to the bottom strand of the inserted cassette.
-                            </p>
-                            <input type="text" id="checking-primer-reverse" name="checking_primer_reverse"
-                                pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GCATGCTCATGTAGAGCGCC">
-                        </div>
+            <fieldset class="form-section" id="integration_binding_primers">
+                <legend class="legend-with-action">
+                    Plasmid primer binding
+                    <button type="button" class="section-action" onclick="restoreIntegrationBindingDefaults()">Restore
+                        defaults</button>
+                </legend>
+                <p class="explanation">
+                    Primer part that binds to the plasmid. By default, values for pFA6a-derived plasmids are used.
+                </p>
+                <div class="primer_pair_row">
+                    <div class="primer_pair_field">
+                        <label class="field-label" for="integration_binding_forward">Forward primer binding</label>
+                        <input type="text" id="integration_binding_forward" name="integration_binding_forward"
+                            value="CGGATCCCCGGGTTAATTAA" pattern="[ACGTacgt]+" required minlength="1"
+                            placeholder="e.g. CGGATCCCCGGGTTAATTAA">
+                    </div>
+                    <div class="primer_pair_field">
+                        <label class="field-label" for="integration_binding_reverse">Reverse primer binding</label>
+                        <input type="text" id="integration_binding_reverse" name="integration_binding_reverse"
+                            value="GAATTCGAGCTCGTTTAAAC" pattern="[ACGTacgt]+" required minlength="1"
+                            placeholder="e.g. GAATTCGAGCTCGTTTAAAC">
                     </div>
                 </div>
             </fieldset>
-        </div>
 
-        <div class="form-footer">
-            <p class="explanation" id="submit-explanation">
-                Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning
-                strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).
-            </p>
-            <input type="submit" value="Submit" id="submit-button">
-            <div id="loading-message" style="display: none;">
-                Processing request, please wait...
+            <fieldset class="form-section">
+                <legend>Desired output</legend>
+                <div class="radio-list">
+                    <label class="radio-label" for="output_simulate">
+                        <input type="radio" id="output_simulate" name="desired_output" value="simulate_cloning" checked
+                            onchange="toggleDesiredOutput()">
+                        Design primers and simulate cloning
+                    </label>
+                    <label class="radio-label" for="output_primers_only">
+                        <input type="radio" id="output_primers_only" name="desired_output" value="primers_only"
+                            onchange="toggleDesiredOutput()">
+                        Design primers only
+                    </label>
+                </div>
+            </fieldset>
+
+            <div id="cloning_simulation_sections" class="form-section-group">
+                <fieldset class="form-section">
+                    <legend>Plasmid source</legend>
+                    <p class="explanation">
+                        The plasmid supplies the marker cassette (e.g. KanMX6, NatMX6) to be PCR-amplified and
+                        integrated
+                        into
+                        each gene locus via homologous recombination.
+                    </p>
+                    <div class="radio-list">
+                        <label class="radio-label" for="plasmid_default">
+                            <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
+                                onchange="togglePlasmidInput()">
+                            <span id="default_plasmid_label">Default plasmid (pFA6a-kanMX6, pFA6a-natMX6,
+                                pFA6a-hphMX6)</span>
+                        </label>
+                        <label class="radio-label" for="plasmid_addgene">
+                            <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
+                                onchange="togglePlasmidInput()">
+                            Provide Addgene Identifier
+                        </label>
+                        <label class="radio-label" for="plasmid_file">
+                            <input type="radio" id="plasmid_file" name="plasmid_option" value="file"
+                                onchange="togglePlasmidInput()">
+                            Upload Plasmid File
+                        </label>
+                    </div>
+
+                    <div id="plasmid_file_input" class="nested-section" style="display: none;">
+                        <label class="field-label" for="plasmid_file_upload">Upload plasmid sequence file</label>
+                        <p class="explanation">
+                            Accepted formats: GenBank (.gb, .gbk, .genbank), FASTA (.fasta, .fa), or snapgene (.dna).
+                        </p>
+                        <input type="file" id="plasmid_file_upload" name="plasmid_file"
+                            accept=".gb,.gbk,.genbank,.fasta,.fa,.seq,.dna">
+                    </div>
+
+                    <div id="addgene_input" class="nested-section" style="display: none;">
+                        <label class="field-label" for="addgene_id">Addgene identifier</label>
+                        <p class="explanation">
+                            Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
+                            <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
+                        </p>
+                        <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296">
+                    </div>
+                </fieldset>
+
+                <fieldset class="form-section">
+                    <legend>Resistance marker</legend>
+                    <p class="explanation">
+                        Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
+                        Automatic check primers will be provided for standard cassettes.
+                    </p>
+                    <div class="radio-list">
+                        <label class="radio-label" for="kanmx6">
+                            <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
+                                onchange="togglePrimerCheck()">
+                            KanMx6
+                        </label>
+                        <label class="radio-label" for="natmx6">
+                            <input type="radio" id="natmx6" name="resistance_marker" value="natmx6"
+                                onchange="togglePrimerCheck()">
+                            NatMx6
+                        </label>
+                        <label class="radio-label" for="hphmx6">
+                            <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6"
+                                onchange="togglePrimerCheck()">
+                            HphMx6
+                        </label>
+                        <label class="radio-label" for="other">
+                            <input type="radio" id="other" name="resistance_marker" value="other"
+                                onchange="togglePrimerCheck()">
+                            Other
+                        </label>
+                    </div>
+
+                    <div id="checking_primers" class="nested-section">
+                        <div class="primer_pair_row">
+                            <div class="primer_pair_field">
+                                <label class="field-label" for="checking-primer-forward">Checking primer
+                                    (forward)</label>
+                                <p class="explanation">
+                                    Aligns to the top strand of the inserted cassette.
+                                </p>
+                                <input type="text" id="checking-primer-forward" name="checking_primer_forward"
+                                    pattern="[ACGTacgt]+" required minlength="1"
+                                    placeholder="e.g. GTACCACTCTTGACGACACG">
+                            </div>
+                            <div class="primer_pair_field">
+                                <label class="field-label" for="checking-primer-reverse">Checking primer
+                                    (reverse)</label>
+                                <p class="explanation">
+                                    Aligns to the bottom strand of the inserted cassette.
+                                </p>
+                                <input type="text" id="checking-primer-reverse" name="checking_primer_reverse"
+                                    pattern="[ACGTacgt]+" required minlength="1"
+                                    placeholder="e.g. GCATGCTCATGTAGAGCGCC">
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
             </div>
-        </div>
-        <script>
-            const DEFAULT_INTEGRATION_BINDING_FORWARD = "CGGATCCCCGGGTTAATTAA";
-            const DEFAULT_INTEGRATION_BINDING_REVERSE = "GAATTCGAGCTCGTTTAAAC";
 
-            const DEFAULT_PLASMIDS = {
-                gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
-                gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-psfGFPcp-natMX6, pFA6a-mCherry-hphMX6",
-            };
+            <div class="form-footer">
+                <p class="explanation" id="submit-explanation">
+                    Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers,
+                    cloning
+                    strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).
+                </p>
+                <input type="submit" value="Submit" id="submit-button">
+                <div id="loading-message" style="display: none;">
+                    Processing request, please wait...
+                </div>
+            </div>
+            <script>
+                const DEFAULT_INTEGRATION_BINDING_FORWARD = "CGGATCCCCGGGTTAATTAA";
+                const DEFAULT_INTEGRATION_BINDING_REVERSE = "GAATTCGAGCTCGTTTAAAC";
 
-            function toggleCloningType() {
-                var cloningType = document.querySelector('input[name="cloning_type"]:checked').value;
-                document.getElementById("default_plasmid_label").textContent =
-                    "Default plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
-            }
+                const DEFAULT_PLASMIDS = {
+                    gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
+                    gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-psfGFPcp-natMX6, pFA6a-mCherry-hphMX6",
+                };
 
-            function restoreIntegrationBindingDefaults() {
-                document.getElementById("integration_binding_forward").value = DEFAULT_INTEGRATION_BINDING_FORWARD;
-                document.getElementById("integration_binding_reverse").value = DEFAULT_INTEGRATION_BINDING_REVERSE;
-            }
+                function toggleCloningType() {
+                    var cloningType = document.querySelector('input[name="cloning_type"]:checked').value;
+                    document.getElementById("default_plasmid_label").textContent =
+                        "Default plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
+                }
 
-            function restoreCloningSimulationDefaults() {
-                document.getElementById("plasmid_default").checked = true;
-                document.getElementById("plasmid_default").disabled = false;
-                document.getElementById("addgene_id").value = "39296";
-                document.getElementById("plasmid_file_upload").value = "";
-                document.getElementById("kanmx6").checked = true;
-                togglePrimerCheck();
-            }
+                function restoreIntegrationBindingDefaults() {
+                    document.getElementById("integration_binding_forward").value = DEFAULT_INTEGRATION_BINDING_FORWARD;
+                    document.getElementById("integration_binding_reverse").value = DEFAULT_INTEGRATION_BINDING_REVERSE;
+                }
 
-            function toggleDesiredOutput() {
-                var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
-                document.getElementById("cloning_simulation_sections").style.display = primersOnly ? "none" : "flex";
-                document.getElementById("submit-explanation").textContent = primersOnly
-                    ? "Submit to design primers. Results will be shown in a table below."
-                    : "Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).";
-                document.getElementById("primer-results").style.display = "none";
-                document.getElementById("primer-results-table").innerHTML = "";
-                if (primersOnly) {
-                    restoreCloningSimulationDefaults();
-                } else {
+                function restoreCloningSimulationDefaults() {
+                    document.getElementById("plasmid_default").checked = true;
+                    document.getElementById("plasmid_default").disabled = false;
+                    document.getElementById("addgene_id").value = "39296";
+                    document.getElementById("plasmid_file_upload").value = "";
+                    document.getElementById("kanmx6").checked = true;
+                    togglePrimerCheck();
+                }
+
+                function toggleDesiredOutput() {
+                    var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
+                    document.getElementById("cloning_simulation_sections").style.display = primersOnly ? "none" : "flex";
+                    document.getElementById("submit-explanation").textContent = primersOnly
+                        ? "Submit to design primers. Results will be shown in a table below."
+                        : "Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).";
+                    document.getElementById("primer-results").style.display = "none";
+                    document.getElementById("primer-results-table").innerHTML = "";
+                    if (primersOnly) {
+                        restoreCloningSimulationDefaults();
+                    } else {
+                        togglePlasmidInput();
+                    }
+                }
+
+                function togglePlasmidInput() {
+                    var selectedOption = document.querySelector('input[name="plasmid_option"]:checked').value;
+                    document.getElementById("plasmid_file_input").style.display = selectedOption === "file" ? "block" : "none";
+                    document.getElementById("addgene_input").style.display = selectedOption === "addgene" ? "block" : "none";
+                }
+
+                function togglePrimerCheck() {
+                    var selectedOption = document.querySelector('input[name="resistance_marker"]:checked').value;
+                    var defaultPlasmid = document.getElementById("plasmid_default");
+                    if (selectedOption === "other") {
+                        document.getElementById("checking-primer-forward").value = "";
+                        document.getElementById("checking-primer-reverse").value = "";
+                        defaultPlasmid.disabled = true;
+                        if (defaultPlasmid.checked) {
+                            document.getElementById("plasmid_addgene").checked = true;
+                        }
+                    } else {
+                        defaultPlasmid.disabled = false;
+                        if (selectedOption === "kanmx6") {
+                            document.getElementById("checking-primer-forward").value = "CGCTATACTGCTGTCGATTCG";
+                            document.getElementById("checking-primer-reverse").value = "CGGATGTGATGTGAGAACTGTATCCTAGC";
+                        } else if (selectedOption === "hphmx6") {
+                            document.getElementById("checking-primer-forward").value = "GCGCAGAAAGTAATATCATGCG";
+                            document.getElementById("checking-primer-reverse").value = "GCTCCATACAAGCCAACCACG";
+                        } else if (selectedOption === "natmx6") {
+                            document.getElementById("checking-primer-forward").value = "GTACCACTCTTGACGACACG";
+                            document.getElementById("checking-primer-reverse").value = "GCATGCTCATGTAGAGCGCC";
+                        }
+                    }
                     togglePlasmidInput();
                 }
-            }
 
-            function togglePlasmidInput() {
-                var selectedOption = document.querySelector('input[name="plasmid_option"]:checked').value;
-                document.getElementById("plasmid_file_input").style.display = selectedOption === "file" ? "block" : "none";
-                document.getElementById("addgene_input").style.display = selectedOption === "addgene" ? "block" : "none";
-            }
+                window.onload = () => {
+                    toggleCloningType();
+                    toggleDesiredOutput();
+                    togglePrimerCheck();
+                    togglePlasmidInput();
 
-            function togglePrimerCheck() {
-                var selectedOption = document.querySelector('input[name="resistance_marker"]:checked').value;
-                var defaultPlasmid = document.getElementById("plasmid_default");
-                if (selectedOption === "other") {
-                    document.getElementById("checking-primer-forward").value = "";
-                    document.getElementById("checking-primer-reverse").value = "";
-                    defaultPlasmid.disabled = true;
-                    if (defaultPlasmid.checked) {
-                        document.getElementById("plasmid_addgene").checked = true;
-                    }
-                } else {
-                    defaultPlasmid.disabled = false;
-                    if (selectedOption === "kanmx6") {
-                        document.getElementById("checking-primer-forward").value = "CGCTATACTGCTGTCGATTCG";
-                        document.getElementById("checking-primer-reverse").value = "CGGATGTGATGTGAGAACTGTATCCTAGC";
-                    } else if (selectedOption === "hphmx6") {
-                        document.getElementById("checking-primer-forward").value = "GCGCAGAAAGTAATATCATGCG";
-                        document.getElementById("checking-primer-reverse").value = "GCTCCATACAAGCCAACCACG";
-                    } else if (selectedOption === "natmx6") {
-                        document.getElementById("checking-primer-forward").value = "GTACCACTCTTGACGACACG";
-                        document.getElementById("checking-primer-reverse").value = "GCATGCTCATGTAGAGCGCC";
-                    }
-                }
-                togglePlasmidInput();
-            }
+                    // Add form submit handler
+                    document.querySelector('form').addEventListener('submit', async function (e) {
+                        e.preventDefault();
 
-            window.onload = () => {
-                toggleCloningType();
-                toggleDesiredOutput();
-                togglePrimerCheck();
-                togglePlasmidInput();
+                        const formData = new FormData(this);
+                        const primersOnly = formData.get('desired_output') === 'primers_only';
 
-                // Add form submit handler
-                document.querySelector('form').addEventListener('submit', async function (e) {
-                    e.preventDefault();
+                        document.getElementById('submit-button').style.display = 'none';
+                        document.getElementById('loading-message').style.display = 'block';
+                        document.getElementById('primer-results').style.display = 'none';
+                        document.getElementById('primer-results-table').innerHTML = '';
 
-                    const formData = new FormData(this);
-                    const primersOnly = formData.get('desired_output') === 'primers_only';
+                        try {
+                            const response = await fetch(window.location.pathname, {
+                                method: 'POST',
+                                body: formData
+                            });
 
-                    document.getElementById('submit-button').style.display = 'none';
-                    document.getElementById('loading-message').style.display = 'block';
-                    document.getElementById('primer-results').style.display = 'none';
-                    document.getElementById('primer-results-table').innerHTML = '';
-
-                    try {
-                        const response = await fetch(window.location.pathname, {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        if (!response.ok) {
-                            const contentType = response.headers.get('content-type') || '';
-                            if (contentType.includes('application/json')) {
-                                throw new Error((await response.json()).detail);
-                            }
-                            throw new Error(await response.text());
-                        }
-
-                        if (primersOnly) {
-                            document.getElementById('primer-results-table').innerHTML = await response.text();
-                            document.getElementById('primer-results').style.display = 'block';
-                            document.getElementById('primer-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        } else {
-                            const contentDisposition = response.headers.get('Content-Disposition');
-                            let filename = 'batch_cloning_results.zip';
-                            if (contentDisposition) {
-                                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                                if (filenameMatch) {
-                                    filename = filenameMatch[1];
+                            if (!response.ok) {
+                                const contentType = response.headers.get('content-type') || '';
+                                if (contentType.includes('application/json')) {
+                                    throw new Error((await response.json()).detail);
                                 }
+                                throw new Error(await response.text());
                             }
 
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = filename;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
+                            if (primersOnly) {
+                                document.getElementById('primer-results-table').innerHTML = await response.text();
+                                document.getElementById('primer-results').style.display = 'block';
+                                document.getElementById('primer-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            } else {
+                                const contentDisposition = response.headers.get('Content-Disposition');
+                                let filename = 'batch_cloning_results.zip';
+                                if (contentDisposition) {
+                                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                                    if (filenameMatch) {
+                                        filename = filenameMatch[1];
+                                    }
+                                }
+
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            alert(error.message);
+                        } finally {
+                            document.getElementById('submit-button').style.display = 'block';
+                            document.getElementById('loading-message').style.display = 'none';
                         }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert(error.message);
-                    } finally {
-                        document.getElementById('submit-button').style.display = 'block';
-                        document.getElementById('loading-message').style.display = 'none';
-                    }
-                });
-            }
-        </script>
-    </form>
+                    });
+                }
+            </script>
+        </form>
     </div>
 
     <div class="results-container" id="primer-results">
