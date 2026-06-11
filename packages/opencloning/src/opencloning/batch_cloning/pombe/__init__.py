@@ -2,11 +2,11 @@ from fastapi import Form, File, UploadFile, HTTPException
 from typing import Annotated, Literal
 import os
 import tempfile
-import pandas as pd
 from fastapi.responses import FileResponse, HTMLResponse
 from .pombe_clone import main as pombe_clone
 from .pombe_summary import main as pombe_summary
 from .pombe_gather import main as pombe_gather
+from .pombe_primer_table import build_primer_summary_df, primer_summary_to_html
 import shutil
 from ...get_router import get_router
 from fastapi import Request
@@ -66,6 +66,25 @@ async def post_batch_cloning(
     if not genes:
         raise HTTPException(status_code=400, detail='No valid genes provided')
 
+    if desired_output == 'primers_only':
+        gene_primers = []
+        try:
+            for gene in genes:
+                primers = await pombe_clone(
+                    gene,
+                    ASSEMBLY_ACCESSION,
+                    integration_binding_forward,
+                    integration_binding_reverse,
+                    cloning_type,
+                    primers_only=True,
+                )
+                gene_primers.append((gene, cloning_type, primers))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        primer_df = build_primer_summary_df(gene_primers)
+        return HTMLResponse(content=primer_summary_to_html(primer_df))
+
     common_primers = [
         Primer(checking_primer_forward, name='common_insert_fwd'),
         Primer(checking_primer_reverse, name='common_insert_rvs'),
@@ -107,12 +126,12 @@ async def post_batch_cloning(
             await pombe_clone(
                 gene,
                 ASSEMBLY_ACCESSION,
-                temp_dir,
-                plasmid,
-                common_primers,
                 integration_binding_forward,
                 integration_binding_reverse,
                 cloning_type,
+                output_dir=temp_dir,
+                plasmid=plasmid,
+                common_primers=common_primers,
             )
 
         try:
@@ -120,18 +139,6 @@ async def post_batch_cloning(
             pombe_gather(temp_dir)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f'Summary failed: {e}')
-
-        if desired_output == 'primers_only':
-            primer_summary_path = os.path.join(temp_dir, 'primer_summary.tsv')
-            primer_df = pd.read_csv(primer_summary_path, sep='\t')
-            return HTMLResponse(
-                content=primer_df.to_html(
-                    index=False,
-                    border=0,
-                    classes='primer-summary-table',
-                    float_format='%.1f',
-                )
-            )
 
         zip_filename = f'{temp_dir}_archive'
         shutil.make_archive(zip_filename, 'zip', temp_dir)

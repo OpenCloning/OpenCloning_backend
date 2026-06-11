@@ -304,9 +304,9 @@ def primer_in_region(sequence: Dseqrecord, forward: bool) -> Primer:
         global_args={
             'PRIMER_PICK_LEFT_PRIMER': int(forward),
             'PRIMER_PICK_RIGHT_PRIMER': int(not forward),
-            'PRIMER_OPT_TM': 60,
-            'PRIMER_MIN_TM': 56,
-            'PRIMER_MAX_TM': 64,
+            'PRIMER_OPT_TM': 55,
+            'PRIMER_MIN_TM': 52,
+            'PRIMER_MAX_TM': 60,
             **settings.to_primer3_args(),
         },
     )
