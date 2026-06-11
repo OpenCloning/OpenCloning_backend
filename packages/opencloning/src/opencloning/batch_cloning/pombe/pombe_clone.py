@@ -19,11 +19,16 @@ def get_homology_arms(locus: Dseqrecord, feature: SeqFeature, cloning_type: str)
         left_homology_arm = str(locus.seq[start - 80 : start]).lower()
         right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
     elif cloning_type == 'gene_cterm_tagging':
-        # change the location of the feature reducing it by 3 bases
         feature.location = trim_location(feature.location, 3, from_end=True)
         start, end = (int(i) for i in location_boundaries(feature.location))
         left_homology_arm = str(locus.seq[end - 80 : end]).lower()
         right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
+    elif cloning_type in ('promoter_not_tag', 'promoter_with_tag'):
+        start, end = (int(i) for i in location_boundaries(feature.location))
+        left_homology_arm = str(locus.seq[start - 80 : start]).lower()
+        right_homology_arm = str(locus.seq[start : start + 80].reverse_complement()).lower()
+    else:
+        raise ValueError(f'Unsupported cloning type: {cloning_type}')
 
     return left_homology_arm, right_homology_arm
 
@@ -36,7 +41,7 @@ async def main(
     common_primers: list[Primer],
     integration_binding_forward: str,
     integration_binding_reverse: str,
-    cloning_type: Literal['gene_deletion', 'gene_cterm_tagging'],
+    cloning_type: Literal['gene_deletion', 'gene_cterm_tagging', 'promoter_not_tag', 'promoter_with_tag'],
 ):
     print(f"\033[92mCloning {gene}\033[0m")
     # Parse primers =================================================================================
@@ -81,16 +86,18 @@ async def main(
     # PCR ================================================================================================
     pcr_products = pcr_assembly(plasmid, left_primer, right_primer, limit=14, mismatches=0)
     pcr_products[0].name = 'amplified_marker'
-    alleles = homologous_recombination_integration(locus, [pcr_products[0]], 40)
+    alleles = homologous_recombination_integration(locus, [pcr_products[0]], 80)
     modified_allele_name = allele_name(gene, cloning_type)
     alleles[0].name = modified_allele_name
+    if len(alleles) > 1:
+        raise ValueError(f'Multiple insertions possible for {gene}')
     # Check PCR ======================================================================================
     right_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[0], True, [1100, 1300]
+        alleles[0], common_primers[0], True, [1000, 1300]
     )
     right_check_primer.name = f'{gene}_check_pcr_right'
     left_check_primer = primer_to_amplify_fragment_of_given_size_knowing_other_primer(
-        alleles[0], common_primers[1], False, [1100, 1300]
+        alleles[0], common_primers[1], False, [1000, 1300]
     )
     left_check_primer.name = f'{gene}_check_pcr_left'
     pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)[0]

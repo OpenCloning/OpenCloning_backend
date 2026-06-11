@@ -254,6 +254,16 @@
                             onchange="toggleCloningType()">
                         Gene C-term tagging
                     </label>
+                    <label class="radio-label" for="promoter_not_tag">
+                        <input type="radio" id="promoter_not_tag" name="cloning_type" value="promoter_not_tag"
+                            onchange="toggleCloningType()">
+                        Promoter insertion (no tag)
+                    </label>
+                    <label class="radio-label" for="promoter_with_tag">
+                        <input type="radio" id="promoter_with_tag" name="cloning_type" value="promoter_with_tag"
+                            onchange="toggleCloningType()">
+                        Promoter insertion (with tag)
+                    </label>
                 </div>
             </fieldset>
 
@@ -433,15 +443,48 @@ SPBC15D4.01c</textarea>
                         forward: "CGGATCCCCGGGTTAATTAA",
                         reverse: "GAATTCGAGCTCGTTTAAAC",
                     },
+                    promoter_not_tag: {
+                        forward: "GAATTCGAGCTCGTTTAAAC",
+                        reverse: "CATGATTTAACAAAGCGACTATA",
+                    },
+                    promoter_with_tag: {
+                        forward: "GAATTCGAGCTCGTTTAAAC",
+                        reverse: "TTTGTATAGTTCATCCATGC",
+                    },
+                };
+
+                const CHECKING_PRIMERS = {
+                    kanmx6: {
+                        forward: "CGCTATACTGCTGTCGATTCG",
+                        reverse: "CGGATGTGATGTGAGAACTGTATCCTAGC",
+                    },
+                    natmx6: {
+                        forward: "GTACCACTCTTGACGACACG",
+                        reverse: "GCATGCTCATGTAGAGCGCC",
+                    },
+                    hphmx6: {
+                        forward: "GCGCAGAAAGTAATATCATGCG",
+                        reverse: "GCTCCATACAAGCCAACCACG",
+                    },
+                    pnmt1: {
+                        forward: "GCTACTGGATGGTTCAGTCAC",
+                    },
                 };
 
                 const DEFAULT_PLASMIDS = {
                     gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
                     gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-natMX-(3xFLAG)-TEV-ProtA, pFA6a-mCherry-hphMX6",
+                    promoter_not_tag: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
+                    promoter_with_tag: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
                 };
 
                 function getCloningType() {
                     return document.querySelector('input[name="cloning_type"]:checked').value;
+                }
+
+                function isPromoterCloning() {
+                    var cloningType = getCloningType();
+                    return cloningType === "promoter_not_tag" || cloningType === "promoter_with_tag";
                 }
 
                 function applyIntegrationBindingDefaults() {
@@ -455,6 +498,7 @@ SPBC15D4.01c</textarea>
                     document.getElementById("default_plasmid_label").textContent =
                         "Example plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
                     applyIntegrationBindingDefaults();
+                    togglePrimerCheck();
                 }
 
                 function restoreIntegrationBindingDefaults() {
@@ -503,15 +547,13 @@ SPBC15D4.01c</textarea>
                         }
                     } else {
                         defaultPlasmid.disabled = false;
-                        if (selectedOption === "kanmx6") {
-                            document.getElementById("checking-primer-forward").value = "CGCTATACTGCTGTCGATTCG";
-                            document.getElementById("checking-primer-reverse").value = "CGGATGTGATGTGAGAACTGTATCCTAGC";
-                        } else if (selectedOption === "hphmx6") {
-                            document.getElementById("checking-primer-forward").value = "GCGCAGAAAGTAATATCATGCG";
-                            document.getElementById("checking-primer-reverse").value = "GCTCCATACAAGCCAACCACG";
-                        } else if (selectedOption === "natmx6") {
-                            document.getElementById("checking-primer-forward").value = "GTACCACTCTTGACGACACG";
-                            document.getElementById("checking-primer-reverse").value = "GCATGCTCATGTAGAGCGCC";
+                        var markerPrimers = CHECKING_PRIMERS[selectedOption];
+                        if (isPromoterCloning()) {
+                            document.getElementById("checking-primer-forward").value = CHECKING_PRIMERS.pnmt1.forward;
+                            document.getElementById("checking-primer-reverse").value = markerPrimers.forward;
+                        } else {
+                            document.getElementById("checking-primer-forward").value = markerPrimers.forward;
+                            document.getElementById("checking-primer-reverse").value = markerPrimers.reverse;
                         }
                     }
                     togglePlasmidInput();

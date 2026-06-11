@@ -10,7 +10,7 @@ from .pombe_gather import main as pombe_gather
 import shutil
 from ...get_router import get_router
 from fastapi import Request
-from opencloning.dna_functions import request_from_addgene, request_from_snapgene
+from opencloning.dna_functions import get_sequence_from_euroscarf_url, request_from_addgene, request_from_snapgene
 from pydna.primer import Primer
 from pydna.opencloning_models import UploadedFileSource
 from pydna.parsers import parse as pydna_parse
@@ -37,12 +37,24 @@ DEFAULT_PLASMID_OPTIONS = {
         'natmx6': ('addgene', '52693', None),
         'hphmx6': ('addgene', '105156', None),
     },
+    'promoter_not_tag': {
+        'kanmx6': ('addgene', '39280', None),  # pFA6a-kanMX6-P3nmt1
+        'natmx6': ('euroscarf', 'P30425', None),  # pFA6a-natMX6-P3nmt1
+        'hphmx6': ('addgene', '105162', None),  # pFA6a-hphMX6-3nmt1
+    },
+    'promoter_with_tag': {
+        'kanmx6': ('addgene', '39289', None),  # pFA6a-kanMX6-P3nmt1-GFP
+        'natmx6': ('addgene', '19345', None),  # pFA6a-natMX6-P3nmt1-3FLAG
+        'hphmx6': ('addgene', '19348', None),  # pFA6a-hphMX6-P3nmt1-3FLAG
+    },
 }
 
 
 @router.post('/batch_cloning/pombe')
 async def post_batch_cloning(
-    cloning_type: Annotated[Literal['gene_deletion', 'gene_cterm_tagging'], Form(...)],
+    cloning_type: Annotated[
+        Literal['gene_deletion', 'gene_cterm_tagging', 'promoter_not_tag', 'promoter_with_tag'], Form(...)
+    ],
     desired_output: Annotated[Literal['simulate_cloning', 'primers_only'], Form(...)],
     gene_list: str = Form(...),
     integration_binding_forward: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
@@ -69,6 +81,8 @@ async def post_batch_cloning(
             mode, first, second = DEFAULT_PLASMID_OPTIONS[cloning_type][resistance_marker]
             if mode == 'addgene':
                 plasmid = await request_from_addgene(first)
+            elif mode == 'euroscarf':
+                plasmid = await get_sequence_from_euroscarf_url(first)
             else:
                 plasmid = await request_from_snapgene(second, first)
         except KeyError:
