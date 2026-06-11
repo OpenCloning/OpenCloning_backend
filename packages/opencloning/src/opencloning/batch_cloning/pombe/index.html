@@ -235,9 +235,10 @@
 
         <p>
             Just try with the below example, it will return a zip file and you can drag-and-drop the json file
+            <code>SPAPB1A10.09/cloning_strategy.json</code>
             into <a href="https://app.opencloning.org" target="_blank" rel="noopener">OpenCloning</a> to visualize the
             strategy.
-            Check also the summary.xlsx file to see the primers.
+            Check also the file <code>summary.xlsx</code> file to see the primers.
         </p>
 
         <form>
@@ -245,33 +246,30 @@
                 <legend>Cloning type</legend>
                 <div class="radio-list">
                     <label class="radio-label" for="gene_deletion">
-                        <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked
-                            onchange="toggleCloningType()">
+                        <input type="radio" id="gene_deletion" name="cloning_type" value="gene_deletion" checked>
                         Gene deletion
                     </label>
                     <label class="radio-label" for="gene_cterm_tagging">
-                        <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging"
-                            onchange="toggleCloningType()">
+                        <input type="radio" id="gene_cterm_tagging" name="cloning_type" value="gene_cterm_tagging">
                         Gene C-term tagging
                     </label>
                     <label class="radio-label" for="promoter_not_tag">
-                        <input type="radio" id="promoter_not_tag" name="cloning_type" value="promoter_not_tag"
-                            onchange="toggleCloningType()">
+                        <input type="radio" id="promoter_not_tag" name="cloning_type" value="promoter_not_tag">
                         Promoter insertion (no tag)
                     </label>
                     <label class="radio-label" for="promoter_with_tag_GFP">
-                        <input type="radio" id="promoter_with_tag_GFP" name="cloning_type" value="promoter_with_tag_GFP"
-                            onchange="toggleCloningType()">
+                        <input type="radio" id="promoter_with_tag_GFP" name="cloning_type"
+                            value="promoter_with_tag_GFP">
                         Promoter insertion (with tag, GFP)
                     </label>
                     <label class="radio-label" for="promoter_with_tag_3HA">
-                        <input type="radio" id="promoter_with_tag_3HA" name="cloning_type" value="promoter_with_tag_3HA"
-                            onchange="toggleCloningType()">
+                        <input type="radio" id="promoter_with_tag_3HA" name="cloning_type"
+                            value="promoter_with_tag_3HA">
                         Promoter insertion (with tag, 3HA)
                     </label>
                     <label class="radio-label" for="promoter_with_tag_GST">
-                        <input type="radio" id="promoter_with_tag_GST" name="cloning_type" value="promoter_with_tag_GST"
-                            onchange="toggleCloningType()">
+                        <input type="radio" id="promoter_with_tag_GST" name="cloning_type"
+                            value="promoter_with_tag_GST">
                         Promoter insertion (with tag, GST)
                     </label>
                 </div>
@@ -291,7 +289,7 @@ SPBC15D4.01c</textarea>
             <fieldset class="form-section" id="integration_binding_primers">
                 <legend class="legend-with-action">
                     Plasmid primer binding
-                    <button type="button" class="section-action" onclick="restoreIntegrationBindingDefaults()">Restore
+                    <button type="button" id="restore_integration_binding" class="section-action">Restore
                         defaults</button>
                 </legend>
                 <p class="explanation">
@@ -317,13 +315,11 @@ SPBC15D4.01c</textarea>
                 <legend>Desired output</legend>
                 <div class="radio-list">
                     <label class="radio-label" for="output_simulate">
-                        <input type="radio" id="output_simulate" name="desired_output" value="simulate_cloning" checked
-                            onchange="toggleDesiredOutput()">
+                        <input type="radio" id="output_simulate" name="desired_output" value="simulate_cloning" checked>
                         Design primers and simulate cloning
                     </label>
                     <label class="radio-label" for="output_primers_only">
-                        <input type="radio" id="output_primers_only" name="desired_output" value="primers_only"
-                            onchange="toggleDesiredOutput()">
+                        <input type="radio" id="output_primers_only" name="desired_output" value="primers_only">
                         Design primers only
                     </label>
                 </div>
@@ -340,19 +336,16 @@ SPBC15D4.01c</textarea>
                     </p>
                     <div class="radio-list">
                         <label class="radio-label" for="plasmid_default">
-                            <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
-                                onchange="togglePlasmidInput()">
+                            <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked>
                             <span id="default_plasmid_label">Example plasmid (pFA6a-kanMX6, pFA6a-natMX6,
                                 pFA6a-hphMX6)</span>
                         </label>
                         <label class="radio-label" for="plasmid_addgene">
-                            <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
-                                onchange="togglePlasmidInput()">
+                            <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene">
                             Provide Addgene Identifier
                         </label>
                         <label class="radio-label" for="plasmid_file">
-                            <input type="radio" id="plasmid_file" name="plasmid_option" value="file"
-                                onchange="togglePlasmidInput()">
+                            <input type="radio" id="plasmid_file" name="plasmid_option" value="file">
                             Upload Plasmid File
                         </label>
                     </div>
@@ -385,23 +378,19 @@ SPBC15D4.01c</textarea>
                     </p>
                     <div class="radio-list">
                         <label class="radio-label" for="kanmx6">
-                            <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
-                                onchange="togglePrimerCheck()">
+                            <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked>
                             KanMx6
                         </label>
                         <label class="radio-label" for="natmx6">
-                            <input type="radio" id="natmx6" name="resistance_marker" value="natmx6"
-                                onchange="togglePrimerCheck()">
+                            <input type="radio" id="natmx6" name="resistance_marker" value="natmx6">
                             NatMx6
                         </label>
                         <label class="radio-label" for="hphmx6">
-                            <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6"
-                                onchange="togglePrimerCheck()">
+                            <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6">
                             HphMx6
                         </label>
                         <label class="radio-label" for="other">
-                            <input type="radio" id="other" name="resistance_marker" value="other"
-                                onchange="togglePrimerCheck()">
+                            <input type="radio" id="other" name="resistance_marker" value="other">
                             Other
                         </label>
                     </div>
@@ -444,241 +433,294 @@ SPBC15D4.01c</textarea>
                     Processing request, please wait...
                 </div>
             </div>
+            <!-- Form script: CONFIG | DOM | cloningType | sync* | init -->
             <script>
-                const DEFAULT_INTEGRATION_BINDING = {
-                    gene_deletion: {
-                        forward: "CGGATCCCCGGGTTAATTAA",
-                        reverse: "GAATTCGAGCTCGTTTAAAC",
+                // --- CONFIG ---
+                const CONFIG = {
+                    integrationBinding: {
+                        gene_deletion: {
+                            forward: "CGGATCCCCGGGTTAATTAA",
+                            reverse: "GAATTCGAGCTCGTTTAAAC",
+                        },
+                        gene_cterm_tagging: {
+                            forward: "CGGATCCCCGGGTTAATTAA",
+                            reverse: "GAATTCGAGCTCGTTTAAAC",
+                        },
+                        promoter_not_tag: {
+                            forward: "GAATTCGAGCTCGTTTAAAC",
+                            reverse: "CATGATTTAACAAAGCGACTATA",
+                        },
+                        promoter_with_tag_GFP: {
+                            forward: "GAATTCGAGCTCGTTTAAAC",
+                            reverse: "TTTGTATAGTTCATCCATGC",
+                        },
+                        promoter_with_tag_3HA: {
+                            forward: "GAATTCGAGCTCGTTTAAAC",
+                            reverse: "GCACTGAGCAGCGTAATCTG",
+                        },
+                        promoter_with_tag_GST: {
+                            forward: "GAATTCGAGCTCGTTTAAAC",
+                            reverse: "ACGCGGAACCAGATCCGATT",
+                        },
                     },
-                    gene_cterm_tagging: {
-                        forward: "CGGATCCCCGGGTTAATTAA",
-                        reverse: "GAATTCGAGCTCGTTTAAAC",
+                    checkingPrimers: {
+                        kanmx6: {
+                            forward: "CGCTATACTGCTGTCGATTCG",
+                            reverse: "CGGATGTGATGTGAGAACTGTATCCTAGC",
+                        },
+                        natmx6: {
+                            forward: "GTACCACTCTTGACGACACG",
+                            reverse: "GCATGCTCATGTAGAGCGCC",
+                        },
+                        hphmx6: {
+                            forward: "GCGCAGAAAGTAATATCATGCG",
+                            reverse: "GCTCCATACAAGCCAACCACG",
+                        },
+                        pnmt1: {
+                            forward: "GCTACTGGATGGTTCAGTCAC",
+                        },
                     },
-                    promoter_not_tag: {
-                        forward: "GAATTCGAGCTCGTTTAAAC",
-                        reverse: "CATGATTTAACAAAGCGACTATA",
+                    defaultPlasmids: {
+                        gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
+                        gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-natMX-(3xFLAG)-TEV-ProtA, pFA6a-mCherry-hphMX6",
+                        promoter_not_tag: "pFA6a-kanMX6-P3nmt1, pFA6a-natMX6-P3nmt1, pFA6a-hphMX6-3nmt1",
                     },
-                    promoter_with_tag_GFP: {
-                        forward: "GAATTCGAGCTCGTTTAAAC",
-                        reverse: "TTTGTATAGTTCATCCATGC",
-                    },
-                    promoter_with_tag_3HA: {
-                        forward: "GAATTCGAGCTCGTTTAAAC",
-                        reverse: "GCACTGAGCAGCGTAATCTG",
-                    },
-                    promoter_with_tag_GST: {
-                        forward: "GAATTCGAGCTCGTTTAAAC",
-                        reverse: "ACGCGGAACCAGATCCGATT",
+                    messages: {
+                        submitSimulate: "Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).",
+                        submitPrimersOnly: "Submit to design primers. Results will be shown in a table below.",
+                        noExamplePlasmid: "No example available, you must provide a plasmid",
                     },
                 };
 
-                const CHECKING_PRIMERS = {
-                    kanmx6: {
-                        forward: "CGCTATACTGCTGTCGATTCG",
-                        reverse: "CGGATGTGATGTGAGAACTGTATCCTAGC",
+                const SYNC_FIELDS = new Set([
+                    "cloning_type",
+                    "desired_output",
+                    "plasmid_option",
+                    "resistance_marker",
+                ]);
+
+                // --- DOM ---
+                const DOM = {};
+
+                function cacheDOM() {
+                    DOM.form = document.querySelector("form");
+                    DOM.cloningSimulationSections = document.getElementById("cloning_simulation_sections");
+                    DOM.integrationBindingForward = document.getElementById("integration_binding_forward");
+                    DOM.integrationBindingReverse = document.getElementById("integration_binding_reverse");
+                    DOM.submitExplanation = document.getElementById("submit-explanation");
+                    DOM.primerResults = document.getElementById("primer-results");
+                    DOM.primerResultsTable = document.getElementById("primer-results-table");
+                    DOM.defaultPlasmidLabel = document.getElementById("default_plasmid_label");
+                    DOM.plasmidDefault = document.getElementById("plasmid_default");
+                    DOM.plasmidAddgene = document.getElementById("plasmid_addgene");
+                    DOM.plasmidFileInput = document.getElementById("plasmid_file_input");
+                    DOM.addgeneInput = document.getElementById("addgene_input");
+                    DOM.plasmidFileUpload = document.getElementById("plasmid_file_upload");
+                    DOM.addgeneId = document.getElementById("addgene_id");
+                    DOM.kanmx6 = document.getElementById("kanmx6");
+                    DOM.checkingPrimerForward = document.getElementById("checking-primer-forward");
+                    DOM.checkingPrimerReverse = document.getElementById("checking-primer-reverse");
+                    DOM.restoreIntegrationBinding = document.getElementById("restore_integration_binding");
+                    DOM.submitButton = document.getElementById("submit-button");
+                    DOM.loadingMessage = document.getElementById("loading-message");
+                }
+
+                function checkedRadio(name) {
+                    return DOM.form.querySelector(`input[name="${name}"]:checked`).value;
+                }
+
+                function isPrimersOnly() {
+                    return checkedRadio("desired_output") === "primers_only";
+                }
+
+                // --- cloningType ---
+                const cloningType = {
+                    get() {
+                        return checkedRadio("cloning_type");
                     },
-                    natmx6: {
-                        forward: "GTACCACTCTTGACGACACG",
-                        reverse: "GCATGCTCATGTAGAGCGCC",
+                    forSubmit(type) {
+                        if (type.startsWith("promoter_with_tag_")) {
+                            return "promoter_with_tag";
+                        }
+                        return type;
                     },
-                    hphmx6: {
-                        forward: "GCGCAGAAAGTAATATCATGCG",
-                        reverse: "GCTCCATACAAGCCAACCACG",
+                    isPromoter() {
+                        const type = this.get();
+                        return type === "promoter_not_tag" || type.startsWith("promoter_with_tag_");
                     },
-                    pnmt1: {
-                        forward: "GCTACTGGATGGTTCAGTCAC",
+                    isPromoterWithTag() {
+                        return this.get().startsWith("promoter_with_tag_");
                     },
                 };
 
-                const DEFAULT_PLASMIDS = {
-                    gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
-                    gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-natMX-(3xFLAG)-TEV-ProtA, pFA6a-mCherry-hphMX6",
-                    promoter_not_tag: "pFA6a-kanMX6-P3nmt1, pFA6a-natMX6-P3nmt1, pFA6a-hphMX6-3nmt1",
-                };
-
-                function getCloningType() {
-                    return document.querySelector('input[name="cloning_type"]:checked').value;
+                // --- sync* ---
+                function syncIntegrationBinding() {
+                    const binding = CONFIG.integrationBinding[cloningType.get()];
+                    DOM.integrationBindingForward.value = binding.forward;
+                    DOM.integrationBindingReverse.value = binding.reverse;
                 }
 
-                function cloningTypeForSubmit(cloningType) {
-                    if (cloningType.startsWith("promoter_with_tag_")) {
-                        return "promoter_with_tag";
+                function syncCheckingPrimers() {
+                    const marker = checkedRadio("resistance_marker");
+                    if (marker === "other") {
+                        DOM.checkingPrimerForward.value = "";
+                        DOM.checkingPrimerReverse.value = "";
+                        return;
                     }
-                    return cloningType;
-                }
-
-                function isPromoterCloning() {
-                    var cloningType = getCloningType();
-                    return cloningType === "promoter_not_tag" || cloningType.startsWith("promoter_with_tag_");
-                }
-
-                function isPromoterWithTagCloning() {
-                    return getCloningType().startsWith("promoter_with_tag_");
-                }
-
-                function updateDefaultPlasmidLabel() {
-                    var cloningType = getCloningType();
-                    var label = document.getElementById("default_plasmid_label");
-                    if (isPromoterWithTagCloning()) {
-                        label.textContent = "No example available, you must provide a plasmid";
-                    } else if (DEFAULT_PLASMIDS[cloningType]) {
-                        label.textContent = "Example plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
+                    const markerPrimers = CONFIG.checkingPrimers[marker];
+                    if (cloningType.isPromoter()) {
+                        DOM.checkingPrimerForward.value = CONFIG.checkingPrimers.pnmt1.forward;
+                        DOM.checkingPrimerReverse.value = markerPrimers.forward;
+                    } else {
+                        DOM.checkingPrimerForward.value = markerPrimers.forward;
+                        DOM.checkingPrimerReverse.value = markerPrimers.reverse;
                     }
                 }
 
-                function updateDefaultPlasmidOption() {
-                    var defaultPlasmid = document.getElementById("plasmid_default");
-                    var resistanceMarker = document.querySelector('input[name="resistance_marker"]:checked').value;
-                    var disableDefault = resistanceMarker === "other" || isPromoterWithTagCloning();
-                    defaultPlasmid.disabled = disableDefault;
-                    if (disableDefault && defaultPlasmid.checked) {
-                        document.getElementById("plasmid_addgene").checked = true;
+                function syncPlasmidSource() {
+                    const resistanceMarker = checkedRadio("resistance_marker");
+                    const disableDefault = resistanceMarker === "other" || cloningType.isPromoterWithTag();
+                    const primersOnly = isPrimersOnly();
+
+                    DOM.plasmidDefault.disabled = disableDefault;
+                    if (disableDefault && DOM.plasmidDefault.checked) {
+                        DOM.plasmidAddgene.checked = true;
                     }
-                    updateDefaultPlasmidLabel();
-                    togglePlasmidInput();
+
+                    const type = cloningType.get();
+                    if (cloningType.isPromoterWithTag()) {
+                        DOM.defaultPlasmidLabel.textContent = CONFIG.messages.noExamplePlasmid;
+                    } else if (CONFIG.defaultPlasmids[type]) {
+                        DOM.defaultPlasmidLabel.textContent = "Example plasmid (" + CONFIG.defaultPlasmids[type] + ")";
+                    }
+
+                    const plasmidOption = checkedRadio("plasmid_option");
+                    DOM.plasmidFileInput.style.display = plasmidOption === "file" ? "block" : "none";
+                    DOM.addgeneInput.style.display = plasmidOption === "addgene" ? "block" : "none";
+
+                    const requirePlasmidFields = !primersOnly;
+                    DOM.plasmidFileUpload.required = requirePlasmidFields && plasmidOption === "file";
+                    DOM.addgeneId.required = requirePlasmidFields && plasmidOption === "addgene";
                 }
 
-                function applyIntegrationBindingDefaults() {
-                    var binding = DEFAULT_INTEGRATION_BINDING[getCloningType()];
-                    document.getElementById("integration_binding_forward").value = binding.forward;
-                    document.getElementById("integration_binding_reverse").value = binding.reverse;
+                function syncDesiredOutput() {
+                    const primersOnly = isPrimersOnly();
+                    DOM.cloningSimulationSections.style.display = primersOnly ? "none" : "flex";
+                    DOM.submitExplanation.textContent = primersOnly
+                        ? CONFIG.messages.submitPrimersOnly
+                        : CONFIG.messages.submitSimulate;
+                    DOM.primerResults.style.display = "none";
+                    DOM.primerResultsTable.innerHTML = "";
                 }
 
-                function toggleCloningType() {
-                    applyIntegrationBindingDefaults();
-                    togglePrimerCheck();
+                function syncForm() {
+                    syncDesiredOutput();
+                    syncCheckingPrimers();
+                    syncPlasmidSource();
                 }
 
-                function restoreIntegrationBindingDefaults() {
-                    applyIntegrationBindingDefaults();
+                function restoreIntegrationBinding() {
+                    syncIntegrationBinding();
                 }
 
                 function restoreCloningSimulationDefaults() {
-                    if (isPromoterWithTagCloning()) {
-                        document.getElementById("plasmid_addgene").checked = true;
+                    if (cloningType.isPromoterWithTag()) {
+                        DOM.plasmidAddgene.checked = true;
                     } else {
-                        document.getElementById("plasmid_default").checked = true;
+                        DOM.plasmidDefault.checked = true;
                     }
-                    document.getElementById("addgene_id").value = "39296";
-                    document.getElementById("plasmid_file_upload").value = "";
-                    document.getElementById("kanmx6").checked = true;
-                    togglePrimerCheck();
+                    DOM.addgeneId.value = "";
+                    DOM.plasmidFileUpload.value = "";
+                    DOM.kanmx6.checked = true;
                 }
 
-                function toggleDesiredOutput() {
-                    var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
-                    document.getElementById("cloning_simulation_sections").style.display = primersOnly ? "none" : "flex";
-                    document.getElementById("submit-explanation").textContent = primersOnly
-                        ? "Submit to design primers. Results will be shown in a table below."
-                        : "Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).";
-                    document.getElementById("primer-results").style.display = "none";
-                    document.getElementById("primer-results-table").innerHTML = "";
-                    if (primersOnly) {
+                function onFormChange(event) {
+                    if (!SYNC_FIELDS.has(event.target.name)) {
+                        return;
+                    }
+                    if (event.target.name === "desired_output" && isPrimersOnly()) {
                         restoreCloningSimulationDefaults();
-                    } else {
-                        togglePlasmidInput();
                     }
+                    if (event.target.name === "cloning_type") {
+                        syncIntegrationBinding();
+                    }
+                    syncForm();
                 }
 
-                function togglePlasmidInput() {
-                    var selectedOption = document.querySelector('input[name="plasmid_option"]:checked').value;
-                    var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
-                    var fileUpload = document.getElementById("plasmid_file_upload");
-                    var addgeneId = document.getElementById("addgene_id");
-                    document.getElementById("plasmid_file_input").style.display = selectedOption === "file" ? "block" : "none";
-                    document.getElementById("addgene_input").style.display = selectedOption === "addgene" ? "block" : "none";
-                    var requirePlasmidFields = !primersOnly;
-                    fileUpload.required = requirePlasmidFields && selectedOption === "file";
-                    addgeneId.required = requirePlasmidFields && selectedOption === "addgene";
-                }
+                async function onFormSubmit(event) {
+                    event.preventDefault();
+                    if (!DOM.form.reportValidity()) {
+                        return;
+                    }
 
-                function togglePrimerCheck() {
-                    var selectedOption = document.querySelector('input[name="resistance_marker"]:checked').value;
-                    if (selectedOption === "other") {
-                        document.getElementById("checking-primer-forward").value = "";
-                        document.getElementById("checking-primer-reverse").value = "";
-                    } else {
-                        var markerPrimers = CHECKING_PRIMERS[selectedOption];
-                        if (isPromoterCloning()) {
-                            document.getElementById("checking-primer-forward").value = CHECKING_PRIMERS.pnmt1.forward;
-                            document.getElementById("checking-primer-reverse").value = markerPrimers.forward;
+                    const formData = new FormData(DOM.form);
+                    formData.set("cloning_type", cloningType.forSubmit(formData.get("cloning_type")));
+                    const primersOnly = formData.get("desired_output") === "primers_only";
+
+                    DOM.submitButton.style.display = "none";
+                    DOM.loadingMessage.style.display = "block";
+                    DOM.primerResults.style.display = "none";
+                    DOM.primerResultsTable.innerHTML = "";
+
+                    try {
+                        const response = await fetch(window.location.pathname, {
+                            method: "POST",
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            const contentType = response.headers.get("content-type") || "";
+                            if (contentType.includes("application/json")) {
+                                throw new Error((await response.json()).detail);
+                            }
+                            throw new Error(await response.text());
+                        }
+
+                        if (primersOnly) {
+                            DOM.primerResultsTable.innerHTML = await response.text();
+                            DOM.primerResults.style.display = "block";
+                            DOM.primerResults.scrollIntoView({ behavior: "smooth", block: "start" });
                         } else {
-                            document.getElementById("checking-primer-forward").value = markerPrimers.forward;
-                            document.getElementById("checking-primer-reverse").value = markerPrimers.reverse;
+                            const contentDisposition = response.headers.get("Content-Disposition");
+                            let filename = "batch_cloning_results.zip";
+                            if (contentDisposition) {
+                                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                                if (filenameMatch) {
+                                    filename = filenameMatch[1];
+                                }
+                            }
+
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
                         }
+                    } catch (error) {
+                        console.error("Error:", error);
+                        alert(error.message);
+                    } finally {
+                        DOM.submitButton.style.display = "block";
+                        DOM.loadingMessage.style.display = "none";
                     }
-                    updateDefaultPlasmidOption();
                 }
 
-                window.onload = () => {
-                    toggleCloningType();
-                    toggleDesiredOutput();
-                    togglePrimerCheck();
-                    togglePlasmidInput();
-
-                    // Add form submit handler
-                    document.querySelector('form').addEventListener('submit', async function (e) {
-                        e.preventDefault();
-                        if (!this.reportValidity()) {
-                            return;
-                        }
-
-                        const formData = new FormData(this);
-                        formData.set('cloning_type', cloningTypeForSubmit(formData.get('cloning_type')));
-                        const primersOnly = formData.get('desired_output') === 'primers_only';
-
-                        document.getElementById('submit-button').style.display = 'none';
-                        document.getElementById('loading-message').style.display = 'block';
-                        document.getElementById('primer-results').style.display = 'none';
-                        document.getElementById('primer-results-table').innerHTML = '';
-
-                        try {
-                            const response = await fetch(window.location.pathname, {
-                                method: 'POST',
-                                body: formData
-                            });
-
-                            if (!response.ok) {
-                                const contentType = response.headers.get('content-type') || '';
-                                if (contentType.includes('application/json')) {
-                                    throw new Error((await response.json()).detail);
-                                }
-                                throw new Error(await response.text());
-                            }
-
-                            if (primersOnly) {
-                                document.getElementById('primer-results-table').innerHTML = await response.text();
-                                document.getElementById('primer-results').style.display = 'block';
-                                document.getElementById('primer-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            } else {
-                                const contentDisposition = response.headers.get('Content-Disposition');
-                                let filename = 'batch_cloning_results.zip';
-                                if (contentDisposition) {
-                                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                                    if (filenameMatch) {
-                                        filename = filenameMatch[1];
-                                    }
-                                }
-
-                                const blob = await response.blob();
-                                const url = window.URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = filename;
-                                document.body.appendChild(a);
-                                a.click();
-                                window.URL.revokeObjectURL(url);
-                                document.body.removeChild(a);
-                            }
-                        } catch (error) {
-                            console.error('Error:', error);
-                            alert(error.message);
-                        } finally {
-                            document.getElementById('submit-button').style.display = 'block';
-                            document.getElementById('loading-message').style.display = 'none';
-                        }
-                    });
+                // --- init ---
+                function init() {
+                    cacheDOM();
+                    syncIntegrationBinding();
+                    syncForm();
+                    DOM.form.addEventListener("change", onFormChange);
+                    DOM.restoreIntegrationBinding.addEventListener("click", restoreIntegrationBinding);
+                    DOM.form.addEventListener("submit", onFormSubmit);
+                    restoreCloningSimulationDefaults();
                 }
+
+                document.addEventListener("DOMContentLoaded", init);
             </script>
         </form>
     </div>
