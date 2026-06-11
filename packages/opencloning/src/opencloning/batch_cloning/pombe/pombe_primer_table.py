@@ -4,7 +4,7 @@ import pandas as pd
 from pydna import tm
 from pydna.primer import Primer
 
-from .pombe_naming import CloningType, primer_summary_name
+from .pombe_naming import CloningType
 
 PRIMER_KEYS = ['primer_fwd', 'primer_rvs', 'primer_fwd_check', 'primer_rvs_check']
 
@@ -26,14 +26,14 @@ def build_primer_summary_df(
     gene_results: list[tuple[str, CloningType, tuple[Primer, Primer, Primer, Primer]]],
 ) -> pd.DataFrame:
     primer_summary = []
-    for gene, cloning_type, primers in gene_results:
+    for _, _, primers in gene_results:
         for primer_key in PRIMER_KEYS:
             primer = primers[PRIMERS_BY_KEY[primer_key]]
             tm_region = _primer_tm_region(primer)
             primer_summary.append(
                 OrderedDict(
                     {
-                        'name': primer_summary_name(gene, primer_key, cloning_type),
+                        'name': primer.name,
                         'sequence': str(primer.seq),
                         'tm': tm.tm_default(tm_region),
                     }

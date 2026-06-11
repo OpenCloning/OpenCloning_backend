@@ -76,6 +76,7 @@ def process_folder(working_dir: str):
             continue
         name = primer_names[i]
         primer_dict[name] = primer.sequence
+        primer_dict[name + '_name'] = primer.name
         # Find what the alignment bit of the primer is
         aligned_seq = find_primer_aligned_sequence(pcr_sources, primer)
         if 'rvs' in name:
