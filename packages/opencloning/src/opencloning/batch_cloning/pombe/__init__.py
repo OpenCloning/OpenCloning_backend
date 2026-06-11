@@ -34,8 +34,8 @@ DEFAULT_PLASMID_OPTIONS = {
     },
     'gene_cterm_tagging': {
         'kanmx6': ('addgene', '87023', None),
-        'natmx6': ('addgene', '39296', None),
-        'hphmx6': ('addgene', '240557', None),
+        'natmx6': ('addgene', '52693', None),
+        'hphmx6': ('addgene', '105156', None),
     },
 }
 

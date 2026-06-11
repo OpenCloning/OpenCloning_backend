@@ -322,7 +322,7 @@ SPBC15D4.01c</textarea>
                         <label class="radio-label" for="plasmid_default">
                             <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
                                 onchange="togglePlasmidInput()">
-                            <span id="default_plasmid_label">Default plasmid (pFA6a-kanMX6, pFA6a-natMX6,
+                            <span id="default_plasmid_label">Example plasmid (pFA6a-kanMX6, pFA6a-natMX6,
                                 pFA6a-hphMX6)</span>
                         </label>
                         <label class="radio-label" for="plasmid_addgene">
@@ -430,14 +430,14 @@ SPBC15D4.01c</textarea>
                         reverse: "GAATTCGAGCTCGTTTAAAC",
                     },
                     gene_cterm_tagging: {
-                        forward: "GTGAGCAAGGGCGAG",
+                        forward: "CGGATCCCCGGGTTAATTAA",
                         reverse: "GAATTCGAGCTCGTTTAAAC",
                     },
                 };
 
                 const DEFAULT_PLASMIDS = {
                     gene_deletion: "pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6",
-                    gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-psfGFPcp-natMX6, pFA6a-mCherry-hphMX6",
+                    gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-natMX-(3xFLAG)-TEV-ProtA, pFA6a-mCherry-hphMX6",
                 };
 
                 function getCloningType() {
@@ -453,7 +453,7 @@ SPBC15D4.01c</textarea>
                 function toggleCloningType() {
                     var cloningType = getCloningType();
                     document.getElementById("default_plasmid_label").textContent =
-                        "Default plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
+                        "Example plasmid (" + DEFAULT_PLASMIDS[cloningType] + ")";
                     applyIntegrationBindingDefaults();
                 }
 

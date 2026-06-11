@@ -1,5 +1,6 @@
 import json
 import os
+from opencloning.dna_utils import trim_location
 from pydna.dseqrecord import Dseqrecord
 from pydna.assembly2 import homologous_recombination_integration, pcr_assembly
 from opencloning.ncbi_requests import get_annotations_from_query, get_genome_region_from_annotation
@@ -9,6 +10,22 @@ from pydna.utils import location_boundaries
 from typing import Literal
 from opencloning.primer_design import primer_to_amplify_fragment_of_given_size_knowing_other_primer
 from .pombe_naming import allele_name, integration_primer_name
+from Bio.SeqFeature import SeqFeature
+
+
+def get_homology_arms(locus: Dseqrecord, feature: SeqFeature, cloning_type: str) -> tuple[str, str]:
+    if cloning_type == 'gene_deletion':
+        start, end = (int(i) for i in location_boundaries(feature.location))
+        left_homology_arm = str(locus.seq[start - 80 : start]).lower()
+        right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
+    elif cloning_type == 'gene_cterm_tagging':
+        # change the location of the feature reducing it by 3 bases
+        feature.location = trim_location(feature.location, 3, from_end=True)
+        start, end = (int(i) for i in location_boundaries(feature.location))
+        left_homology_arm = str(locus.seq[end - 80 : end]).lower()
+        right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
+
+    return left_homology_arm, right_homology_arm
 
 
 async def main(
@@ -50,9 +67,9 @@ async def main(
         for f in locus.features
         if (f.type == 'CDS') and (f"GeneID:{annotation['gene_id']}" in f.qualifiers['db_xref'])
     )
-    start, end = (int(i) for i in location_boundaries(feature.location))
-    left_homology_arm = str(locus.seq[start - 80 : start]).lower()
-    right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
+
+    left_homology_arm, right_homology_arm = get_homology_arms(locus, feature, cloning_type)
+
     left_primer = Primer(
         left_homology_arm + integration_binding_forward.upper(),
         name=integration_primer_name(gene, 'fwd', cloning_type),
