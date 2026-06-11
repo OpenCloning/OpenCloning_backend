@@ -8,9 +8,18 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .form-container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+        }
+
+        .results-container {
+            max-width: 1400px;
+            margin: 24px auto 0;
         }
 
         form {
@@ -136,10 +145,58 @@
             flex-direction: column;
             gap: 24px;
         }
+
+        #primer-results {
+            display: none;
+        }
+
+        #primer-results h3 {
+            margin-bottom: 12px;
+        }
+
+        #primer-results-table {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        #primer-results-table table {
+            width: max-content;
+            min-width: 1100px;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+
+        #primer-results-table th,
+        #primer-results-table td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        #primer-results-table th {
+            background: #f5f5f5;
+        }
+
+        #primer-results-table td:nth-child(2),
+        #primer-results-table td:nth-child(3) {
+            font-family: monospace;
+            white-space: nowrap;
+        }
+
+        #primer-results-table td:nth-child(4) {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        #primer-results-table tbody tr:nth-child(4n) td {
+            border-bottom: 3px solid #bbb;
+        }
     </style>
 </head>
 
 <body>
+    <div class="form-container">
     <h1>Batch Cloning Gene List</h1>
     <p class="explanation" style="margin-bottom: 24px;">
         Design PCR-based cloning strategies for <em>Schizosaccharomyces pombe</em> in batch.
@@ -217,7 +274,8 @@ SPBC15D4.01c</textarea>
         <fieldset class="form-section" id="integration_binding_primers">
             <legend class="legend-with-action">
                 Plasmid primer binding
-                <button type="button" class="section-action" onclick="restoreIntegrationBindingDefaults()">Restore defaults</button>
+                <button type="button" class="section-action" onclick="restoreIntegrationBindingDefaults()">Restore
+                    defaults</button>
             </legend>
             <p class="explanation">
                 Primer part that binds to the plasmid. By default, values for pFA6a-derived plasmids are used.
@@ -352,7 +410,7 @@ SPBC15D4.01c</textarea>
         </div>
 
         <div class="form-footer">
-            <p class="explanation">
+            <p class="explanation" id="submit-explanation">
                 Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning
                 strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).
             </p>
@@ -379,21 +437,17 @@ SPBC15D4.01c</textarea>
                 togglePrimerCheck();
             }
 
-            function setCloningSimulationSectionsEnabled(enabled) {
-                document.querySelectorAll("#cloning_simulation_sections input, #cloning_simulation_sections textarea, #cloning_simulation_sections button")
-                    .forEach(function (element) {
-                        element.disabled = !enabled;
-                    });
-            }
-
             function toggleDesiredOutput() {
                 var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
                 document.getElementById("cloning_simulation_sections").style.display = primersOnly ? "none" : "flex";
+                document.getElementById("submit-explanation").textContent = primersOnly
+                    ? "Submit to design primers. Results will be shown in a table below."
+                    : "Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).";
+                document.getElementById("primer-results").style.display = "none";
+                document.getElementById("primer-results-table").innerHTML = "";
                 if (primersOnly) {
                     restoreCloningSimulationDefaults();
-                    setCloningSimulationSectionsEnabled(false);
                 } else {
-                    setCloningSimulationSectionsEnabled(true);
                     togglePlasmidInput();
                 }
             }
@@ -437,42 +491,54 @@ SPBC15D4.01c</textarea>
 
                 // Add form submit handler
                 document.querySelector('form').addEventListener('submit', async function (e) {
-                    e.preventDefault(); // Prevent default form submission
+                    e.preventDefault();
+
+                    const formData = new FormData(this);
+                    const primersOnly = formData.get('desired_output') === 'primers_only';
 
                     document.getElementById('submit-button').style.display = 'none';
                     document.getElementById('loading-message').style.display = 'block';
+                    document.getElementById('primer-results').style.display = 'none';
+                    document.getElementById('primer-results-table').innerHTML = '';
 
                     try {
-                        const formData = new FormData(this);
                         const response = await fetch(window.location.pathname, {
                             method: 'POST',
                             body: formData
                         });
 
                         if (!response.ok) {
-                            throw new Error((await response.json()).detail);
-                        }
-
-                        // Get the filename from the Content-Disposition header if available
-                        const contentDisposition = response.headers.get('Content-Disposition');
-                        let filename = 'batch_cloning_results.zip';
-                        if (contentDisposition) {
-                            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                            if (filenameMatch) {
-                                filename = filenameMatch[1];
+                            const contentType = response.headers.get('content-type') || '';
+                            if (contentType.includes('application/json')) {
+                                throw new Error((await response.json()).detail);
                             }
+                            throw new Error(await response.text());
                         }
 
-                        // Convert the response to a blob and download it
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
+                        if (primersOnly) {
+                            document.getElementById('primer-results-table').innerHTML = await response.text();
+                            document.getElementById('primer-results').style.display = 'block';
+                            document.getElementById('primer-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            const contentDisposition = response.headers.get('Content-Disposition');
+                            let filename = 'batch_cloning_results.zip';
+                            if (contentDisposition) {
+                                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                                if (filenameMatch) {
+                                    filename = filenameMatch[1];
+                                }
+                            }
+
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        }
                     } catch (error) {
                         console.error('Error:', error);
                         alert(error.message);
@@ -484,6 +550,12 @@ SPBC15D4.01c</textarea>
             }
         </script>
     </form>
+    </div>
+
+    <div class="results-container" id="primer-results">
+        <h3>Primer summary</h3>
+        <div id="primer-results-table"></div>
+    </div>
 </body>
 
 </html>

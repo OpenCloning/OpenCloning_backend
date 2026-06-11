@@ -9,7 +9,15 @@ from pydna.utils import location_boundaries
 from opencloning.primer_design import primer_to_amplify_fragment_of_given_size_knowing_other_primer
 
 
-async def main(gene: str, assembly_accession: str, output_dir: str, plasmid: Dseqrecord, common_primers: list[Primer]):
+async def main(
+    gene: str,
+    assembly_accession: str,
+    output_dir: str,
+    plasmid: Dseqrecord,
+    common_primers: list[Primer],
+    integration_binding_forward: str = 'CGGATCCCCGGGTTAATTAA',
+    integration_binding_reverse: str = 'GAATTCGAGCTCGTTTAAAC',
+):
     print(f"\033[92mCloning {gene}\033[0m")
     # Parse primers =================================================================================
     # Primers have to be: clone_fwd, clone_rvs, check_fwd, check_rvs
@@ -42,10 +50,14 @@ async def main(gene: str, assembly_accession: str, output_dir: str, plasmid: Dse
     start, end = (int(i) for i in location_boundaries(feature.location))
     left_homology_arm = str(locus.seq[start - 80 : start]).lower()
     right_homology_arm = str(locus.seq[end : end + 80].reverse_complement()).lower()
-    left_seq = 'CGGATCCCCGGGTTAATTAA'
-    right_seq = 'GAATTCGAGCTCGTTTAAAC'
-    left_primer = Primer(left_homology_arm + left_seq, name=f'{gene}_deletion_fwd')
-    right_primer = Primer(right_homology_arm + right_seq, name=f'{gene}_deletion_rvs')
+    left_primer = Primer(
+        left_homology_arm + integration_binding_forward.upper(),
+        name=f'{gene}_deletion_fwd',
+    )
+    right_primer = Primer(
+        right_homology_arm + integration_binding_reverse.upper(),
+        name=f'{gene}_deletion_rvs',
+    )
     # PCR ================================================================================================
     pcr_products = pcr_assembly(plasmid, left_primer, right_primer, limit=14, mismatches=0)
     pcr_products[0].name = 'amplified_marker'

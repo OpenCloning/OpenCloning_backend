@@ -2,7 +2,8 @@ from fastapi import Form, File, UploadFile, HTTPException
 from typing import Annotated, Literal
 import os
 import tempfile
-from fastapi.responses import FileResponse
+import pandas as pd
+from fastapi.responses import FileResponse, HTMLResponse
 from .pombe_clone import main as pombe_clone
 from .pombe_summary import main as pombe_summary
 from .pombe_gather import main as pombe_gather
@@ -29,7 +30,10 @@ ASSEMBLY_ACCESSION = 'GCF_000002945.2'
 @router.post('/batch_cloning/pombe')
 async def post_batch_cloning(
     cloning_type: Annotated[Literal['gene_deletion', 'gene_cterm_tagging'], Form(...)],
+    desired_output: Annotated[Literal['simulate_cloning', 'primers_only'], Form(...)],
     gene_list: str = Form(...),
+    integration_binding_forward: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
+    integration_binding_reverse: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
     plasmid_file: UploadFile | None = File(None),
     addgene_id: str | None = Form(None),
     plasmid_option: Annotated[Literal['addgene', 'file', 'default'], Form(...)] = None,
@@ -77,7 +81,15 @@ async def post_batch_cloning(
 
     with tempfile.TemporaryDirectory() as temp_dir:
         for gene in genes:
-            await pombe_clone(gene, ASSEMBLY_ACCESSION, temp_dir, plasmid, common_primers)
+            await pombe_clone(
+                gene,
+                ASSEMBLY_ACCESSION,
+                temp_dir,
+                plasmid,
+                common_primers,
+                integration_binding_forward,
+                integration_binding_reverse,
+            )
 
         try:
             pombe_summary(temp_dir)
@@ -85,7 +97,18 @@ async def post_batch_cloning(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f'Summary failed: {e}')
 
-        # zip the temp dir and return it
+        if desired_output == 'primers_only':
+            primer_summary_path = os.path.join(temp_dir, 'primer_summary.tsv')
+            primer_df = pd.read_csv(primer_summary_path, sep='\t')
+            return HTMLResponse(
+                content=primer_df.to_html(
+                    index=False,
+                    border=0,
+                    classes='primer-summary-table',
+                    float_format='%.1f',
+                )
+            )
+
         zip_filename = f'{temp_dir}_archive'
         shutil.make_archive(zip_filename, 'zip', temp_dir)
         zip_file = f'{zip_filename}.zip'
