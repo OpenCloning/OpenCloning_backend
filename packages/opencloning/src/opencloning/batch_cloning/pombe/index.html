@@ -42,11 +42,16 @@
             border-left: 2px solid #e8e8e8;
         }
 
-        .section-header {
+        legend.legend-with-action {
             display: flex;
             align-items: center;
             gap: 12px;
-            flex-wrap: wrap;
+        }
+
+        legend.legend-with-action .section-action {
+            font-weight: normal;
+            font-size: 0.85em;
+            padding: 2px 8px;
         }
 
         .radio-list {
@@ -124,6 +129,12 @@
 
         #loading-message {
             color: #666;
+        }
+
+        .form-section-group {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
     </style>
 </head>
@@ -204,10 +215,10 @@ SPBC15D4.01c</textarea>
         </fieldset>
 
         <fieldset class="form-section" id="integration_binding_primers">
-            <legend>Plasmid primer binding</legend>
-            <div class="section-header">
-                <button type="button" onclick="restoreIntegrationBindingDefaults()">Restore defaults</button>
-            </div>
+            <legend class="legend-with-action">
+                Plasmid primer binding
+                <button type="button" class="section-action" onclick="restoreIntegrationBindingDefaults()">Restore defaults</button>
+            </legend>
             <p class="explanation">
                 Primer part that binds to the plasmid. By default, values for pFA6a-derived plasmids are used.
             </p>
@@ -228,98 +239,117 @@ SPBC15D4.01c</textarea>
         </fieldset>
 
         <fieldset class="form-section">
-            <legend>Plasmid source</legend>
-            <p class="explanation">
-                The plasmid supplies the marker cassette (e.g. KanMX6, NatMX6) to be PCR-amplified and integrated into
-                each gene locus via homologous recombination.
-            </p>
+            <legend>Desired output</legend>
             <div class="radio-list">
-                <label class="radio-label" for="plasmid_default">
-                    <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
-                        onchange="togglePlasmidInput()">
-                    Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)
+                <label class="radio-label" for="output_simulate">
+                    <input type="radio" id="output_simulate" name="desired_output" value="simulate_cloning" checked
+                        onchange="toggleDesiredOutput()">
+                    Design primers and simulate cloning
                 </label>
-                <label class="radio-label" for="plasmid_addgene">
-                    <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
-                        onchange="togglePlasmidInput()">
-                    Provide Addgene Identifier
+                <label class="radio-label" for="output_primers_only">
+                    <input type="radio" id="output_primers_only" name="desired_output" value="primers_only"
+                        onchange="toggleDesiredOutput()">
+                    Design primers only
                 </label>
-                <label class="radio-label" for="plasmid_file">
-                    <input type="radio" id="plasmid_file" name="plasmid_option" value="file"
-                        onchange="togglePlasmidInput()">
-                    Upload Plasmid File
-                </label>
-            </div>
-
-            <div id="plasmid_file_input" class="nested-section" style="display: none;">
-                <label class="field-label" for="plasmid_file_upload">Upload plasmid sequence file</label>
-                <p class="explanation">
-                    Accepted formats: GenBank (.gb, .gbk, .genbank), FASTA (.fasta, .fa), or snapgene (.dna).
-                </p>
-                <input type="file" id="plasmid_file_upload" name="plasmid_file"
-                    accept=".gb,.gbk,.genbank,.fasta,.fa,.seq,.dna">
-            </div>
-
-            <div id="addgene_input" class="nested-section" style="display: none;">
-                <label class="field-label" for="addgene_id">Addgene identifier</label>
-                <p class="explanation">
-                    Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
-                    <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
-                </p>
-                <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296">
             </div>
         </fieldset>
 
-        <fieldset class="form-section">
-            <legend>Resistance marker</legend>
-            <p class="explanation">
-                Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
-                Automatic check primers will be provided for standard cassettes.
-            </p>
-            <div class="radio-list">
-                <label class="radio-label" for="kanmx6">
-                    <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
-                        onchange="togglePrimerCheck()">
-                    KanMx6
-                </label>
-                <label class="radio-label" for="natmx6">
-                    <input type="radio" id="natmx6" name="resistance_marker" value="natmx6"
-                        onchange="togglePrimerCheck()">
-                    NatMx6
-                </label>
-                <label class="radio-label" for="hphmx6">
-                    <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6"
-                        onchange="togglePrimerCheck()">
-                    HphMx6
-                </label>
-                <label class="radio-label" for="other">
-                    <input type="radio" id="other" name="resistance_marker" value="other"
-                        onchange="togglePrimerCheck()">
-                    Other
-                </label>
-            </div>
+        <div id="cloning_simulation_sections" class="form-section-group">
+            <fieldset class="form-section">
+                <legend>Plasmid source</legend>
+                <p class="explanation">
+                    The plasmid supplies the marker cassette (e.g. KanMX6, NatMX6) to be PCR-amplified and integrated
+                    into
+                    each gene locus via homologous recombination.
+                </p>
+                <div class="radio-list">
+                    <label class="radio-label" for="plasmid_default">
+                        <input type="radio" id="plasmid_default" name="plasmid_option" value="default" checked
+                            onchange="togglePlasmidInput()">
+                        Default plasmid (pFA6a-kanMX6, pFA6a-natMX6, pFA6a-hphMX6)
+                    </label>
+                    <label class="radio-label" for="plasmid_addgene">
+                        <input type="radio" id="plasmid_addgene" name="plasmid_option" value="addgene"
+                            onchange="togglePlasmidInput()">
+                        Provide Addgene Identifier
+                    </label>
+                    <label class="radio-label" for="plasmid_file">
+                        <input type="radio" id="plasmid_file" name="plasmid_option" value="file"
+                            onchange="togglePlasmidInput()">
+                        Upload Plasmid File
+                    </label>
+                </div>
 
-            <div id="checking_primers" class="nested-section">
-                <div class="primer_pair_row">
-                    <div class="primer_pair_field">
-                        <label class="field-label" for="checking-primer-forward">Checking primer (forward)</label>
-                        <p class="explanation">
-                            Aligns to the top strand of the inserted cassette.
-                        </p>
-                        <input type="text" id="checking-primer-forward" name="checking_primer_forward"
-                            pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GTACCACTCTTGACGACACG">
-                    </div>
-                    <div class="primer_pair_field">
-                        <label class="field-label" for="checking-primer-reverse">Checking primer (reverse)</label>
-                        <p class="explanation">
-                            Aligns to the bottom strand of the inserted cassette.
-                        </p>
-                        <input type="text" id="checking-primer-reverse" name="checking_primer_reverse"
-                            pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GCATGCTCATGTAGAGCGCC">
+                <div id="plasmid_file_input" class="nested-section" style="display: none;">
+                    <label class="field-label" for="plasmid_file_upload">Upload plasmid sequence file</label>
+                    <p class="explanation">
+                        Accepted formats: GenBank (.gb, .gbk, .genbank), FASTA (.fasta, .fa), or snapgene (.dna).
+                    </p>
+                    <input type="file" id="plasmid_file_upload" name="plasmid_file"
+                        accept=".gb,.gbk,.genbank,.fasta,.fa,.seq,.dna">
+                </div>
+
+                <div id="addgene_input" class="nested-section" style="display: none;">
+                    <label class="field-label" for="addgene_id">Addgene identifier</label>
+                    <p class="explanation">
+                        Numeric Addgene ID of the plasmid (e.g. 39296 for pFA6a-KanMX6). Find IDs at
+                        <a href="https://www.addgene.org" target="_blank" rel="noopener">addgene.org</a>.
+                    </p>
+                    <input value="39296" type="text" id="addgene_id" name="addgene_id" placeholder="e.g. 39296">
+                </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+                <legend>Resistance marker</legend>
+                <p class="explanation">
+                    Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
+                    Automatic check primers will be provided for standard cassettes.
+                </p>
+                <div class="radio-list">
+                    <label class="radio-label" for="kanmx6">
+                        <input type="radio" id="kanmx6" name="resistance_marker" value="kanmx6" checked
+                            onchange="togglePrimerCheck()">
+                        KanMx6
+                    </label>
+                    <label class="radio-label" for="natmx6">
+                        <input type="radio" id="natmx6" name="resistance_marker" value="natmx6"
+                            onchange="togglePrimerCheck()">
+                        NatMx6
+                    </label>
+                    <label class="radio-label" for="hphmx6">
+                        <input type="radio" id="hphmx6" name="resistance_marker" value="hphmx6"
+                            onchange="togglePrimerCheck()">
+                        HphMx6
+                    </label>
+                    <label class="radio-label" for="other">
+                        <input type="radio" id="other" name="resistance_marker" value="other"
+                            onchange="togglePrimerCheck()">
+                        Other
+                    </label>
+                </div>
+
+                <div id="checking_primers" class="nested-section">
+                    <div class="primer_pair_row">
+                        <div class="primer_pair_field">
+                            <label class="field-label" for="checking-primer-forward">Checking primer (forward)</label>
+                            <p class="explanation">
+                                Aligns to the top strand of the inserted cassette.
+                            </p>
+                            <input type="text" id="checking-primer-forward" name="checking_primer_forward"
+                                pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GTACCACTCTTGACGACACG">
+                        </div>
+                        <div class="primer_pair_field">
+                            <label class="field-label" for="checking-primer-reverse">Checking primer (reverse)</label>
+                            <p class="explanation">
+                                Aligns to the bottom strand of the inserted cassette.
+                            </p>
+                            <input type="text" id="checking-primer-reverse" name="checking_primer_reverse"
+                                pattern="[ACGTacgt]+" required minlength="1" placeholder="e.g. GCATGCTCATGTAGAGCGCC">
+                        </div>
                     </div>
                 </div>
-            </div>
-        </fieldset>
+            </fieldset>
+        </div>
 
         <div class="form-footer">
             <p class="explanation">
@@ -338,6 +368,34 @@ SPBC15D4.01c</textarea>
             function restoreIntegrationBindingDefaults() {
                 document.getElementById("integration_binding_forward").value = DEFAULT_INTEGRATION_BINDING_FORWARD;
                 document.getElementById("integration_binding_reverse").value = DEFAULT_INTEGRATION_BINDING_REVERSE;
+            }
+
+            function restoreCloningSimulationDefaults() {
+                document.getElementById("plasmid_default").checked = true;
+                document.getElementById("plasmid_default").disabled = false;
+                document.getElementById("addgene_id").value = "39296";
+                document.getElementById("plasmid_file_upload").value = "";
+                document.getElementById("kanmx6").checked = true;
+                togglePrimerCheck();
+            }
+
+            function setCloningSimulationSectionsEnabled(enabled) {
+                document.querySelectorAll("#cloning_simulation_sections input, #cloning_simulation_sections textarea, #cloning_simulation_sections button")
+                    .forEach(function (element) {
+                        element.disabled = !enabled;
+                    });
+            }
+
+            function toggleDesiredOutput() {
+                var primersOnly = document.querySelector('input[name="desired_output"]:checked').value === "primers_only";
+                document.getElementById("cloning_simulation_sections").style.display = primersOnly ? "none" : "flex";
+                if (primersOnly) {
+                    restoreCloningSimulationDefaults();
+                    setCloningSimulationSectionsEnabled(false);
+                } else {
+                    setCloningSimulationSectionsEnabled(true);
+                    togglePlasmidInput();
+                }
             }
 
             function togglePlasmidInput() {
@@ -373,6 +431,7 @@ SPBC15D4.01c</textarea>
             }
 
             window.onload = () => {
+                toggleDesiredOutput();
                 togglePrimerCheck();
                 togglePlasmidInput();
 
