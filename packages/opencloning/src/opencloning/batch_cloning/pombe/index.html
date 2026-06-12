@@ -421,7 +421,9 @@ SPBC15D4.01c</textarea>
                     <legend>Resistance marker</legend>
                     <p class="explanation">
                         Choose KanMX6, NatMX6, or HphMX6 for standard cassettes, or &quot;Other&quot;.
-                        Automatic check primers will be provided for standard cassettes.
+                        Cassette checking primers are optional: provide forward only, reverse only, both, or
+                        neither to control which verification PCRs are simulated. Standard cassettes are
+                        pre-filled automatically.
                     </p>
                     <div class="radio-list">
                         <label class="radio-label" for="kanmx6">
@@ -451,8 +453,7 @@ SPBC15D4.01c</textarea>
                                     Aligns to the top strand of the inserted cassette.
                                 </p>
                                 <input type="text" id="checking-primer-forward" name="checking_primer_forward"
-                                    pattern="[ACGTacgt]+" required minlength="1"
-                                    placeholder="e.g. GTACCACTCTTGACGACACG">
+                                    pattern="[ACGTacgt]*" placeholder="e.g. GTACCACTCTTGACGACACG">
                             </div>
                             <div class="primer_pair_field">
                                 <label class="field-label" for="checking-primer-reverse">Checking primer
@@ -461,8 +462,7 @@ SPBC15D4.01c</textarea>
                                     Aligns to the bottom strand of the inserted cassette.
                                 </p>
                                 <input type="text" id="checking-primer-reverse" name="checking_primer_reverse"
-                                    pattern="[ACGTacgt]+" required minlength="1"
-                                    placeholder="e.g. GCATGCTCATGTAGAGCGCC">
+                                    pattern="[ACGTacgt]*" placeholder="e.g. GCATGCTCATGTAGAGCGCC">
                             </div>
                         </div>
                     </div>

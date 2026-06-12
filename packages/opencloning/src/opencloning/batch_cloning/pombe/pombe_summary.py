@@ -1,10 +1,6 @@
 from pydna.utils import location_boundaries
 from ...pydantic_models import BaseCloningStrategy
-from opencloning_linkml.datamodel import (
-    Primer as PrimerModel,
-    PCRSource,
-    HomologousRecombinationSource,
-)
+from opencloning_linkml.datamodel import Primer as PrimerModel, PCRSource
 from pydna.parsers import parse as pydna_parse
 import os
 import json
@@ -13,76 +9,86 @@ from Bio.Seq import reverse_complement
 import argparse
 from Bio.SeqFeature import Location
 
-chromosomes = {
-    'NC_003424.3': 'I',
-    'NC_003423.3': 'II',
-    'NC_003421.2': 'III',
-    'NC_088682.1': 'MT',
+SEQUENCE_LENGTH_KEYS = {
+    'amplified_marker': 'amplified_marker_length',
+    'check_pcr_left': 'check_pcr_left_length',
+    'check_pcr_right': 'check_pcr_right_length',
 }
 
 
-def find_primer_aligned_sequence(pcr_sources: list[PCRSource], primer: PrimerModel) -> str:
-    for source in pcr_sources:
-        if source.input[0].sequence == primer.id:
-            loc = Location.fromstring(source.input[0].right_location)
+def _sequence_names_by_id(strategy: BaseCloningStrategy) -> dict[int, str]:
+    names = {source.id: source.output_name for source in strategy.sources if source.output_name is not None}
+    for sequence in strategy.sequences:
+        if sequence.id not in names:
+            names[sequence.id] = pydna_parse(sequence.file_content)[0].name
+    return names
+
+
+def _primer_binding(source: PCRSource, primer: PrimerModel) -> str:
+    for fragment in source.input:
+        if fragment.sequence != primer.id:
+            continue
+        if fragment.right_location is not None:
+            loc = Location.fromstring(fragment.right_location)
             return loc.extract(primer.sequence)
-        if source.input[-1].sequence == primer.id:
-            loc = Location.fromstring(source.input[-1].left_location)
-            return loc.extract(reverse_complement(primer.sequence))
-    raise ValueError(f"Primer {primer.id} not found in any PCR source")
+        loc = Location.fromstring(fragment.left_location)
+        return loc.extract(reverse_complement(primer.sequence))
+    raise ValueError(f'Primer {primer.id} not found in PCR source {source.id}')
+
+
+def _primer_summary_entry(key: str, primer: PrimerModel, source: PCRSource) -> dict:
+    bound = _primer_binding(source, primer)
+    if 'rvs' in key:
+        bound = reverse_complement(bound)
+    return {
+        key: primer.sequence,
+        f'{key}_name': primer.name,
+        f'{key}_bound': bound,
+        f'{key}_tm': tm.tm_default(bound),
+    }
+
+
+def _add_pcr_primers(
+    primer_dict: dict,
+    source: PCRSource,
+    output_name: str,
+    primer_by_id: dict[int, PrimerModel],
+) -> None:
+    primer_ids = [inp.sequence for inp in source.input if inp.sequence in primer_by_id]
+    if output_name == 'amplified_marker':
+        if len(primer_ids) < 2:
+            return
+        primer_dict.update(_primer_summary_entry('primer_fwd', primer_by_id[primer_ids[0]], source))
+        primer_dict.update(_primer_summary_entry('primer_rvs', primer_by_id[primer_ids[1]], source))
+    elif output_name == 'check_pcr_left' and primer_ids:
+        primer_dict.update(_primer_summary_entry('primer_fwd_check', primer_by_id[primer_ids[0]], source))
+    elif output_name == 'check_pcr_right' and primer_ids:
+        primer_dict.update(_primer_summary_entry('primer_rvs_check', primer_by_id[primer_ids[-1]], source))
+
+
+def extract_primers_from_strategy(strategy: BaseCloningStrategy) -> dict:
+    primer_by_id = {primer.id: primer for primer in strategy.primers}
+    seq_id_to_name = _sequence_names_by_id(strategy)
+    primer_dict: dict = {}
+
+    for source in strategy.sources:
+        if source.type != 'PCRSource':
+            continue
+        output_name = seq_id_to_name.get(source.id)
+        if output_name is None:
+            continue
+        _add_pcr_primers(primer_dict, source, output_name, primer_by_id)
+
+    return primer_dict
 
 
 def process_folder(working_dir: str):
     with open(os.path.join(working_dir, 'cloning_strategy.json'), 'r') as f:
         strategy = BaseCloningStrategy.model_validate(json.load(f))
 
-    pcr_sources = [s for s in strategy.sources if s.type == 'PCRSource']
-    # We do this to have action to .end and .start
-    pcr_sources = [PCRSource.model_validate(s.model_dump()) for s in pcr_sources]
     locus_source = next(s for s in strategy.sources if s.type == 'GenomeCoordinatesSource')
     locus_location = Location.fromstring(locus_source.coordinates)
     hrec_source = next(s for s in strategy.sources if s.type == 'HomologousRecombinationSource')
-    # We do this to have action to .end and .start
-    hrec_source: HomologousRecombinationSource = HomologousRecombinationSource.model_validate(hrec_source.model_dump())
-
-    chromosome = locus_source.repository_id
-    insertion_start = (
-        locus_location.start + location_boundaries(Location.fromstring(hrec_source.input[0].right_location))[1]
-    )
-    insertion_end = (
-        locus_location.start + location_boundaries(Location.fromstring(hrec_source.input[-1].left_location))[0]
-    )
-
-    # Write out the sequences in genbank format and extract some relevant info
-    sequences = [pydna_parse(sequence.file_content)[0] for sequence in strategy.sequences]
-    for seq in sequences:
-        with open(os.path.join(working_dir, f"{seq.name}.gb"), 'w') as f:
-            f.write(seq.format('genbank'))
-
-        if seq.name == 'amplified_marker':
-            amplified_marker_length = len(seq.seq)
-
-        if seq.name == 'check_pcr_left':
-            check_pcr_left_length = len(seq.seq)
-
-        if seq.name == 'check_pcr_right':
-            check_pcr_right_length = len(seq.seq)
-
-    primer_dict = dict()
-
-    primer_names = ['primer_fwd_check', 'primer_fwd', 'primer_rvs', None, 'primer_rvs_check', None]
-    for i, primer in enumerate(strategy.primers):
-        if primer_names[i] is None:
-            continue
-        name = primer_names[i]
-        primer_dict[name] = primer.sequence
-        primer_dict[name + '_name'] = primer.name
-        # Find what the alignment bit of the primer is
-        aligned_seq = find_primer_aligned_sequence(pcr_sources, primer)
-        if 'rvs' in name:
-            aligned_seq = reverse_complement(aligned_seq)
-        primer_dict[name + '_bound'] = aligned_seq
-        primer_dict[name + '_tm'] = tm.tm_default(aligned_seq)
 
     metadata_path = os.path.join(working_dir, 'metadata.json')
     metadata = {}
@@ -94,15 +100,24 @@ def process_folder(working_dir: str):
         'gene': os.path.basename(working_dir),
         'cloning_type': metadata.get('cloning_type', 'gene_deletion'),
         'allele_name': metadata.get('allele_name'),
-        'chromosome': chromosome,
-        'insertion_start': insertion_start,
-        'insertion_end': insertion_end,
-        'amplified_marker_length': amplified_marker_length,
-        'check_pcr_left_length': check_pcr_left_length,
-        'check_pcr_right_length': check_pcr_right_length,
+        'chromosome': locus_source.repository_id,
+        'insertion_start': (
+            locus_location.start + location_boundaries(Location.fromstring(hrec_source.input[0].right_location))[1]
+        ),
+        'insertion_end': (
+            locus_location.start + location_boundaries(Location.fromstring(hrec_source.input[-1].left_location))[0]
+        ),
     }
 
-    summary.update(primer_dict)
+    for sequence in strategy.sequences:
+        seq = pydna_parse(sequence.file_content)[0]
+        with open(os.path.join(working_dir, f'{seq.name}.gb'), 'w') as f:
+            f.write(seq.format('genbank'))
+        length_key = SEQUENCE_LENGTH_KEYS.get(seq.name)
+        if length_key is not None:
+            summary[length_key] = len(seq.seq)
+
+    summary.update(extract_primers_from_strategy(strategy))
 
     with open(os.path.join(working_dir, 'summary.json'), 'w') as f:
         json.dump(summary, f, indent=4)

@@ -36,6 +36,8 @@ def main(input_dir: str):
 
     for _, row in df.iterrows():
         for primer_name in primer_names:
+            if primer_name not in row or row[primer_name] is None:
+                continue
             primer_row = OrderedDict()
             primer_row['name'] = row[primer_name + '_name']
             primer_row['sequence'] = row[primer_name]

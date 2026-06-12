@@ -140,7 +140,8 @@ def simulate_and_write(
     locus_ctx: GeneLocus,
     primers: tuple[Primer, Primer, Primer, Primer],
     plasmid: Dseqrecord,
-    common_primers: list[Primer],
+    common_primer_forward: Primer | None,
+    common_primer_reverse: Primer | None,
     output_dir: str,
 ) -> None:
     left_primer, right_primer, left_check_primer, right_check_primer = primers
@@ -158,19 +159,28 @@ def simulate_and_write(
         raise ValueError(f'Multiple insertions possible for {locus_ctx.gene}')
     modified_allele_name = allele_name(locus_ctx.gene, locus_ctx.cloning_type)
     alleles[0].name = modified_allele_name
+    terminals = [alleles[0]]
+    if common_primer_reverse is not None:
+        pcr_check_left_products = pcr_assembly(
+            alleles[0], left_check_primer, common_primer_reverse, limit=14, mismatches=0
+        )
+        if len(pcr_check_left_products) == 0:
+            raise ValueError(f'No PCR products with the left check primer for {locus_ctx.gene}')
+        pcr_check_left = pcr_check_left_products[0]
+        pcr_check_left.name = 'check_pcr_left'
+        terminals.append(pcr_check_left)
 
-    pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)
-    if len(pcr_check1) == 0:
-        raise ValueError(f'No PCR products with the left check primer for {locus_ctx.gene}')
-    pcr_check1 = pcr_check1[0]
-    pcr_check1.name = 'check_pcr_left'
-    pcr_check2 = pcr_assembly(alleles[0], common_primers[0], right_check_primer, limit=14, mismatches=0)
-    if len(pcr_check2) == 0:
-        raise ValueError(f'No PCR products with the right check primer for {locus_ctx.gene}')
-    pcr_check2 = pcr_check2[0]
-    pcr_check2.name = 'check_pcr_right'
+    if common_primer_forward is not None:
+        pcr_check_right_products = pcr_assembly(
+            alleles[0], common_primer_forward, right_check_primer, limit=14, mismatches=0
+        )
+        if len(pcr_check_right_products) == 0:
+            raise ValueError(f'No PCR products with the right check primer for {locus_ctx.gene}')
+        pcr_check_right = pcr_check_right_products[0]
+        pcr_check_right.name = 'check_pcr_right'
+        terminals.append(pcr_check_right)
 
-    cs = CloningStrategy.from_dseqrecords([pcr_check1, pcr_check2])
+    cs = CloningStrategy.from_dseqrecords(terminals)
     if not os.path.exists(os.path.join(output_dir, locus_ctx.gene)):
         os.makedirs(os.path.join(output_dir, locus_ctx.gene))
 
@@ -179,7 +189,12 @@ def simulate_and_write(
         f.write(cs.model_dump_json(indent=2))
     with open(os.path.join(gene_dir, 'metadata.json'), 'w') as f:
         json.dump(
-            {'cloning_type': locus_ctx.cloning_type, 'allele_name': modified_allele_name},
+            {
+                'cloning_type': locus_ctx.cloning_type,
+                'allele_name': modified_allele_name,
+                'check_pcr_left': common_primer_reverse is not None,
+                'check_pcr_right': common_primer_forward is not None,
+            },
             f,
         )
 
@@ -193,7 +208,8 @@ async def main(
     *,
     output_dir: str | None = None,
     plasmid: Dseqrecord | None = None,
-    common_primers: list[Primer] | None = None,
+    common_primer_forward: Primer | None = None,
+    common_primer_reverse: Primer | None = None,
     primers_only: bool = False,
 ) -> tuple[Primer, Primer, Primer, Primer] | None:
     print(f"\033[92mCloning {gene}\033[0m")
@@ -204,6 +220,5 @@ async def main(
 
     assert output_dir is not None
     assert plasmid is not None
-    assert common_primers is not None
-    simulate_and_write(locus_ctx, primers, plasmid, common_primers, output_dir)
+    simulate_and_write(locus_ctx, primers, plasmid, common_primer_forward, common_primer_reverse, output_dir)
     return None

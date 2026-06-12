@@ -60,8 +60,8 @@ async def post_batch_cloning(
     plasmid_file: UploadFile | None = File(None),
     addgene_id: str | None = Form(None),
     plasmid_option: Annotated[Literal['addgene', 'file', 'default'], Form(...)] = None,
-    checking_primer_forward: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
-    checking_primer_reverse: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
+    checking_primer_forward: str = Form('', pattern=r'^[ACGTacgt]*$'),
+    checking_primer_reverse: str = Form('', pattern=r'^[ACGTacgt]*$'),
     resistance_marker: Annotated[Literal['kanmx6', 'natmx6', 'hphmx6', 'other'], Form(...)] = None,
 ):
     genes = [gene.strip() for gene in gene_list.split() if gene.strip()]
@@ -88,10 +88,12 @@ async def post_batch_cloning(
         primer_df = build_primer_summary_df(gene_primers)
         return HTMLResponse(content=primer_summary_to_html(primer_df))
 
-    common_primers = [
-        Primer(checking_primer_forward, name='common_insert_fwd'),
-        Primer(checking_primer_reverse, name='common_insert_rvs'),
-    ]
+    common_primer_forward = (
+        Primer(checking_primer_forward, name='common_insert_fwd') if checking_primer_forward else None
+    )
+    common_primer_reverse = (
+        Primer(checking_primer_reverse, name='common_insert_rvs') if checking_primer_reverse else None
+    )
 
     if plasmid_option == 'default':
         try:
@@ -144,7 +146,8 @@ async def post_batch_cloning(
                     cloning_type,
                     output_dir=temp_dir,
                     plasmid=plasmid,
-                    common_primers=common_primers,
+                    common_primer_forward=common_primer_forward,
+                    common_primer_reverse=common_primer_reverse,
                 )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f'Cloning failed: {e}')
