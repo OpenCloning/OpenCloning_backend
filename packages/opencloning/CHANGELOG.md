@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.5](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.4...opencloning-v1.9.5) (2026-06-12)
+
+
+### Bug Fixes
+
+* change pombe form to not rely on PPPP for primer design and work for cerevisiae as well ([#514](https://github.com/OpenCloning/OpenCloning_backend/issues/514)) ([40d656f](https://github.com/OpenCloning/OpenCloning_backend/commit/40d656fab04d3994ab4736bfbcf55c383f6c8e7a))
+
 ## [1.9.4](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.3...opencloning-v1.9.4) (2026-06-10)
 
 

@@ -1,13 +1,13 @@
 [project]
 name = "opencloning-db"
-version = "1.9.4"
+version = "1.9.5"
 description = "Database for OpenCloning, a web application to generate molecular cloning strategies in json format, and share them with others."
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Manuel Lera-Ramirez", email = "manulera14@gmail.com" }]
 requires-python = ">=3.11,<4"
 dependencies = [
-    "opencloning==1.9.4",                # x-release-please-version
+    "opencloning==1.9.5",                # x-release-please-version
     "fastapi>=0.135.3",
     "fastapi-pagination>=0.15.10,<0.16",
     "opencloning-linkml>=1.0.0",
