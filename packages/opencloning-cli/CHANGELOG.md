@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.5](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.9.4...opencloning-cli-v1.9.5) (2026-06-12)
+
+
+### Miscellaneous Chores
+
+* **opencloning-cli:** Synchronize backend-packages versions
+
 ## [1.9.4](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.9.3...opencloning-cli-v1.9.4) (2026-06-10)
 
 
