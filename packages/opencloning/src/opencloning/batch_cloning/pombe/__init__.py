@@ -43,6 +43,10 @@ DEFAULT_PLASMID_OPTIONS = {
 }
 
 
+def raise_plasmid_import_error(exception: Exception, mode) -> None:
+    raise HTTPException(status_code=503, detail=f'Failed to import plasmid from {mode}: {exception}') from exception
+
+
 @router.post('/batch_cloning/yeast_primer_design')
 async def post_batch_cloning(
     cloning_type: Annotated[
@@ -102,42 +106,53 @@ async def post_batch_cloning(
             raise HTTPException(
                 status_code=400, detail=f'Resistance marker {resistance_marker} is not supported for default plasmid'
             )
+        except Exception as e:
+            raise_plasmid_import_error(e, mode)
 
     elif plasmid_option == 'file':
-        assert plasmid_file is not None
-        assert plasmid_file.filename is not None
-        file_content = await plasmid_file.read()
-        if plasmid_file.filename.endswith('.dna'):
-            plasmid = parse_snapgene(file_content)[0]
-        else:
-            plasmid = pydna_parse(file_content.decode('utf-8'))[0]
-            plasmid.source = UploadedFileSource(
-                file_name=plasmid_file.filename,
-                sequence_file_format=plasmid.annotations['pydna_parse_sequence_file_format'],
-                index_in_file=0,
-            )
+        try:
+            assert plasmid_file is not None
+            assert plasmid_file.filename is not None
+            file_content = await plasmid_file.read()
+            if plasmid_file.filename.endswith('.dna'):
+                plasmid = parse_snapgene(file_content)[0]
+            else:
+                plasmid = pydna_parse(file_content.decode('utf-8'))[0]
+                plasmid.source = UploadedFileSource(
+                    file_name=plasmid_file.filename,
+                    sequence_file_format=plasmid.annotations['pydna_parse_sequence_file_format'],
+                    index_in_file=0,
+                )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f'Plasmid loading failed: {e}')
+
     if plasmid_option == 'addgene':
         assert addgene_id is not None
-        plasmid = await request_from_addgene(addgene_id)
+        try:
+            plasmid = await request_from_addgene(addgene_id)
+        except Exception as e:
+            raise_plasmid_import_error(e, 'addgene')
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        for gene in genes:
-            await pombe_clone(
-                gene,
-                assembly_accession,
-                integration_binding_forward,
-                integration_binding_reverse,
-                cloning_type,
-                output_dir=temp_dir,
-                plasmid=plasmid,
-                common_primers=common_primers,
-            )
+        try:
+            for gene in genes:
+                await pombe_clone(
+                    gene,
+                    assembly_accession,
+                    integration_binding_forward,
+                    integration_binding_reverse,
+                    cloning_type,
+                    output_dir=temp_dir,
+                    plasmid=plasmid,
+                    common_primers=common_primers,
+                )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f'Cloning failed: {e}')
 
         try:
             pombe_summary(temp_dir)
             pombe_gather(temp_dir)
         except Exception as e:
-            raise
             raise HTTPException(status_code=400, detail=f'Summary failed: {e}')
 
         zip_filename = f'{temp_dir}_archive'

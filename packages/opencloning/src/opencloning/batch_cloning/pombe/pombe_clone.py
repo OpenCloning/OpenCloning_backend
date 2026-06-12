@@ -146,20 +146,31 @@ def simulate_and_write(
     left_primer, right_primer, left_check_primer, right_check_primer = primers
 
     pcr_products = pcr_assembly(plasmid, left_primer, right_primer, limit=14, mismatches=0)
+    if len(pcr_products) == 0:
+        raise ValueError('No PCR products when amplifying from the plasmid')
+    if len(pcr_products) > 1:
+        raise ValueError('Multiple PCR products when amplifying from the plasmid')
     pcr_products[0].name = 'amplified_marker'
     alleles = homologous_recombination_integration(locus_ctx.locus, [pcr_products[0]], 80)
-    modified_allele_name = allele_name(locus_ctx.gene, locus_ctx.cloning_type)
-    alleles[0].name = modified_allele_name
+    if len(alleles) == 0:
+        raise ValueError(f'No insertions possible for {locus_ctx.gene}')
     if len(alleles) > 1:
         raise ValueError(f'Multiple insertions possible for {locus_ctx.gene}')
+    modified_allele_name = allele_name(locus_ctx.gene, locus_ctx.cloning_type)
+    alleles[0].name = modified_allele_name
 
-    pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)[0]
+    pcr_check1 = pcr_assembly(alleles[0], left_check_primer, common_primers[1], limit=14, mismatches=0)
+    if len(pcr_check1) == 0:
+        raise ValueError(f'No PCR products with the left check primer for {locus_ctx.gene}')
+    pcr_check1 = pcr_check1[0]
     pcr_check1.name = 'check_pcr_left'
-    pcr_check2 = pcr_assembly(alleles[0], common_primers[0], right_check_primer, limit=14, mismatches=0)[0]
+    pcr_check2 = pcr_assembly(alleles[0], common_primers[0], right_check_primer, limit=14, mismatches=0)
+    if len(pcr_check2) == 0:
+        raise ValueError(f'No PCR products with the right check primer for {locus_ctx.gene}')
+    pcr_check2 = pcr_check2[0]
     pcr_check2.name = 'check_pcr_right'
 
     cs = CloningStrategy.from_dseqrecords([pcr_check1, pcr_check2])
-
     if not os.path.exists(os.path.join(output_dir, locus_ctx.gene)):
         os.makedirs(os.path.join(output_dir, locus_ctx.gene))
 
