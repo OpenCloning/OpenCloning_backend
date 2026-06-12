@@ -69,6 +69,12 @@
             gap: 6px;
         }
 
+        .radio-list--horizontal {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
         .radio-label {
             display: flex;
             align-items: center;
@@ -196,19 +202,24 @@
 
 <body>
     <div class="form-container">
-        <h1>S. pombe cloning batch primer design</h1>
+        <h1>Yeast cloning batch primer design</h1>
         <p class="explanation" style="margin-bottom: 24px;">
-            Design PCR-based cloning strategies for <em>Schizosaccharomyces pombe</em> in batch.
+            Design PCR-based cloning strategies for yeast in batch.
         </p>
         <p class="explanation" style="margin-bottom: 24px;">
             Powered by <a href="https://opencloning.org" target="_blank" rel="noopener">OpenCloning</a>.
             To learn more about all OpenCloning features, see <a href="https://docs.opencloning.org" target="_blank"
                 rel="noopener">docs.opencloning.org</a>.
+            If you have feedback, reach out to
+            <a href="mailto:manuel.lera-ramirez@ucl.ac.uk">manuel.lera-ramirez@ucl.ac.uk</a>.
         </p>
         <h3>How to use</h3>
+        <p>You can check out <a target="_blank" rel="noopener" href="https://youtu.be/TOHSVyGMnAw">this video</a> for a
+            quick overview.</p>
         <ul>
+            <li>Select the genome assembly</li>
             <li>Select the cloning type</li>
-            <li>Enter S.&nbsp;pombe systematic gene IDs (e.g. SPBC15D4.01c).</li>
+            <li>Enter yeast systematic gene IDs (e.g. SPBC15D4.01c).</li>
             <li>Select a marker plasmid.</li>
             <li>Specify verification primers.</li>
             <li>The pipeline designs primers for integration and checking.</li>
@@ -253,6 +264,31 @@
 
         <form>
             <fieldset class="form-section">
+                <legend>Genome assembly</legend>
+                <input type="hidden" id="assembly_accession" name="assembly_accession" value="GCF_000002945.2">
+                <div class="radio-list radio-list--horizontal">
+                    <label class="radio-label" for="assembly_pombe">
+                        <input type="radio" id="assembly_pombe" name="genome_assembly_choice" value="pombe" checked>
+                        pombe
+                    </label>
+                    <label class="radio-label" for="assembly_cerevisiae">
+                        <input type="radio" id="assembly_cerevisiae" name="genome_assembly_choice" value="cerevisiae">
+                        cerevisiae
+                    </label>
+                    <label class="radio-label" for="assembly_custom">
+                        <input type="radio" id="assembly_custom" name="genome_assembly_choice" value="custom">
+                        custom
+                    </label>
+                </div>
+                <div id="custom_assembly_message" class="nested-section" style="display: none;">
+                    <p class="explanation">
+                        Interested in supporting more species or genomes? Reach out to
+                        <a href="mailto:manuel.lera-ramirez@ucl.ac.uk">manuel.lera-ramirez@ucl.ac.uk</a>.
+                    </p>
+                </div>
+            </fieldset>
+
+            <fieldset class="form-section">
                 <legend>Cloning type</legend>
                 <div class="radio-list">
                     <label class="radio-label" for="gene_deletion">
@@ -288,7 +324,8 @@
             <fieldset class="form-section">
                 <legend>Gene list (one gene per line)</legend>
                 <p class="explanation">
-                    S. pombe systematic IDs only (e.g. SPAPB1A10.09, SPBC15D4.01c). One gene ID per line; empty lines
+                    Yeast systematic IDs only (e.g. SPAPB1A10.09, for pombe, YOR058C for cerevisiae). One gene ID per
+                    line; empty lines
                     are
                     ignored.
                 </p>
@@ -495,6 +532,10 @@ SPBC15D4.01c</textarea>
                         gene_cterm_tagging: "pFA6a-GFP(S65T)-kanMX6, pFA6a-natMX-(3xFLAG)-TEV-ProtA, pFA6a-mCherry-hphMX6",
                         promoter_not_tag: "pFA6a-kanMX6-P3nmt1, pFA6a-natMX6-P3nmt1, pFA6a-hphMX6-3nmt1",
                     },
+                    assemblyAccessions: {
+                        pombe: "GCF_000002945.2",
+                        cerevisiae: "GCF_000146045.2",
+                    },
                     messages: {
                         submitSimulate: "Submit to run the pipeline. You will receive a ZIP file containing per-gene folders (primers, cloning strategy, GenBank sequences) and summary tables (TSV, Excel, YAML).",
                         submitPrimersOnly: "Submit to design primers. Results will be shown in a table below.",
@@ -503,6 +544,7 @@ SPBC15D4.01c</textarea>
                 };
 
                 const SYNC_FIELDS = new Set([
+                    "genome_assembly_choice",
                     "cloning_type",
                     "desired_output",
                     "plasmid_option",
@@ -533,6 +575,16 @@ SPBC15D4.01c</textarea>
                     DOM.restoreIntegrationBinding = document.getElementById("restore_integration_binding");
                     DOM.submitButton = document.getElementById("submit-button");
                     DOM.loadingMessage = document.getElementById("loading-message");
+                    DOM.customAssemblyMessage = document.getElementById("custom_assembly_message");
+                    DOM.assemblyAccession = document.getElementById("assembly_accession");
+                }
+
+                function isCustomAssembly() {
+                    return checkedRadio("genome_assembly_choice") === "custom";
+                }
+
+                function resolveAssemblyAccession() {
+                    return CONFIG.assemblyAccessions[checkedRadio("genome_assembly_choice")];
                 }
 
                 function checkedRadio(name) {
@@ -623,7 +675,17 @@ SPBC15D4.01c</textarea>
                     DOM.primerResultsTable.innerHTML = "";
                 }
 
+                function syncGenomeAssembly() {
+                    const isCustom = isCustomAssembly();
+                    DOM.customAssemblyMessage.style.display = isCustom ? "block" : "none";
+                    DOM.submitButton.disabled = isCustom;
+                    if (!isCustom) {
+                        DOM.assemblyAccession.value = resolveAssemblyAccession();
+                    }
+                }
+
                 function syncForm() {
+                    syncGenomeAssembly();
                     syncDesiredOutput();
                     syncCheckingPrimers();
                     syncPlasmidSource();
@@ -659,12 +721,17 @@ SPBC15D4.01c</textarea>
 
                 async function onFormSubmit(event) {
                     event.preventDefault();
+                    if (isCustomAssembly()) {
+                        return;
+                    }
                     if (!DOM.form.reportValidity()) {
                         return;
                     }
 
                     const formData = new FormData(DOM.form);
                     formData.set("cloning_type", cloningType.forSubmit(formData.get("cloning_type")));
+                    formData.set("assembly_accession", resolveAssemblyAccession());
+                    formData.delete("genome_assembly_choice");
                     const primersOnly = formData.get("desired_output") === "primers_only";
 
                     DOM.submitButton.style.display = "none";

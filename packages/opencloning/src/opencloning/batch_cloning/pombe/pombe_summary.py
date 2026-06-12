@@ -45,7 +45,7 @@ def process_folder(working_dir: str):
     # We do this to have action to .end and .start
     hrec_source: HomologousRecombinationSource = HomologousRecombinationSource.model_validate(hrec_source.model_dump())
 
-    chromosome = chromosomes[locus_source.repository_id]
+    chromosome = locus_source.repository_id
     insertion_start = (
         locus_location.start + location_boundaries(Location.fromstring(hrec_source.input[0].right_location))[1]
     )

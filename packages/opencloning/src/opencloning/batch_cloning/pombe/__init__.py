@@ -19,12 +19,10 @@ from pydna.parsers import parse_snapgene
 router = get_router()
 
 
-@router.get('/batch_cloning/pombe')
+@router.get('/batch_cloning/yeast_primer_design')
 async def get_batch_cloning_page(request: Request):
     return FileResponse(os.path.join(os.path.dirname(__file__), 'index.html'))
 
-
-ASSEMBLY_ACCESSION = 'GCF_000002945.2'
 
 DEFAULT_PLASMID_OPTIONS = {
     'gene_deletion': {
@@ -45,12 +43,13 @@ DEFAULT_PLASMID_OPTIONS = {
 }
 
 
-@router.post('/batch_cloning/pombe')
+@router.post('/batch_cloning/yeast_primer_design')
 async def post_batch_cloning(
     cloning_type: Annotated[
         Literal['gene_deletion', 'gene_cterm_tagging', 'promoter_not_tag', 'promoter_with_tag'], Form(...)
     ],
     desired_output: Annotated[Literal['simulate_cloning', 'primers_only'], Form(...)],
+    assembly_accession: str = Form(..., pattern=r'^GC[AF]_[0-9.]+$', min_length=1),
     gene_list: str = Form(...),
     integration_binding_forward: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
     integration_binding_reverse: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
@@ -72,7 +71,7 @@ async def post_batch_cloning(
             for gene in genes:
                 primers = await pombe_clone(
                     gene,
-                    ASSEMBLY_ACCESSION,
+                    assembly_accession,
                     integration_binding_forward,
                     integration_binding_reverse,
                     cloning_type,
@@ -125,7 +124,7 @@ async def post_batch_cloning(
         for gene in genes:
             await pombe_clone(
                 gene,
-                ASSEMBLY_ACCESSION,
+                assembly_accession,
                 integration_binding_forward,
                 integration_binding_reverse,
                 cloning_type,
@@ -138,6 +137,7 @@ async def post_batch_cloning(
             pombe_summary(temp_dir)
             pombe_gather(temp_dir)
         except Exception as e:
+            raise
             raise HTTPException(status_code=400, detail=f'Summary failed: {e}')
 
         zip_filename = f'{temp_dir}_archive'
