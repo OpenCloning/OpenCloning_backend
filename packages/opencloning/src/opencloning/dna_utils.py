@@ -14,8 +14,8 @@ from Bio.Data.IUPACData import ambiguous_dna_values as _ambiguous_dna_values
 from pairwise_alignments_to_msa.alignment import aligned_tuples_to_MSA
 from copy import deepcopy
 import numpy as np
-from Bio.SeqFeature import CompoundLocation
 from pydna.utils import location_boundaries, shift_location
+from Bio.SeqFeature import SimpleLocation, CompoundLocation
 
 aligner = PairwiseAligner(scoring='blastn')
 
@@ -196,3 +196,46 @@ def compound_location_to_capitalized_str(sequence: Dseqrecord, location: Compoun
     if location.strand == -1:
         result = reverse_complement(result)
     return result
+
+
+def trim_location(
+    location: SimpleLocation | CompoundLocation, amount: int, from_end: bool = True
+) -> SimpleLocation | CompoundLocation:
+
+    if not isinstance(location, (SimpleLocation, CompoundLocation)):
+        raise ValueError('Location must be a SimpleLocation or CompoundLocation')
+    if amount > len(location):
+        raise ValueError('Amount is greater than the length of the location')
+
+    if from_end:
+        iter = (part for part in location.parts[::-1])
+    else:
+        iter = (part for part in location.parts)
+    left_to_cut = amount
+    new_parts = []
+    for part in iter:
+        if left_to_cut == 0:
+            new_parts.append(part)
+            continue
+        if len(part) > left_to_cut:
+            new_parts.append(SimpleLocation(part.start, part.end - left_to_cut))
+            left_to_cut = 0
+        elif len(part) == left_to_cut:
+            left_to_cut = 0
+        else:
+            left_to_cut -= len(part)
+    if from_end:
+        new_parts = new_parts[::-1]
+
+    if len(new_parts) == 1:
+        return SimpleLocation(new_parts[0].start, new_parts[0].end)
+
+    return CompoundLocation(new_parts)
+
+
+# For an eventual test
+# for loc_str in ['10..20', 'join(10..20, 30..40)', 'complement(join(10..20, 30..40))']:
+#     loc = Location.fromstring(loc_str)
+#     print(loc)
+#     print(trim_location(loc, 5))
+#     print()
