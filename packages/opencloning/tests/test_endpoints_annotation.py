@@ -583,6 +583,100 @@ class PrimerBindingSitesThermodynamicsTest(PrimerBindingSitesFixture, unittest.T
             ]
         )
 
+    # gfp-genomF matches perfectly over its 20 bases at 1529..1549
+    perfect_primer = 'AGTGGAGAGGGTGAAGGTGA'
+    tail = 'GCGCGGATCCTT'
+
+    def tm_of(self, sequence, **params):
+        """The melting temperature of the bound stretch of the only site of one primer."""
+        (entry,) = self.bound_entries(
+            [{'id': 2, 'name': 'test', 'sequence': sequence}],
+            settings=self.reference_settings,
+            minimal_annealing=14,
+            **params,
+        )
+        return entry['melting_temperature']
+
+    def test_the_mismatch_budget_alone_does_not_change_the_melting_temperature(self):
+        # A primer that matches perfectly forms the same duplex whatever the budget, so
+        # allowing mismatches must not move its melting temperature
+        reference = self.tm_of(self.perfect_primer, allowed_mismatches=0)
+        for allowed in (1, 2, 3):
+            self.assertAlmostEqual(self.tm_of(self.perfect_primer, allowed_mismatches=allowed), reference)
+
+    def test_a_5prime_tail_does_not_change_the_melting_temperature(self):
+        # Only the part that anneals is measured, and the tail is not part of it
+        reference = self.tm_of(self.perfect_primer, allowed_mismatches=0)
+        for allowed in (0, 1, 2, 3):
+            self.assertAlmostEqual(self.tm_of(self.tail + self.perfect_primer, allowed_mismatches=allowed), reference)
+
+    def test_a_mismatch_lowers_the_melting_temperature(self):
+        # primer3 has no parameters for mismatched pairs, so on its own it would report a
+        # duplex with a mismatch as barely colder than the perfect one
+        perfect = self.tm_of(self.perfect_primer, allowed_mismatches=0)
+        one = self.tm_of(mutate_base(self.perfect_primer, 10), allowed_mismatches=1)
+        two = self.tm_of(
+            mutate_base(mutate_base(self.perfect_primer, 5), 12), allowed_mismatches=2
+        )
+        self.assertLess(one, perfect - 3)
+        self.assertLess(two, one - 3)
+
+    def test_a_mismatch_under_a_5prime_tail_lowers_the_melting_temperature_the_same(self):
+        mutated = mutate_base(self.perfect_primer, 10)
+        self.assertAlmostEqual(
+            self.tm_of(self.tail + mutated, allowed_mismatches=1),
+            self.tm_of(mutated, allowed_mismatches=1),
+        )
+
+    def test_adjacent_mismatches_have_no_melting_temperature(self):
+        # The nearest-neighbour model has no parameters for a tandem mismatch, and a number
+        # that is known to be wrong is worse than none. The site is still annotated
+        sequence = self.perfect_primer[:9] + 'TT' + self.perfect_primer[11:]
+        (entry,) = self.bound_entries(
+            [{'id': 2, 'name': 'test', 'sequence': sequence}],
+            settings=self.reference_settings,
+            minimal_annealing=14,
+            allowed_mismatches=2,
+        )
+        self.assertIsNone(entry['melting_temperature'])
+        self.assertEqual(entry['mismatches'], 2)
+        self.assertEqual((entry['start_location'], entry['end_location']), (1529, 1549))
+        self.assertIsNotNone(entry['primer_melting_temperature'])
+
+    def test_minimal_tm_accounts_for_the_mismatches(self):
+        # This primer anneals over its whole length, so the melting temperature of the whole
+        # primer is what the bound stretch would melt at if the mismatch were ignored. Just
+        # below it, the filter has to drop the site anyway, because the mismatch is not free
+        mutated = [{'id': 2, 'name': 'test', 'sequence': mutate_base(self.perfect_primer, 10)}]
+        (entry,) = self.bound_entries(
+            mutated, settings=self.reference_settings, minimal_annealing=14, allowed_mismatches=1
+        )
+        self.assertEqual(entry['matched_length'], entry['primer_length'])
+        threshold = entry['primer_melting_temperature'] - 0.5
+        self.assertLess(entry['melting_temperature'], threshold)
+        self.assertEqual(
+            self.bound_entries(
+                mutated,
+                settings=self.reference_settings,
+                minimal_annealing=14,
+                allowed_mismatches=1,
+                minimal_tm=threshold,
+            ),
+            [],
+        )
+
+    def test_a_site_without_a_melting_temperature_is_not_filtered_out(self):
+        # There is nothing to decide on, so the filter leaves it alone
+        sequence = self.perfect_primer[:9] + 'TT' + self.perfect_primer[11:]
+        (entry,) = self.bound_entries(
+            [{'id': 2, 'name': 'test', 'sequence': sequence}],
+            settings=self.reference_settings,
+            minimal_annealing=14,
+            allowed_mismatches=2,
+            minimal_tm=80,
+        )
+        self.assertIsNone(entry['melting_temperature'])
+
     def test_minimal_tm_filters_on_the_bound_stretch_not_the_whole_primer(self):
         # The 21 bp site of pAF melts at 59.8, the whole primer at 64.9: filtering at 60
         # must drop that site, and keep only the one where pAF anneals over its full length

@@ -5,8 +5,9 @@ import math
 import asyncio
 from dataclasses import dataclass
 from Bio.Restriction.Restriction import RestrictionBatch
-from Bio.Seq import reverse_complement
+from Bio.Seq import Seq, reverse_complement
 from Bio.SeqUtils import gc_fraction
+from Bio.SeqUtils import MeltingTemp as _melting_temp
 from Bio.SeqFeature import SeqFeature, SimpleLocation
 from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
@@ -482,6 +483,52 @@ def find_primer_binding_sites(
     return sorted(sites)
 
 
+def _mismatch_tm_delta(primer_part: str, template_part: str, settings: PrimerDesignSettings) -> float | None:
+    """How much the mismatches of a binding site lower its melting temperature.
+
+    `primer_part` is the bound stretch of the primer and `template_part` the stretch of the
+    template it pairs with, both read 5'->3' along the primer.
+
+    primer3 has no parameters for mismatched pairs, so the destabilisation is taken from
+    Biopython, as the difference between the duplex the primer actually forms and the one it
+    would form against its perfect complement. Both terms use the same tables and the same
+    salt, so the offset between the two implementations cancels and a stretch that matches
+    over its whole length gets exactly zero.
+
+    Returns `None` where the nearest-neighbour model has no parameters for the mismatches,
+    which is the case for two adjacent ones. The parameters were measured for a single
+    internal mismatch, so several of them in one duplex are an extrapolation, and the
+    result is good for ranking sites rather than as a measured temperature.
+    """
+    kwargs = dict(
+        nn_table=_melting_temp.DNA_NN3,
+        imm_table=_melting_temp.DNA_IMM1,
+        # A footprint pairs at both of its ends (`find_primer_binding_sites` rejects a
+        # mismatch on the 3' terminal base and never extends past the last match) and is as
+        # long as the stretch of template it is compared against, so neither the terminal
+        # mismatch nor the dangling end parameters can apply as things stand. They are kept
+        # so that this stays correct if those rules ever change
+        tmm_table=_melting_temp.DNA_TMM1,
+        de_table=_melting_temp.DNA_DE1,
+        Na=settings.primer_salt_monovalent,
+        K=0,
+        Tris=0,
+        Mg=settings.primer_salt_divalent,
+        # The primer is in large excess over the template, and 0.8 mM is what primer3 assumes
+        # for the dNTPs, which the settings do not expose
+        dnac1=settings.primer_dna_conc / 2,
+        dnac2=0,
+        dNTPs=0.8,
+        saltcorr=5,
+    )
+    try:
+        bound = _melting_temp.Tm_NN(primer_part, c_seq=str(Seq(template_part).complement()), **kwargs)
+        perfect = _melting_temp.Tm_NN(primer_part, c_seq=str(Seq(primer_part).complement()), **kwargs)
+    except (ValueError, KeyError):
+        return None
+    return bound - perfect
+
+
 @dataclass(frozen=True)
 class PrimerBindingSite:
     """A site where a primer anneals to a template, with the properties of the bound duplex."""
@@ -491,8 +538,9 @@ class PrimerBindingSite:
     strand: int
     mismatches: int
     # Of the stretch that is actually bound, which is shorter than the primer wherever it
-    # does not anneal over its entire length
-    melting_temperature: float
+    # does not anneal over its entire length. `None` where the mismatches of the site are
+    # outside what the nearest-neighbour model has parameters for
+    melting_temperature: float | None
     primer_melting_temperature: float
     gc_content: float
 
@@ -510,22 +558,31 @@ def annotate_primer_binding_sites(
 
     Every site is reported with two melting temperatures: that of the stretch which is
     actually bound, and that of the whole primer. `minimal_tm` filters on the former, since
-    that is the one that says whether the site primes.
+    that is the one that says whether the site primes. A site whose melting temperature
+    cannot be computed is never filtered out, as there is nothing to decide on.
 
     Returns the annotated sequence and a report as a list of `(primer, site)`, where `site`
     is `None` for primers that do not bind anywhere.
     """
     output = copy.deepcopy(template)
+    template_seq = _as_matching_string(template.seq)
     report = list()
     features = list()
-    # The same stretch is often bound more than once (e.g. a primer with two binding sites),
-    # and the primer3 calls are by far the most expensive part
+    # The same duplex is often formed more than once (e.g. a primer with two binding sites),
+    # and the melting temperature calls are by far the most expensive part. Two sites of the
+    # same primer can pair with different template bases, so the template is part of the key
     melting_temperature_cache = dict()
 
-    def melting_temperature(seq: str) -> float:
-        if seq not in melting_temperature_cache:
-            melting_temperature_cache[seq] = primer3_calc_tm(seq, settings)
-        return melting_temperature_cache[seq]
+    def melting_temperature(seq: str, paired_with: str | None = None) -> float | None:
+        """Melting temperature of `seq` bound to `paired_with`, or to its complement if given none."""
+        key = (seq, paired_with)
+        if key not in melting_temperature_cache:
+            tm = primer3_calc_tm(seq, settings)
+            if paired_with is not None and paired_with != seq:
+                delta = _mismatch_tm_delta(seq, paired_with, settings)
+                tm = None if delta is None else tm + delta
+            melting_temperature_cache[key] = tm
+        return melting_temperature_cache[key]
 
     for primer in primers:
         primer_seq = _as_matching_string(primer.seq)
@@ -536,8 +593,13 @@ def annotate_primer_binding_sites(
         ):
             # The match is anchored on the 3' end, so that is the part of the primer that pairs
             bound_seq = primer_seq[-(end - start) :]
-            tm = melting_temperature(bound_seq)
-            if minimal_tm is not None and tm < minimal_tm:
+            # The bases of the template the primer pairs with, read 5'->3' along the primer.
+            # A site of a circular template can run past its end, hence the doubled sequence
+            template_part = (template_seq * 2)[start:end]
+            if strand == -1:
+                template_part = reverse_complement(template_part)
+            tm = melting_temperature(bound_seq, template_part)
+            if minimal_tm is not None and tm is not None and tm < minimal_tm:
                 continue
             # gc_fraction is only counting characters, so unlike the primer3 calls it is
             # not worth caching
@@ -561,7 +623,8 @@ def annotate_primer_binding_sites(
                         'note': [
                             f'sequence: {primer.seq}',
                             f'mismatches: {site.mismatches}',
-                            f'Tm: {site.melting_temperature:.1f}',
+                            'Tm: '
+                            + ('unknown' if site.melting_temperature is None else f'{site.melting_temperature:.1f}'),
                             f'primer Tm: {site.primer_melting_temperature:.1f}',
                             f'%GC: {site.gc_content * 100:.1f}',
                         ],
