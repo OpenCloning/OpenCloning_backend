@@ -375,6 +375,12 @@ def _as_matching_string(seq) -> str:
     return str(seq).upper().replace('U', 'T')
 
 
+# How many matched bases a mismatch has to be paid for by to be worth crossing. Without it
+# the walk spends its budget on the first opportunity, and a 5' tail that does not anneal
+# is pulled into the footprint by the bases that match it by chance.
+MISMATCH_PENALTY = 4
+
+
 def _extend_binding_site(
     template_seq: str, aligned_primer: str, anchor: int, allowed_mismatches: int
 ) -> tuple[int, int]:
@@ -389,10 +395,13 @@ def _extend_binding_site(
     A mismatch on the 3' terminal base rejects the site, whatever the mismatch budget:
     a polymerase does not extend from an unpaired 3' end, so such a site does not prime.
 
-    Returns `(length, mismatches)` of the longest run that stays within the mismatch budget.
+    Returns `(length, mismatches)` of the run that scores highest, a match being worth one
+    base and a mismatch costing `MISMATCH_PENALTY`. This is not the longest run within the
+    budget: crossing a mismatch has to pay for itself in the bases that follow it, so the
+    walk stops where the primer stops annealing instead of reaching into a 5' tail.
     """
-    length = 0
-    mismatches = 0
+    best_length = best_mismatches = best_score = 0
+    length = mismatches = score = 0
     while length < len(aligned_primer) and anchor + length < len(template_seq):
         if template_seq[anchor + length] != aligned_primer[length]:
             if length == 0:
@@ -400,8 +409,15 @@ def _extend_binding_site(
             if mismatches == allowed_mismatches:
                 break
             mismatches += 1
+            score -= MISMATCH_PENALTY
+        else:
+            score += 1
+            # The score only grows on a match, so the footprint never ends on a mismatch,
+            # and a tie is resolved towards the shorter run, i.e. towards fewer mismatches
+            if score > best_score:
+                best_score, best_length, best_mismatches = score, length + 1, mismatches
         length += 1
-    return length, mismatches
+    return best_length, best_mismatches
 
 
 def find_primer_binding_sites(
@@ -454,8 +470,9 @@ def find_primer_binding_sites(
             start, end = three_prime_end, three_prime_end + length
 
         # A candidate whose perfect seed was shorter than requested can fall below the
-        # minimal annealing length once the mismatches are accounted for
-        if length < minimal_annealing:
+        # minimal annealing length once the mismatches are accounted for. Mismatched bases
+        # do not anneal, so they do not count towards it
+        if length - mismatches < minimal_annealing:
             continue
         # For circular templates the same site is found twice unless it spans the origin
         if start >= len(template_seq):

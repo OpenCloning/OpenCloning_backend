@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from pydna.dseqrecord import Dseqrecord
+from Bio.Seq import reverse_complement
 import unittest
 import json
 import pytest
@@ -160,6 +161,11 @@ def parse_primer_bind_features(genbank_text: str) -> set[tuple[str, int, int, in
     return out
 
 
+def mutate_base(sequence: str, index: int) -> str:
+    """The same sequence with the base at `index` replaced by a different one."""
+    return sequence[:index] + ('A' if sequence[index] != 'A' else 'C') + sequence[index + 1 :]
+
+
 class PrimerBindingSitesFixture:
     """Shared data and helpers for the primer binding site tests. Holds no tests itself."""
 
@@ -198,8 +204,17 @@ class PrimerBindingSitesFixture:
             body['settings'] = settings
         return client.post('/annotate/primer_binding_sites', json=body, params=params)
 
+    def template_dseqrecord(self):
+        return read_dsrecord_from_json(TextFileSequence(**self.template_sequence()))
+
     def named(self, name):
         return [p for p in self.all_primers if p['name'].strip() == name]
+
+    def bound_entries(self, primers, **params):
+        """The annotation report entries of the primers that bind."""
+        response = self.annotate(primers, **params)
+        self.assertEqual(response.status_code, 200)
+        return [r for r in response.json()['sources'][0]['annotation_report'] if r['start_location'] is not None]
 
     def report_of(self, response):
         return {
@@ -294,19 +309,79 @@ class PrimerBindingSitesTest(PrimerBindingSitesFixture, unittest.TestCase):
         return response.json()['sequences'][0]['file_content']
 
     def test_allowed_mismatches(self):
-        # NPTIIR does not bind anywhere with 0 mismatches
-        self.assertEqual(len(parse_primer_bind_features(self.annotate_named_output('NPTIIR', 14))), 0)
+        # gfp-genomF matches perfectly over its 20 bases at 1529..1549. With a mismatch in
+        # the middle only 10 bases are left 3' of it, too few to prime on their own
+        (primer,) = self.named('gfp-genomF')
+        mutated = [{**primer, 'sequence': mutate_base(primer['sequence'], 10)}]
+        self.assertEqual(self.bound_entries(mutated, minimal_annealing=14), [])
 
-        # With a mismatch budget it binds, and the reported number of mismatches is the real
-        # one in the annotated footprint, not the budget
-        for allowed, expected_footprint in ((1, (3753, 3767)), (2, (3753, 3768))):
-            response = self.annotate(self.named('NPTIIR'), minimal_annealing=14, allowed_mismatches=allowed)
-            (entry,) = [
-                r for r in response.json()['sources'][0]['annotation_report'] if r['start_location'] is not None
-            ]
-            self.assertEqual((entry['start_location'], entry['end_location']), expected_footprint)
-            self.assertEqual(entry['mismatches'], allowed)
-            self.assertEqual(entry['strand'], -1)
+        # With a budget the whole footprint is annotated, and the reported number of
+        # mismatches is the real one in it, not the budget
+        for allowed in (1, 2, 3):
+            (entry,) = self.bound_entries(mutated, minimal_annealing=14, allowed_mismatches=allowed)
+            self.assertEqual((entry['start_location'], entry['end_location']), (1529, 1549))
+            self.assertEqual(entry['matched_length'], 20)
+            self.assertEqual(entry['mismatches'], 1)
+            self.assertEqual(entry['strand'], 1)
+
+    def test_5prime_tail_does_not_consume_the_mismatch_budget(self):
+        # A primer with a 5' adapter must be annotated over the part that anneals, whatever
+        # the budget. Spending it on the adapter bases that match by chance would stretch
+        # the footprint into it and report mismatches that are not in the annealing region
+        (primer,) = self.named('gfp-genomF')
+        tailed = [{**primer, 'sequence': 'GCGCGGATCCTT' + primer['sequence']}]
+        for allowed in (0, 1, 2, 3):
+            (entry,) = self.bound_entries(tailed, minimal_annealing=14, allowed_mismatches=allowed)
+            self.assertEqual((entry['start_location'], entry['end_location']), (1529, 1549))
+            self.assertEqual(entry['mismatches'], 0)
+
+    def test_a_mismatch_under_a_5prime_tail_is_still_the_one_reported(self):
+        # The budget goes to the mismatch that is in the annealing region, not to the tail
+        (primer,) = self.named('gfp-genomF')
+        tailed = [{**primer, 'sequence': 'GCGCGGATCCTT' + mutate_base(primer['sequence'], 10)}]
+        for allowed in (1, 2, 3):
+            (entry,) = self.bound_entries(tailed, minimal_annealing=14, allowed_mismatches=allowed)
+            self.assertEqual((entry['start_location'], entry['end_location']), (1529, 1549))
+            self.assertEqual(entry['mismatches'], 1)
+
+    def test_a_footprint_is_not_padded_with_mismatches_to_reach_the_minimal_annealing(self):
+        # NPTIIR anneals over 13 bases at 3753 and its 14th base does not pair. Counting
+        # that base towards the annealing length would turn it into a 14 bp site that only
+        # exists because a mismatch was allowed
+        for allowed in (0, 1, 2, 3):
+            self.assertEqual(
+                parse_primer_bind_features(
+                    self.annotate(self.named('NPTIIR'), minimal_annealing=13, allowed_mismatches=allowed)
+                    .json()['sequences'][0]['file_content']
+                ),
+                {('NPTIIR', 3753, 3766, -1)},
+            )
+            self.assertEqual(
+                parse_primer_bind_features(
+                    self.annotate(self.named('NPTIIR'), minimal_annealing=14, allowed_mismatches=allowed)
+                    .json()['sequences'][0]['file_content']
+                ),
+                set(),
+            )
+
+    def test_no_footprint_ends_on_a_mismatch(self):
+        # The 5' end of a footprint is where the primer stops annealing, so that base pairs
+        template = str(self.template_dseqrecord().seq).upper()
+        sequences = {p['name'].strip(): p['sequence'].upper() for p in self.all_primers}
+        for allowed in (0, 1, 2, 3):
+            response = self.annotate(self.all_primers, minimal_annealing=14, allowed_mismatches=allowed)
+            found = parse_primer_bind_features(response.json()['sequences'][0]['file_content'])
+            self.assertNotEqual(found, set())
+            for label, start, end, strand in found:
+                footprint = template[start:end]
+                if strand == -1:
+                    footprint = reverse_complement(footprint)
+                # Both are read 5'->3' along the primer, so index 0 is its 5'-most bound base
+                self.assertEqual(
+                    footprint[0],
+                    sequences[label][-(end - start)],
+                    f'{label} {start}..{end} ends on a mismatch with budget {allowed}',
+                )
 
     def test_mismatches_do_not_shrink_the_footprint_below_minimal_annealing(self):
         # A candidate whose perfect run is shorter than the minimal annealing length must not
@@ -321,8 +396,8 @@ class PrimerBindingSitesTest(PrimerBindingSitesFixture, unittest.TestCase):
         # A polymerase does not extend from an unpaired 3' end, so such a site does not prime
         # whatever the mismatch budget. gfp-genomF binds at 1530..1549 with a perfect match.
         (primer,) = self.named('gfp-genomF')
-        mutated_3prime = primer['sequence'][:-1] + ('A' if primer['sequence'][-1] != 'A' else 'C')
-        mutated_5prime = ('A' if primer['sequence'][0] != 'A' else 'C') + primer['sequence'][1:]
+        mutated_3prime = mutate_base(primer['sequence'], len(primer['sequence']) - 1)
+        mutated_5prime = mutate_base(primer['sequence'], 0)
 
         for allowed in (0, 1, 2):
             response = self.annotate(
@@ -331,13 +406,14 @@ class PrimerBindingSitesTest(PrimerBindingSitesFixture, unittest.TestCase):
             found = parse_primer_bind_features(response.json()['sequences'][0]['file_content'])
             self.assertEqual(found, set(), f'3-prime mismatch annotated with budget {allowed}')
 
-        # The same mismatch on the 5' end is only a shorter footprint, or is absorbed by the budget
-        response = self.annotate([{**primer, 'sequence': mutated_5prime}], minimal_annealing=14)
-        ((_, start, end, _),) = parse_primer_bind_features(response.json()['sequences'][0]['file_content'])
-        self.assertEqual((start, end), (1530, 1549))
-        response = self.annotate([{**primer, 'sequence': mutated_5prime}], minimal_annealing=14, allowed_mismatches=1)
-        ((_, start, end, _),) = parse_primer_bind_features(response.json()['sequences'][0]['file_content'])
-        self.assertEqual((start, end), (1529, 1549))
+        # The same mismatch on the 5' end is only a shorter footprint. A budget does not
+        # extend it over that base, which does not pair and so does not anneal
+        for allowed in (0, 1, 2):
+            response = self.annotate(
+                [{**primer, 'sequence': mutated_5prime}], minimal_annealing=14, allowed_mismatches=allowed
+            )
+            ((_, start, end, _),) = parse_primer_bind_features(response.json()['sequences'][0]['file_content'])
+            self.assertEqual((start, end), (1530, 1549))
 
     def test_perfect_matches_are_unaffected_by_the_mismatch_budget(self):
         # M13R matches perfectly over its whole length, so the budget changes nothing
