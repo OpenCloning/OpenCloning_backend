@@ -1,11 +1,18 @@
 from fastapi import HTTPException
 from urllib.parse import quote, urljoin
+import copy
 import math
 import asyncio
+from dataclasses import dataclass
 from Bio.Restriction.Restriction import RestrictionBatch
 from Bio.Seq import reverse_complement
+from Bio.SeqUtils import gc_fraction
+from Bio.SeqFeature import SeqFeature, SimpleLocation
 from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
+from pydna.primer import Primer as PydnaPrimer
+from pydna.assembly2 import primer_template_overlap
+from pydna.utils import shift_location
 from opencloning_linkml.datamodel import (
     PlannotateAnnotationReport,
     TextFileSequence,
@@ -28,6 +35,7 @@ from Bio.SeqIO import parse as seqio_parse
 from pydna.parsers import parse as pydna_parse
 import io
 
+from .primer3_functions import PrimerDesignSettings, primer3_calc_tm
 from opencloning.catalogs import iGEM2024_catalog, openDNA_collections_catalog, seva_catalog, snapgene_catalog
 from . import app_settings
 from .http_client import get_http_client, ConnectError, TimeoutException
@@ -360,6 +368,199 @@ async def get_sequence_from_euroscarf_url(plasmid_id: str) -> Dseqrecord:
         seq = seq.looped()
     seq.source = EuroscarfSource(repository_id=plasmid_id)
     return seq
+
+
+def _as_matching_string(seq) -> str:
+    """Uppercase DNA string with U replaced by T, the form used to compare primers and templates."""
+    return str(seq).upper().replace('U', 'T')
+
+
+def _extend_binding_site(
+    template_seq: str, aligned_primer: str, anchor: int, allowed_mismatches: int
+) -> tuple[int, int]:
+    """Extend a binding site from the 3' end of the primer towards its 5' end.
+
+    `aligned_primer` is the primer written 5'->3' along the watson strand of the template
+    (i.e. reverse complemented for a primer that binds the crick strand), and `anchor` is
+    the position in `template_seq` of the base that pairs with the 3' end of the primer.
+    Both are given in the direction in which the primer is read, so the walk is always
+    towards increasing indices.
+
+    A mismatch on the 3' terminal base rejects the site, whatever the mismatch budget:
+    a polymerase does not extend from an unpaired 3' end, so such a site does not prime.
+
+    Returns `(length, mismatches)` of the longest run that stays within the mismatch budget.
+    """
+    length = 0
+    mismatches = 0
+    while length < len(aligned_primer) and anchor + length < len(template_seq):
+        if template_seq[anchor + length] != aligned_primer[length]:
+            if length == 0:
+                return 0, 0
+            if mismatches == allowed_mismatches:
+                break
+            mismatches += 1
+        length += 1
+    return length, mismatches
+
+
+def find_primer_binding_sites(
+    template: Dseqrecord, primer: PydnaPrimer, minimal_annealing: int, allowed_mismatches: int
+) -> list[tuple[int, int, int, int]]:
+    """Find all the sites where a primer anneals to a template.
+
+    Returns a sorted list of `(start, end, strand, mismatches)`, where the coordinates are
+    0-based half-open and the strand is 1 for the watson strand and -1 for the crick strand.
+    Matches are anchored on the 3' end of the primer and extended towards its 5' end for as
+    long as they match, so a primer with a 5' tail (e.g. a restriction site) is only
+    annotated over the part that anneals.
+
+    For circular templates, a site that spans the origin has `end` greater than the length
+    of the template.
+    """
+    primer_seq = _as_matching_string(primer.seq)
+    template_seq = _as_matching_string(template.seq)
+    # A site can span the origin of a circular template, so the sequence is repeated,
+    # in the same way pydna does it to find the candidate sites
+    search_space = template_seq * 2 if template.circular else template_seq
+
+    # `primer_template_overlap` locates the candidate sites, but the match it returns is
+    # trimmed at the first mismatch, so the footprint and the mismatch count are recomputed
+    # here. What is kept from it is the position of the 3' end of the primer, which is the
+    # right edge of a forward match and the left edge of a reverse match.
+    candidates = set()
+    for _, start, length in primer_template_overlap(
+        primer, template, limit=minimal_annealing, mismatches=allowed_mismatches
+    ):
+        candidates.add((start + length, 1))
+    for start, _, _ in primer_template_overlap(
+        template, primer.reverse_complement(), limit=minimal_annealing, mismatches=allowed_mismatches
+    ):
+        candidates.add((start, -1))
+
+    sites = set()
+    for three_prime_end, strand in candidates:
+        if strand == 1:
+            # The primer is read right to left along the watson strand, so both the template
+            # and the primer are reversed to walk in a single direction
+            length, mismatches = _extend_binding_site(
+                search_space[:three_prime_end][::-1], primer_seq[::-1], 0, allowed_mismatches
+            )
+            start, end = three_prime_end - length, three_prime_end
+        else:
+            length, mismatches = _extend_binding_site(
+                search_space, reverse_complement(primer_seq), three_prime_end, allowed_mismatches
+            )
+            start, end = three_prime_end, three_prime_end + length
+
+        # A candidate whose perfect seed was shorter than requested can fall below the
+        # minimal annealing length once the mismatches are accounted for
+        if length < minimal_annealing:
+            continue
+        # For circular templates the same site is found twice unless it spans the origin
+        if start >= len(template_seq):
+            continue
+        sites.add((start, end, strand, mismatches))
+
+    return sorted(sites)
+
+
+@dataclass(frozen=True)
+class PrimerBindingSite:
+    """A site where a primer anneals to a template, with the properties of the bound duplex."""
+
+    start: int
+    end: int
+    strand: int
+    mismatches: int
+    # Of the stretch that is actually bound, which is shorter than the primer wherever it
+    # does not anneal over its entire length
+    melting_temperature: float
+    primer_melting_temperature: float
+    gc_content: float
+
+
+def annotate_primer_binding_sites(
+    template: Dseqrecord,
+    primers: list[PydnaPrimer],
+    minimal_annealing: int,
+    allowed_mismatches: int,
+    max_sites: int,
+    settings: PrimerDesignSettings,
+    minimal_tm: float | None = None,
+) -> tuple[Dseqrecord, list[tuple[PydnaPrimer, PrimerBindingSite | None]]]:
+    """Add a `primer_bind` feature for every site where any of the primers anneals to the template.
+
+    Every site is reported with two melting temperatures: that of the stretch which is
+    actually bound, and that of the whole primer. `minimal_tm` filters on the former, since
+    that is the one that says whether the site primes.
+
+    Returns the annotated sequence and a report as a list of `(primer, site)`, where `site`
+    is `None` for primers that do not bind anywhere.
+    """
+    output = copy.deepcopy(template)
+    report = list()
+    features = list()
+    # The same stretch is often bound more than once (e.g. a primer with two binding sites),
+    # and the primer3 calls are by far the most expensive part
+    melting_temperature_cache = dict()
+
+    def melting_temperature(seq: str) -> float:
+        if seq not in melting_temperature_cache:
+            melting_temperature_cache[seq] = primer3_calc_tm(seq, settings)
+        return melting_temperature_cache[seq]
+
+    for primer in primers:
+        primer_seq = _as_matching_string(primer.seq)
+        primer_tm = melting_temperature(primer_seq)
+        sites = list()
+        for start, end, strand, mismatches in find_primer_binding_sites(
+            template, primer, minimal_annealing, allowed_mismatches
+        ):
+            # The match is anchored on the 3' end, so that is the part of the primer that pairs
+            bound_seq = primer_seq[-(end - start) :]
+            tm = melting_temperature(bound_seq)
+            if minimal_tm is not None and tm < minimal_tm:
+                continue
+            # gc_fraction is only counting characters, so unlike the primer3 calls it is
+            # not worth caching
+            sites.append(PrimerBindingSite(start, end, strand, mismatches, tm, primer_tm, gc_fraction(bound_seq)))
+
+        if not sites:
+            report.append((primer, None))
+            continue
+
+        for site in sites:
+            report.append((primer, site))
+            # shift_location turns a site that spans the origin into a join() location,
+            # which add_feature would not do correctly
+            location = shift_location(SimpleLocation(site.start, site.end, site.strand), 0, len(template))
+            features.append(
+                SeqFeature(
+                    location,
+                    type='primer_bind',
+                    qualifiers={
+                        'label': [primer.name],
+                        'note': [
+                            f'sequence: {primer.seq}',
+                            f'mismatches: {site.mismatches}',
+                            f'Tm: {site.melting_temperature:.1f}',
+                            f'primer Tm: {site.primer_melting_temperature:.1f}',
+                            f'%GC: {site.gc_content * 100:.1f}',
+                        ],
+                    },
+                )
+            )
+
+    if len(features) > max_sites:
+        raise HTTPException(
+            400,
+            f'Too many binding sites found ({len(features)}, maximum is {max_sites}). '
+            'Try increasing the minimal annealing length or removing short primers.',
+        )
+
+    output.features += features
+    return output, report
 
 
 async def annotate_with_plannotate(
