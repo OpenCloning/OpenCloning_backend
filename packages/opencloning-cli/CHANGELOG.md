@@ -6,6 +6,7 @@
 ### Miscellaneous Chores
 
 * **opencloning-cli:** Synchronize backend-packages versions
+* Add `no-control-socket` flag to gunicorn (for Docker)
 
 ## [1.9.5](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.9.4...opencloning-cli-v1.9.5) (2026-06-12)
 
