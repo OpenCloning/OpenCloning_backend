@@ -22,6 +22,7 @@ GUNICORN_ARGS=(
     -w "${GUNICORN_WORKERS:-2}"
     --bind 0.0.0.0:8000
     --timeout "${GUNICORN_TIMEOUT:-20}"
+    --no-control-socket
     --access-logfile -
     --error-logfile -
     "${APP_MODULE}:app"
