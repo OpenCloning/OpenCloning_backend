@@ -44,6 +44,7 @@ ADDGENE_PASSWORD = os.environ.get('ADDGENE_PASSWORD')
 default_allowed_urls = [
     'https://www.addgene.org/',
     'https://media.addgene.org/',
+    'https://sequences.addgene.org/',
     'https://seva-plasmids.com/',
     'https://api.ncbi.nlm.nih.gov/datasets/v2alpha/',
     'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/',
