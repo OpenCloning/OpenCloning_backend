@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.6](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.5...opencloning-v1.9.6) (2026-09-18)
+
+
+### Bug Fixes
+
+* add https://sequences.addgene.org/ to allowlist ([#518](https://github.com/OpenCloning/OpenCloning_backend/issues/518)) ([3dc0027](https://github.com/OpenCloning/OpenCloning_backend/commit/3dc002783402b144c966d53dcf220a60c2e8da2e))
+
 ## [1.9.5](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.4...opencloning-v1.9.5) (2026-06-12)
 
 
