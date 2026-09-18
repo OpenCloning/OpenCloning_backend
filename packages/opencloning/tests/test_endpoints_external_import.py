@@ -406,13 +406,13 @@ class AddgeneTest(unittest.TestCase):
         examples = [
             {
                 'id': '39282',
-                'url': 'https://media.addgene.org/snapgene-media/v3.38.0/sequences/240599/4936a6ae-6b4d-4d24-b7ac-2339fad5755d/addgene-plasmid-39282-sequence-240599.gbk',
+                'url': 'https://sequences.addgene.org/snapgene-media/v3.101.0/sequences/240599/4936a6ae-6b4d-4d24-b7ac-2339fad5755d/addgene-plasmid-39282-sequence-240599.gbk',
                 'type': 'addgene-full',
                 'name': 'pFA6a-kanMX6-P81nmt1',
             },
             {
                 'id': '39289',
-                'url': 'https://media.addgene.org/snapgene-media/v3.38.0/sequences/49640/4fa9f18b-d5ca-4ac6-a50c-76a6cd15cbab/addgene-plasmid-39289-sequence-49640.gbk',
+                'url': 'https://sequences.addgene.org/snapgene-media/v3.101.0/sequences/49640/4fa9f18b-d5ca-4ac6-a50c-76a6cd15cbab/addgene-plasmid-39289-sequence-49640.gbk',
                 'type': 'depositor-full',
                 'name': 'pFA6a-kanMX6-P3nmt1-GFP',
             },
