@@ -54,19 +54,27 @@ jobs:
       - name: Sync uv.lock on release PR
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         env:
-          RELEASE_BRANCH: ${{ steps.release.outputs.pr_head_branch }}
+          RELEASE_BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranch }}
         run: |
+          set -euo pipefail
+
+          if [[ -z "$RELEASE_BRANCH" ]]; then
+            echo "::error::Release Please did not return a release PR branch"
+            exit 1
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout "$RELEASE_BRANCH"
+          git fetch origin "$RELEASE_BRANCH"
+          git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
           uv lock
-          if git diff --quiet uv.lock; then
+          if git diff --quiet -- uv.lock; then
             echo "uv.lock already up to date"
             exit 0
           fi
           git add uv.lock
           git commit -m "chore: sync uv.lock for release"
-          git push
+          git push origin "HEAD:$RELEASE_BRANCH"
 
   publish_pypi:
     runs-on: ubuntu-latest
