@@ -8,7 +8,7 @@ import opencloning_db.db as db_module
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from opencloning_db.auth.invites import normalize_email
+from opencloning_db.utils import normalize_email
 from fastapi import HTTPException
 from opencloning_db.config import get_config
 from opencloning_db.db_utils import get_workspace_or_404

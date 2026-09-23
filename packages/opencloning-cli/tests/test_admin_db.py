@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import opencloning_db.db as db_module
-from opencloning_db.auth.security import get_password_hash
 from opencloning_db.models import EmailWhitelist, User, Workspace, WorkspaceMembership, WorkspaceRole
 from opencloning_cli import admin_db
 
@@ -23,7 +22,8 @@ def admin_db_session(temp_workspace):
         user = User(
             email='alice@example.com',
             display_name='Alice',
-            password_hash=get_password_hash('pw'),
+            auth_provider='test',
+            external_subject='alice',
         )
         workspace = Workspace(name='Lab')
         session.add_all([user, workspace])
@@ -64,7 +64,8 @@ def test_assign_user_creates_membership(admin_db_session):
     other = User(
         email='bob@example.com',
         display_name='Bobby',
-        password_hash=get_password_hash('pw'),
+        auth_provider='test',
+        external_subject='bob',
     )
     session.add(other)
     session.commit()

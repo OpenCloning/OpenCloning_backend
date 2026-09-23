@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from opencloning_db.auth.security import get_password_hash
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
 from opencloning_db.models import (
@@ -51,7 +50,8 @@ def load_seed_data(engine: Engine) -> None:
         other_workspace_user = User(
             email='other-workspace-user@example.com',
             display_name='Other Workspace User',
-            password_hash=get_password_hash('password'),
+            auth_provider='oidc:seed.example',
+            external_subject='other-workspace-user',
             is_instance_admin=False,
         )
         other_workspace = Workspace(name='Other Workspace')
@@ -60,14 +60,16 @@ def load_seed_data(engine: Engine) -> None:
         view_only_user = User(
             email='view-only-user@example.com',
             display_name='View Only User',
-            password_hash=get_password_hash('password'),
+            auth_provider='oidc:seed.example',
+            external_subject='view-only-user',
             is_instance_admin=False,
         )
 
         bootstrap_user = User(
             email='bootstrap@example.com',
             display_name='Bootstrap User',
-            password_hash=get_password_hash('password'),
+            auth_provider='oidc:seed.example',
+            external_subject='bootstrap',
             is_instance_admin=True,
         )
         workspace = Workspace(name='Bootstrap Workspace')

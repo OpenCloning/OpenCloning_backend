@@ -10,4 +10,4 @@ services:
     environment:
       USE_HTTPS: "false"
       OPENCLONING_DB_URL: postgresql+psycopg://dbuser:dbpassword@postgres:5432/opencloning_dev
-      OPENCLONING_JWT_SECRET: local-dev-only-jwt-secret-change-for-shared-envs
+      OIDC_ISSUER_URL: https://example.idp.accounts.dev

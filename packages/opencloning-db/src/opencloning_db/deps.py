@@ -3,16 +3,17 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy.orm import Session
 
-from opencloning_db.auth.security import decode_access_token
+from opencloning_db.auth.oidc import verify_oidc_bearer_token
+from opencloning_db.auth.provisioning import resolve_oidc_user
 from opencloning_db.config import Config, get_config
 from opencloning_db.db import get_engine
 from opencloning_db.models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/token')
+bearer_scheme = HTTPBearer()
 
 
 def credentials_exception() -> HTTPException:
@@ -33,21 +34,12 @@ def parse_bearer_token(authorization: str | None) -> str:
     return token
 
 
-def resolve_user_from_token(token: str, session: Session, config: Config) -> User:
-    exc = credentials_exception()
+async def resolve_user_from_token(token: str, session: Session, config: Config) -> User:
     try:
-        payload = decode_access_token(token, config)
-        sub = payload.get('sub')
-        if sub is None:
-            raise exc
-        user_id = int(sub)
-    except (InvalidTokenError, ValueError, TypeError):
-        raise exc
-
-    user = session.get(User, user_id)
-    if user is None:
-        raise exc
-    return user
+        identity = await verify_oidc_bearer_token(token, config)
+        return resolve_oidc_user(session, config, identity)
+    except InvalidTokenError:
+        raise credentials_exception()
 
 
 def get_db(config: Annotated[Config, Depends(get_config)]):
@@ -58,9 +50,9 @@ def get_db(config: Annotated[Config, Depends(get_config)]):
         session.close()
 
 
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+async def get_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
     session: Annotated[Session, Depends(get_db)],
     config: Annotated[Config, Depends(get_config)],
 ) -> User:
-    return resolve_user_from_token(token, session, config)
+    return await resolve_user_from_token(credentials.credentials, session, config)

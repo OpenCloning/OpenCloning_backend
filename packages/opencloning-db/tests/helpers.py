@@ -1,6 +1,6 @@
 """Shared test utilities for workspace resource fixtures."""
 
-from opencloning_db.auth.security import get_password_hash
+TEST_AUTH_PROVIDER = 'oidc:test.example'
 
 _STANDARD_EMAILS = {
     'owner_w1': 'owner-w1@test.com',
@@ -12,15 +12,31 @@ _STANDARD_EMAILS = {
     'editor_w1': 'editor-w1@test.com',
 }
 
-_STANDARD_PASSWORDS = {
-    'owner_w1': 'pw-owner-w1',
-    'owner_w2': 'pw-owner-w2',
-    'viewer_w1': 'pw-viewer-w1',
-    'owner_both': 'pw-owner-both',
-    'owner_w1_viewer_w2': 'pw-owner-w1-viewer-w2',
-    'instance_admin': 'pw-instance-admin',
-    'editor_w1': 'pw-editor-w1',
+_STANDARD_SUBJECTS = {
+    'owner_w1': 'owner-w1',
+    'owner_w2': 'owner-w2',
+    'viewer_w1': 'viewer-w1',
+    'owner_both': 'owner-both',
+    'owner_w1_viewer_w2': 'owner-w1-viewer-w2',
+    'instance_admin': 'instance-admin',
+    'editor_w1': 'editor-w1',
 }
+
+_STANDARD_DISPLAY_NAMES = {
+    'owner_w1': 'Owner W1',
+    'owner_w2': 'Owner W2',
+    'viewer_w1': 'Viewer W1',
+    'owner_both': 'Owner Both',
+    'owner_w1_viewer_w2': 'Owner W1 Viewer W2',
+    'instance_admin': 'Instance Admin',
+    'editor_w1': 'Editor W1',
+}
+
+
+def make_test_bearer_token(subject: str, display_name: str, email: str | None = None) -> str:
+    if email:
+        return f'test:{subject}|{email}|{display_name}'
+    return f'test:{subject}|{display_name}'
 
 
 def bearer_headers(token: str) -> dict[str, str]:
@@ -154,39 +170,46 @@ def seed_standard_users(session) -> dict:
 
     owner_w1 = User(
         email=_STANDARD_EMAILS['owner_w1'],
-        display_name='Owner W1',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['owner_w1']),
+        display_name=_STANDARD_DISPLAY_NAMES['owner_w1'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['owner_w1'],
     )
     owner_w2 = User(
         email=_STANDARD_EMAILS['owner_w2'],
-        display_name='Owner W2',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['owner_w2']),
+        display_name=_STANDARD_DISPLAY_NAMES['owner_w2'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['owner_w2'],
     )
     viewer_w1 = User(
         email=_STANDARD_EMAILS['viewer_w1'],
-        display_name='Viewer W1',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['viewer_w1']),
+        display_name=_STANDARD_DISPLAY_NAMES['viewer_w1'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['viewer_w1'],
     )
     owner_both = User(
         email=_STANDARD_EMAILS['owner_both'],
-        display_name='Owner Both',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['owner_both']),
+        display_name=_STANDARD_DISPLAY_NAMES['owner_both'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['owner_both'],
     )
     owner_w1_viewer_w2 = User(
         email=_STANDARD_EMAILS['owner_w1_viewer_w2'],
-        display_name='Owner W1 Viewer W2',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['owner_w1_viewer_w2']),
+        display_name=_STANDARD_DISPLAY_NAMES['owner_w1_viewer_w2'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['owner_w1_viewer_w2'],
     )
     instance_admin = User(
         email=_STANDARD_EMAILS['instance_admin'],
-        display_name='Instance Admin',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['instance_admin']),
+        display_name=_STANDARD_DISPLAY_NAMES['instance_admin'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['instance_admin'],
         is_instance_admin=True,
     )
     editor_w1 = User(
         email=_STANDARD_EMAILS['editor_w1'],
-        display_name='Editor W1',
-        password_hash=get_password_hash(_STANDARD_PASSWORDS['editor_w1']),
+        display_name=_STANDARD_DISPLAY_NAMES['editor_w1'],
+        auth_provider=TEST_AUTH_PROVIDER,
+        external_subject=_STANDARD_SUBJECTS['editor_w1'],
     )
     w1 = Workspace(name='Workspace One')
     w2 = Workspace(name='Workspace Two')
@@ -247,52 +270,67 @@ def seed_standard_users(session) -> dict:
         'w3': w3.id,
         'owner_w1_id': owner_w1.id,
         'owner_w1_email': _STANDARD_EMAILS['owner_w1'],
-        'owner_w1_pw': _STANDARD_PASSWORDS['owner_w1'],
+        'owner_w1_subject': _STANDARD_SUBJECTS['owner_w1'],
         'owner_w2_id': owner_w2.id,
         'owner_w2_email': _STANDARD_EMAILS['owner_w2'],
-        'owner_w2_pw': _STANDARD_PASSWORDS['owner_w2'],
+        'owner_w2_subject': _STANDARD_SUBJECTS['owner_w2'],
         'viewer_w1_id': viewer_w1.id,
         'viewer_w1_email': _STANDARD_EMAILS['viewer_w1'],
-        'viewer_w1_pw': _STANDARD_PASSWORDS['viewer_w1'],
+        'viewer_w1_subject': _STANDARD_SUBJECTS['viewer_w1'],
         'owner_both_id': owner_both.id,
         'owner_both_email': _STANDARD_EMAILS['owner_both'],
-        'owner_both_pw': _STANDARD_PASSWORDS['owner_both'],
+        'owner_both_subject': _STANDARD_SUBJECTS['owner_both'],
         'owner_w1_viewer_w2_id': owner_w1_viewer_w2.id,
         'owner_w1_viewer_w2_email': _STANDARD_EMAILS['owner_w1_viewer_w2'],
-        'owner_w1_viewer_w2_pw': _STANDARD_PASSWORDS['owner_w1_viewer_w2'],
+        'owner_w1_viewer_w2_subject': _STANDARD_SUBJECTS['owner_w1_viewer_w2'],
         'instance_admin_id': instance_admin.id,
         'instance_admin_email': _STANDARD_EMAILS['instance_admin'],
-        'instance_admin_pw': _STANDARD_PASSWORDS['instance_admin'],
+        'instance_admin_subject': _STANDARD_SUBJECTS['instance_admin'],
         'editor_w1_id': editor_w1.id,
         'editor_w1_email': _STANDARD_EMAILS['editor_w1'],
-        'editor_w1_pw': _STANDARD_PASSWORDS['editor_w1'],
+        'editor_w1_subject': _STANDARD_SUBJECTS['editor_w1'],
     }
 
 
-def fetch_token(client, email: str, password: str) -> str:
-    """Obtain a JWT access token for the given credentials."""
-    r = client.post(
-        '/auth/token',
-        data={'username': email, 'password': password},
-    )
-    assert r.status_code == 200, r.text
-    return r.json()['access_token']
-
-
 def attach_standard_tokens(ctx: dict, client) -> dict:
-    """Fetch tokens for all standard seeded users and attach them to *ctx*.
+    """Attach test bearer tokens for all standard seeded users to *ctx*.
 
     Also sets ``ctx["client"]``. Returns *ctx* for convenience.
     """
     ctx['client'] = client
-    ctx['token_owner_w1'] = fetch_token(client, ctx['owner_w1_email'], ctx['owner_w1_pw'])
-    ctx['token_owner_w2'] = fetch_token(client, ctx['owner_w2_email'], ctx['owner_w2_pw'])
-    ctx['token_viewer_w1'] = fetch_token(client, ctx['viewer_w1_email'], ctx['viewer_w1_pw'])
-    ctx['token_owner_both'] = fetch_token(client, ctx['owner_both_email'], ctx['owner_both_pw'])
-    ctx['token_editor_w1'] = fetch_token(client, ctx['editor_w1_email'], ctx['editor_w1_pw'])
-    ctx['token_instance_admin'] = fetch_token(
-        client,
-        ctx['instance_admin_email'],
-        ctx['instance_admin_pw'],
+    ctx['token_owner_w1'] = make_test_bearer_token(
+        ctx['owner_w1_subject'],
+        _STANDARD_DISPLAY_NAMES['owner_w1'],
+        email=ctx['owner_w1_email'],
+    )
+    ctx['token_owner_w2'] = make_test_bearer_token(
+        ctx['owner_w2_subject'],
+        _STANDARD_DISPLAY_NAMES['owner_w2'],
+        email=ctx['owner_w2_email'],
+    )
+    ctx['token_viewer_w1'] = make_test_bearer_token(
+        ctx['viewer_w1_subject'],
+        _STANDARD_DISPLAY_NAMES['viewer_w1'],
+        email=ctx['viewer_w1_email'],
+    )
+    ctx['token_owner_both'] = make_test_bearer_token(
+        ctx['owner_both_subject'],
+        _STANDARD_DISPLAY_NAMES['owner_both'],
+        email=ctx['owner_both_email'],
+    )
+    ctx['token_editor_w1'] = make_test_bearer_token(
+        ctx['editor_w1_subject'],
+        _STANDARD_DISPLAY_NAMES['editor_w1'],
+        email=ctx['editor_w1_email'],
+    )
+    ctx['token_instance_admin'] = make_test_bearer_token(
+        ctx['instance_admin_subject'],
+        _STANDARD_DISPLAY_NAMES['instance_admin'],
+        email=ctx['instance_admin_email'],
+    )
+    ctx['token_owner_w1_viewer_w2'] = make_test_bearer_token(
+        ctx['owner_w1_viewer_w2_subject'],
+        _STANDARD_DISPLAY_NAMES['owner_w1_viewer_w2'],
+        email=ctx['owner_w1_viewer_w2_email'],
     )
     return ctx

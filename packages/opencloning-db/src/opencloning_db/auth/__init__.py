@@ -1,1 +1,1 @@
-"""Authentication helpers (password hashing, JWT)."""
+"""Authentication helpers (OIDC verification and user provisioning)."""

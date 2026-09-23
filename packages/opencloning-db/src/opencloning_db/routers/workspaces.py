@@ -16,7 +16,7 @@ from opencloning_db.apimodels import (
     WorkspaceRename,
     user_with_role_ref,
 )
-from opencloning_db.auth.invites import normalize_email
+from opencloning_db.utils import normalize_email
 from opencloning_db.deps import get_current_user, get_db
 from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
 from opencloning_db.workspace_auth import assert_workspace_access, would_remove_last_owner

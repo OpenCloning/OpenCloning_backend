@@ -6,18 +6,66 @@ Tests and other callers can still instantiate ``Config`` directly.
 """
 
 import os
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from opencloning.app_settings import ALLOWED_ORIGINS
+from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy.engine import make_url
 
 _REQUIRED_ENV_VARS = (
     'OPENCLONING_DB_URL',
-    'OPENCLONING_JWT_SECRET',
+    'OIDC_ISSUER_URL',
 )
 
 
 def parse_bool(value: str | bool) -> bool:
     return value in {'1', 'TRUE', 'true', 'True', True}
+
+
+class OidcConfig(BaseModel):
+    """OIDC bearer-token authentication settings."""
+
+    issuer_url: str = Field(
+        description='OIDC issuer URL used for discovery and JWT validation.',
+    )
+    subject_claim: str = Field(default='sub', description='JWT claim used as external subject.')
+    email_claim: str = Field(default='email', description='JWT claim used for email and legacy linking.')
+    name_claim: str = Field(default='name', description='JWT claim used for display_name when present.')
+    authorized_parties: list[str] = Field(
+        description='Allowed azp claim values for session JWTs.',
+    )
+    test_mode: bool = Field(
+        default=False,
+        description='Accept test:<subject> bearer tokens without JWKS (tests only).',
+    )
+
+    @field_validator('authorized_parties', mode='before')
+    @classmethod
+    def _normalize_authorized_parties(cls, value: list[str]) -> list[str]:
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise ValueError('authorized_parties must be a list of strings')
+        return [str(origin).rstrip('/') for origin in value if str(origin).rstrip('/') != '']
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def provider_name(self) -> str:
+        """Stored in ``User.auth_provider``, derived from ``issuer_url`` hostname."""
+        hostname = urlparse(self.issuer_url).hostname
+        return f'oidc:{hostname}'
+
+    @classmethod
+    def from_env(cls) -> 'OidcConfig':
+        authorized_parties = os.environ.get('OIDC_AUTHORIZED_PARTIES') or ALLOWED_ORIGINS
+        if isinstance(authorized_parties, str):
+            authorized_parties = authorized_parties.split(',')
+        return cls(
+            issuer_url=os.environ['OIDC_ISSUER_URL'],
+            subject_claim=os.environ.get('OIDC_SUBJECT_CLAIM', 'sub'),
+            email_claim=os.environ.get('OIDC_EMAIL_CLAIM', 'email'),
+            name_claim=os.environ.get('OIDC_NAME_CLAIM', 'name'),
+            authorized_parties=authorized_parties,
+            test_mode=parse_bool(os.getenv('OPENCLONING_TESTING', False)),
+        )
 
 
 def _load_config_from_env() -> 'Config':
@@ -30,8 +78,7 @@ def _load_config_from_env() -> 'Config':
 
     return Config(
         database_url=os.environ['OPENCLONING_DB_URL'],
-        jwt_secret=os.environ['OPENCLONING_JWT_SECRET'],
-        registration_whitelist_enabled=parse_bool(os.environ.get('OPENCLONING_REGISTRATION_WHITELIST_ENABLED', '0')),
+        oidc_config=OidcConfig.from_env(),
     )
 
 
@@ -53,18 +100,8 @@ class Config(BaseModel):
     database_url: str = Field(
         description='SQLAlchemy PostgreSQL URL using the psycopg (v3) driver (postgresql+psycopg://...)',
     )
-    jwt_secret: str = Field(
-        description='HS256 signing key for JWT access tokens',
-    )
-    jwt_algorithm: str = Field(default='HS256', description='JWT signing algorithm')
-    access_token_expire_minutes: int = Field(
-        default=60,
-        ge=1,
-        description='Access token lifetime in minutes',
-    )
-    registration_whitelist_enabled: bool = Field(
-        default=False,
-        description='Whether registration requires the email to appear in the database whitelist.',
+    oidc_config: OidcConfig = Field(
+        description='OIDC authentication settings.',
     )
 
 
