@@ -50,8 +50,8 @@ def load_seed_data(engine: Engine) -> None:
         other_workspace_user = User(
             email='other-workspace-user@example.com',
             display_name='Other Workspace User',
-            auth_provider='oidc:seed.example',
-            external_subject='other-workspace-user',
+            auth_provider=None,
+            external_subject=None,
             is_instance_admin=False,
         )
         other_workspace = Workspace(name='Other Workspace')
@@ -60,16 +60,16 @@ def load_seed_data(engine: Engine) -> None:
         view_only_user = User(
             email='view-only-user@example.com',
             display_name='View Only User',
-            auth_provider='oidc:seed.example',
-            external_subject='view-only-user',
+            auth_provider=None,
+            external_subject=None,
             is_instance_admin=False,
         )
 
         bootstrap_user = User(
-            email='bootstrap@example.com',
+            email='bootstrap+clerk_test@example.com',
             display_name='Bootstrap User',
-            auth_provider='oidc:seed.example',
-            external_subject='bootstrap',
+            auth_provider=None,
+            external_subject=None,
             is_instance_admin=True,
         )
         workspace = Workspace(name='Bootstrap Workspace')

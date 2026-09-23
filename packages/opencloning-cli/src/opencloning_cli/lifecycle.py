@@ -211,7 +211,7 @@ def create_stub(
 def _default_auth_headers(test_client: Any) -> dict[str, str]:
     token = os.environ.get(
         'OPENCLONING_TEST_BEARER_TOKEN',
-        'test:bootstrap|bootstrap@example.com|Bootstrap User',
+        'test:bootstrap|bootstrap+clerk_test@example.com|Bootstrap User',
     )
 
     workspaces_response = test_client.get(
