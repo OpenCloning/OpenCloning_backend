@@ -100,6 +100,7 @@ async def _decode_verified_claims(token: str, oidc: OidcConfig) -> dict[str, Any
             signing_key,
             algorithms=['RS256'],
             issuer=issuer,
+            leeway=10,
             options={'require': ['exp', 'sub']},
         )
 
