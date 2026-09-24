@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from opencloning_db.api import app as db_app
 from opencloning_db.combined import create_app
 
+from .helpers import bearer_headers, make_test_bearer_token
+
 readonly_db = pytest.mark.readonly_db
 
 
@@ -61,7 +63,7 @@ def test_wrong_auth_header_is_rejected(combined_client: TestClient):
     response = combined_client.get('/cloning/openapi.json', headers={'Authorization': 'Bearer wrong-token'})
 
     assert response.status_code == 401
-    assert response.json() == {'detail': 'Could not validate credentials'}
+    assert response.json() == {'detail': 'Could not validate credentials | Invalid test token'}
     assert response.headers.get('www-authenticate') == 'Bearer'
 
 
@@ -76,7 +78,7 @@ def test_invalid_auth_header_is_rejected(combined_client: TestClient):
 
 @readonly_db
 def test_combined_app_uses_injected_cloning_verifier(engine_client_config_readonly):
-    def allow_all(_headers) -> None:
+    async def allow_all(_headers) -> None:
         return None
 
     with TestClient(create_app(db_app=db_app, cloning_verifier=allow_all)) as client:
@@ -84,7 +86,7 @@ def test_combined_app_uses_injected_cloning_verifier(engine_client_config_readon
 
     assert response.status_code == 200
 
-    def reject_all(_headers) -> None:
+    async def reject_all(_headers) -> None:
         raise HTTPException(status_code=401, detail='Could not validate credentials')
 
     with TestClient(create_app(db_app=db_app, cloning_verifier=reject_all)) as client:
@@ -95,20 +97,11 @@ def test_combined_app_uses_injected_cloning_verifier(engine_client_config_readon
 
 
 def test_combined_openapi_exposes_cloning_and_db_apps_for_authenticated_user(combined_client: TestClient):
-    register_response = combined_client.post(
-        '/db/auth/register',
-        json={
-            'email': 'combined-user@example.com',
-            'password': 'secret-password',
-            'display_name': 'Combined User',
-        },
-    )
-    assert register_response.status_code == 200
-    token = register_response.json()['access_token']
+    token = make_test_bearer_token('combined-user', 'Combined User', email='combined-user@example.com')
 
     cloning_response = combined_client.get(
         '/cloning/openapi.json',
-        headers={'Authorization': f'Bearer {token}'},
+        headers=bearer_headers(token),
     )
     db_response = combined_client.get('/db/openapi.json')
 
@@ -116,11 +109,8 @@ def test_combined_openapi_exposes_cloning_and_db_apps_for_authenticated_user(com
     assert db_response.status_code == 200
 
     cloning_paths = cloning_response.json()['paths']
-    db_schema = db_response.json()
-    db_paths = db_schema['paths']
-    password_flow = db_schema['components']['securitySchemes']['OAuth2PasswordBearer']['flows']['password']
+    db_paths = db_response.json()['paths']
 
     assert '/' in cloning_paths
-    assert '/auth/register' in db_paths
+    assert '/auth/me' in db_paths
     assert '/workspaces' in db_paths
-    assert password_flow['tokenUrl'] == 'auth/token'

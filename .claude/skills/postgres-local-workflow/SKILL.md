@@ -36,6 +36,8 @@ OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
 ```
 
+`.env.dev` sets `OIDC_TEST_MODE=1` for local and test auth (`Authorization: Bearer test:<subject>|<email>|<display_name>`). Seeded users start unlinked; the first matching email attaches that identity. `OPENCLONING_TESTING=1` is only for seed, stubs, and `/__test/reset-db`.
+
 ## Required Runtime Environment
 
 Runtime config must be present in env.

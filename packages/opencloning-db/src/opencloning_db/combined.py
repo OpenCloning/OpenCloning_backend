@@ -14,12 +14,12 @@ from opencloning_db.db import get_engine
 from opencloning_db.deps import parse_bearer_token, resolve_user_from_token
 
 
-def verify_local_bearer_request(headers: Headers) -> None:
+async def verify_local_bearer_request(headers: Headers) -> None:
     config = get_config()
     session = Session(get_engine(config))
     try:
         token = parse_bearer_token(headers.get('authorization'))
-        resolve_user_from_token(token, session, config)
+        await resolve_user_from_token(token, session, config)
     finally:
         session.close()
 

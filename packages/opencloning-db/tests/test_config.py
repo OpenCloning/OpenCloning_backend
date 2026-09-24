@@ -2,14 +2,22 @@ import unittest
 from unittest.mock import patch
 import os
 from pydantic import ValidationError
-from opencloning_db.config import Config
+from opencloning_db.config import Config, OidcConfig
 import opencloning_db.config as app_config
 
-
-common_args = {
-    'database_url': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
-    'jwt_secret': 'test-secret',
-}
+_TEST_DATABASE_URL = 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev'
+common_args = Config(
+    database_url=_TEST_DATABASE_URL,
+    oidc_config=OidcConfig(
+        issuer_url='https://test.example',
+        authorized_parties=[
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://localhost:3002',
+        ],
+        test_mode=False,
+    ),
+).model_dump()
 
 
 class TestConfig(unittest.TestCase):
@@ -22,8 +30,7 @@ class TestConfig(unittest.TestCase):
             os.environ,
             {
                 'OPENCLONING_DB_URL': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
-                'OPENCLONING_JWT_SECRET': 'test-secret',
-                'OPENCLONING_REGISTRATION_WHITELIST_ENABLED': 'true',
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
             },
             clear=True,
         ):
@@ -31,8 +38,7 @@ class TestConfig(unittest.TestCase):
             cfg = app_config.get_config()
         app_config.set_config(previous_config)
         self.assertEqual(cfg.database_url, 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev')
-        self.assertEqual(cfg.jwt_secret, 'test-secret')
-        self.assertTrue(cfg.registration_whitelist_enabled)
+        self.assertEqual(cfg.oidc_config.issuer_url, 'https://idp.example.dev')
 
     def test_get_config_requires_runtime_env_vars(self):
         """Missing env vars produce one actionable runtime error."""
@@ -45,8 +51,68 @@ class TestConfig(unittest.TestCase):
 
         message = str(exc_info.exception)
         self.assertIn('OPENCLONING_DB_URL', message)
-        self.assertIn('OPENCLONING_JWT_SECRET', message)
+        self.assertIn('OIDC_ISSUER_URL', message)
         self.assertIn('.env.dev', message)
+
+    def test_oidc_config_normalizes_authorized_parties(self):
+        """Trailing slashes and blank CSV entries are stripped at model validation."""
+        oidc = OidcConfig(
+            issuer_url='https://test.example',
+            authorized_parties=['https://app.example/', 'https://admin.example/'],
+        )
+        self.assertEqual(oidc.authorized_parties, ['https://app.example', 'https://admin.example'])
+
+    def test_oidc_from_env_uses_allowed_origins_when_authorized_parties_unset(self):
+        """When OIDC_AUTHORIZED_PARTIES is unset, authorized_parties come from ALLOWED_ORIGINS."""
+        custom_origins = ['https://app.custom.example', 'https://admin.custom.example']
+        with patch('opencloning_db.config.ALLOWED_ORIGINS', custom_origins):
+            with patch.dict(
+                os.environ,
+                {'OIDC_ISSUER_URL': 'https://idp.example.dev'},
+                clear=True,
+            ):
+                oidc = OidcConfig.from_env()
+        self.assertEqual(oidc.authorized_parties, custom_origins)
+
+    def test_oidc_from_env_test_mode_uses_oidc_test_mode_env(self):
+        """OIDC_TEST_MODE controls test bearer tokens; OPENCLONING_TESTING does not."""
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OIDC_TEST_MODE': '1',
+            },
+            clear=True,
+        ):
+            oidc = OidcConfig.from_env()
+        self.assertTrue(oidc.test_mode)
+
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OPENCLONING_TESTING': '1',
+            },
+            clear=True,
+        ):
+            oidc = OidcConfig.from_env()
+        self.assertFalse(oidc.test_mode)
+
+    def test_oidc_from_env_authorized_parties_can_differ_from_allowed_origins(self):
+        """OIDC_AUTHORIZED_PARTIES overrides ALLOWED_ORIGINS when explicitly set."""
+        custom_origins = ['https://app.custom.example']
+        with patch('opencloning_db.config.ALLOWED_ORIGINS', custom_origins):
+            with patch.dict(
+                os.environ,
+                {
+                    'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                    'OIDC_AUTHORIZED_PARTIES': 'https://idp-app.example,https://other.example/',
+                },
+                clear=True,
+            ):
+                oidc = OidcConfig.from_env()
+        self.assertEqual(oidc.authorized_parties, ['https://idp-app.example', 'https://other.example'])
+        self.assertNotEqual(oidc.authorized_parties, custom_origins)
 
     def test_database_url_rejects_sqlite(self):
         """SQLite URLs are no longer accepted."""
@@ -62,7 +128,3 @@ class TestConfig(unittest.TestCase):
                 **(common_args | {'database_url': 'postgresql://dbuser:dbpassword@localhost:5432/opencloning_dev'}),
             )
         self.assertIn('postgresql+psycopg', str(exc_info.exception))
-
-    def test_registration_whitelist_enabled_defaults_false(self):
-        cfg = Config(**common_args)
-        self.assertFalse(cfg.registration_whitelist_enabled)

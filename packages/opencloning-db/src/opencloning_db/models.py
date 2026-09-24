@@ -100,46 +100,21 @@ class Base(DeclarativeBase):
         return out_str
 
 
-DISPLAY_NAME_MIN_LENGTH = 4
-PASSWORD_MIN_LENGTH = 8
-
-
 class User(Base):
     __tablename__ = 'user'
-    __table_args__ = (
-        CheckConstraint(
-            f'char_length(display_name) >= {DISPLAY_NAME_MIN_LENGTH}',
-            name='user_display_name_min_length',
-        ),
-    )
+    __table_args__ = (UniqueConstraint('auth_provider', 'external_subject', name='uq_user_auth_identity'),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(unique=True, nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(unique=True, nullable=True)
     display_name: Mapped[str] = mapped_column(nullable=False)
-    password_hash: Mapped[Optional[str]] = mapped_column(nullable=True, default=None)
+    auth_provider: Mapped[Optional[str]] = mapped_column(nullable=True)
+    external_subject: Mapped[Optional[str]] = mapped_column(nullable=True)
     is_instance_admin: Mapped[bool] = mapped_column(nullable=False, default=False)
 
     memberships: Mapped[List['WorkspaceMembership']] = relationship(
         back_populates='user',
         cascade='all, delete-orphan',
     )
-
-    @validates('display_name')
-    def validate_display_name(self, _key: str, value: str) -> str:
-        if len(value) < DISPLAY_NAME_MIN_LENGTH:
-            raise ValueError(f'display_name must be at least {DISPLAY_NAME_MIN_LENGTH} characters')
-        return value
-
-
-class EmailWhitelist(Base):
-    __tablename__ = 'email_whitelist'
-    __table_args__ = (
-        UniqueConstraint('email', name='uq_email_whitelist_email'),
-        CheckConstraint("email <> ''", name='email_whitelist_email_not_empty'),
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(nullable=False)
 
 
 class Workspace(Base):
