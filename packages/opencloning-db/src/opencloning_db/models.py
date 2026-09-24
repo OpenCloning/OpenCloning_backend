@@ -117,17 +117,6 @@ class User(Base):
     )
 
 
-class EmailWhitelist(Base):
-    __tablename__ = 'email_whitelist'
-    __table_args__ = (
-        UniqueConstraint('email', name='uq_email_whitelist_email'),
-        CheckConstraint("email <> ''", name='email_whitelist_email_not_empty'),
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(nullable=False)
-
-
 class Workspace(Base):
     __tablename__ = 'workspace'
 

@@ -11,3 +11,4 @@ services:
       USE_HTTPS: "false"
       OPENCLONING_DB_URL: postgresql+psycopg://dbuser:dbpassword@postgres:5432/opencloning_dev
       OIDC_ISSUER_URL: https://example.idp.accounts.dev
+      OIDC_TEST_MODE: "1"

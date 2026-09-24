@@ -44,6 +44,8 @@ uv run uvicorn opencloning_db.combined:app --reload --reload-exclude='.venv'
 
 That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.0.1:8000/cloning) and the database API at [http://127.0.0.1:8001/db](http://127.0.0.1:8001/db).
 
+`.env.dev` sets `OIDC_TEST_MODE=1`, so the API accepts `Authorization: Bearer test:<subject>|<display_name>` or `test:<subject>|<email>|<display_name>` without JWKS. Seeded users (for example `bootstrap+clerk_test@example.com`) have no OIDC identity yet; the first token with that email links the existing row. `OPENCLONING_TESTING=1` is only required for `db seed`, `db stubs`, and `/__test/reset-db`. For a real identity provider, set `OIDC_TEST_MODE=0` and a real `OIDC_ISSUER_URL`.
+
 ## Dependency guardrail (deptry)
 
 This repository uses a uv workspace. In a workspace, dependencies are resolved in one shared environment, so imports can appear to work even when a package does not declare them in its own `pyproject.toml`.
