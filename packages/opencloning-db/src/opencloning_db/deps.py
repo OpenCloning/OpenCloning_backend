@@ -16,10 +16,11 @@ from opencloning_db.models import User
 bearer_scheme = HTTPBearer()
 
 
-def credentials_exception() -> HTTPException:
+def credentials_exception(e: Exception | None = None) -> HTTPException:
+    extra = f' | {e}' if e else ''
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='Could not validate credentials',
+        detail=f'Could not validate credentials{extra}',
         headers={'WWW-Authenticate': 'Bearer'},
     )
 
@@ -38,8 +39,8 @@ async def resolve_user_from_token(token: str, session: Session, config: Config) 
     try:
         identity = await verify_oidc_bearer_token(token, config)
         return resolve_oidc_user(session, config, identity)
-    except InvalidTokenError:
-        raise credentials_exception()
+    except InvalidTokenError as e:
+        raise credentials_exception(e)
 
 
 def get_db(config: Annotated[Config, Depends(get_config)]):
