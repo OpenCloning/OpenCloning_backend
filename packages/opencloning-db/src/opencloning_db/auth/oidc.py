@@ -7,8 +7,8 @@ Production flow
 3. Require ``azp`` (authorized party) against the configured allowlist (session JWTs only).
 4. Map configured JWT claim names to :class:`OidcIdentity`.
 
-Test mode (``oidc_config.test_mode``)
--------------------------------------
+Test mode (``OIDC_TEST_MODE=1`` → ``oidc_config.test_mode``)
+------------------------------------------------------------
 Accepts pipe-delimited test tokens without crypto verification:
 
 - ``test:<subject>|<display_name>``

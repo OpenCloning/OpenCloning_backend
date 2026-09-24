@@ -74,6 +74,30 @@ class TestConfig(unittest.TestCase):
                 oidc = OidcConfig.from_env()
         self.assertEqual(oidc.authorized_parties, custom_origins)
 
+    def test_oidc_from_env_test_mode_uses_oidc_test_mode_env(self):
+        """OIDC_TEST_MODE controls test bearer tokens; OPENCLONING_TESTING does not."""
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OIDC_TEST_MODE': '1',
+            },
+            clear=True,
+        ):
+            oidc = OidcConfig.from_env()
+        self.assertTrue(oidc.test_mode)
+
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OPENCLONING_TESTING': '1',
+            },
+            clear=True,
+        ):
+            oidc = OidcConfig.from_env()
+        self.assertFalse(oidc.test_mode)
+
     def test_oidc_from_env_authorized_parties_can_differ_from_allowed_origins(self):
         """OIDC_AUTHORIZED_PARTIES overrides ALLOWED_ORIGINS when explicitly set."""
         custom_origins = ['https://app.custom.example']

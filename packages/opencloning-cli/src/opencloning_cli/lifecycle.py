@@ -60,9 +60,7 @@ def _require_testing_seed_enabled() -> None:
 
 
 def _apply_testing_oidc_config(config: Config) -> Config:
-    """Match seeded users (oidc:seed.example) and accept test bearer tokens."""
-    if not parse_bool(os.getenv('OPENCLONING_TESTING', False)):
-        return config
+    """Match seeded users (oidc:seed.example) and accept test bearer tokens during seed/stubs."""
     testing_config = config.model_copy(
         update={
             'oidc_config': OidcConfig(

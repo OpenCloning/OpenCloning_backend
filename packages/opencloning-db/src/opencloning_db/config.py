@@ -36,7 +36,7 @@ class OidcConfig(BaseModel):
     )
     test_mode: bool = Field(
         default=False,
-        description='Accept test:<subject> bearer tokens without JWKS (tests only).',
+        description='Accept test:<subject> bearer tokens without JWKS when OIDC_TEST_MODE=1.',
     )
 
     @field_validator('authorized_parties', mode='before')
@@ -64,7 +64,7 @@ class OidcConfig(BaseModel):
             email_claim=os.environ.get('OIDC_EMAIL_CLAIM', 'email'),
             name_claim=os.environ.get('OIDC_NAME_CLAIM', 'name'),
             authorized_parties=authorized_parties,
-            test_mode=parse_bool(os.getenv('OPENCLONING_TESTING', False)),
+            test_mode=parse_bool(os.getenv('OIDC_TEST_MODE', False)),
         )
 
 

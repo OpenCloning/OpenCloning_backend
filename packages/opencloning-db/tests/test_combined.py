@@ -63,7 +63,7 @@ def test_wrong_auth_header_is_rejected(combined_client: TestClient):
     response = combined_client.get('/cloning/openapi.json', headers={'Authorization': 'Bearer wrong-token'})
 
     assert response.status_code == 401
-    assert response.json() == {'detail': 'Could not validate credentials'}
+    assert response.json() == {'detail': 'Could not validate credentials | Invalid test token'}
     assert response.headers.get('www-authenticate') == 'Bearer'
 
 
