@@ -34,7 +34,28 @@ uv run uvicorn opencloning_db.api:app --reload --reload-exclude='.venv'
 
 That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.0.1:8000/cloning) and the database API at [http://127.0.0.1:8001/db](http://127.0.0.1:8001/db). That's what the OpenCloningDB frontend expects.
 
-When the cloning app is served through `opencloning_db.combined`, the entire `/cloning` mount is protected by the same bearer-token authentication used by the db API.
+See [Authentication](#authentication) for bearer tokens, local test mode, and a real identity provider.
+
+## Authentication
+
+Every database route requires `Authorization: Bearer ...`. When the cloning app is served through `opencloning_db.combined`, the `/cloning` mount uses the same check.
+
+### Local and test
+
+`.env.dev` sets `OIDC_TEST_MODE=1`. The API then accepts pipe-delimited tokens with no JWKS lookup:
+
+- `test:<subject>|<display_name>`
+- `test:<subject>|<email>|<display_name>`
+
+Seeded demo users (for example `bootstrap+clerk_test@example.com`) start with no OIDC identity. The first token whose email matches links that row and does not create another workspace.
+
+`OPENCLONING_TESTING=1` only enables `db seed`, `db stubs`, and `/__test/reset-db`. It does not accept or reject bearer tokens.
+
+### Real identity provider
+
+Set `OIDC_TEST_MODE=0` and `OIDC_ISSUER_URL`. Optional claim names are `OIDC_SUBJECT_CLAIM`, `OIDC_EMAIL_CLAIM`, and `OIDC_NAME_CLAIM`. `OIDC_AUTHORIZED_PARTIES` lists allowed `azp` values; if unset, it falls back to `ALLOWED_ORIGINS`.
+
+The API loads the issuer discovery document, verifies RS256 session JWTs against JWKS, and requires a matching `azp`.
 
 ## Database migrations (Alembic)
 
@@ -117,7 +138,7 @@ uv run pytest packages/opencloning-db/tests -v -ks
 
 ## Frontend testing
 
-Frontend testing using the database requires reseeding after tests that modify the database. This is done by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`, and it delegates to the guarded `opencloning-cli db seed` command.
+Frontend testing using the database requires reseeding after tests that modify the database. This is done by calling the `/__test/reset-db` endpoint with the `X-Test-Reset-Token` header set to `RESET-TOKEN`. That endpoint is only available if the `OPENCLONING_TESTING` environment variable is set to `1`, and it delegates to the guarded `opencloning-cli db seed` command. Bearer tokens are separate; see [Authentication](#authentication).
 
 ## Building and running the Docker image
 

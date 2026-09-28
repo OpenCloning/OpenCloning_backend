@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from opencloning_db.config import get_config, parse_bool
+from opencloning_db.config import Config, OidcConfig, get_config, parse_bool, set_config
 from opencloning_db.init_db import load_seed_data
 from opencloning_db.migrations import (
     recreate_public_schema,
@@ -59,6 +59,25 @@ def _require_testing_seed_enabled() -> None:
         raise RuntimeError('db seed requires OPENCLONING_TESTING=1')
 
 
+def _apply_testing_oidc_config(config: Config) -> Config:
+    """Match seeded users (oidc:seed.example) and accept test bearer tokens during seed/stubs."""
+    testing_config = config.model_copy(
+        update={
+            'oidc_config': OidcConfig(
+                issuer_url='https://seed.example',
+                authorized_parties=[
+                    'http://localhost:3000',
+                    'http://localhost:5173',
+                    'http://localhost:3002',
+                ],
+                test_mode=True,
+            ),
+        }
+    )
+    set_config(testing_config)
+    return testing_config
+
+
 def migrate() -> None:
     """Apply Alembic migrations to the configured database."""
     config = get_config()
@@ -75,7 +94,7 @@ def seed(*, recreate_schema: bool = False) -> None:
     import opencloning_db.db as _db_module
 
     _require_testing_seed_enabled()
-    config = get_config()
+    config = _apply_testing_oidc_config(get_config())
     _dispose_engine()
 
     database_url = config.database_url
@@ -188,12 +207,10 @@ def create_stub(
 
 
 def _default_auth_headers(test_client: Any) -> dict[str, str]:
-    token_response = test_client.post(
-        'db/auth/token',
-        data={'username': 'bootstrap@example.com', 'password': 'password'},
+    token = os.environ.get(
+        'OPENCLONING_TEST_BEARER_TOKEN',
+        'test:bootstrap|bootstrap+clerk_test@example.com|Bootstrap User',
     )
-    token_response.raise_for_status()
-    token = token_response.json()['access_token']
 
     workspaces_response = test_client.get(
         'db/workspaces',

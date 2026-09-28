@@ -4,6 +4,10 @@ from opencloning.dna_functions import read_dsrecord_from_json
 from typing import TypeVar
 
 
+def normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
 def guess_sequence_type(sequence: TextFileSequence, source: Source) -> SequenceType:
     seqrecord = read_dsrecord_from_json(sequence)
 

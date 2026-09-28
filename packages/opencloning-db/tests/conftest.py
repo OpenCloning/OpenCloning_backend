@@ -3,7 +3,7 @@ from typing import Generator
 
 from sqlalchemy.orm import Session
 
-from opencloning_db.config import Config, _peek_config
+from opencloning_db.config import Config, OidcConfig, _peek_config
 import opencloning_db.db as db_module
 from fastapi.testclient import TestClient
 from opencloning_db.api import app, fastapi_app
@@ -11,15 +11,8 @@ from opencloning_db.deps import get_db
 from sqlalchemy.engine import Engine
 import pytest
 
-import opencloning_db.auth.rate_limit as login_rate_limit
-from opencloning_db.auth.rate_limit import (
-    LoginRateLimitConfig,
-    RegisterRateLimitConfig,
-    reset_login_rate_limiter,
-)
 from opencloning_db.migrations import reset_database
 
-_JWT_SECRET = 'test-jwt-secret-not-for-production'
 _TEST_DATABASE_URL_WRITE = os.environ.get(
     'OPENCLONING_TEST_DATABASE_URL',
     'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test',
@@ -30,29 +23,19 @@ _TEST_DATABASE_URL_READONLY = os.environ.get(
 )
 
 
-@pytest.fixture(autouse=True)
-def _disable_auth_rate_limit_for_tests(monkeypatch):
-    reset_login_rate_limiter()
-    monkeypatch.setattr(
-        login_rate_limit,
-        'LOGIN_RATE_LIMIT',
-        LoginRateLimitConfig(enabled=False),
-    )
-    monkeypatch.setattr(
-        login_rate_limit,
-        'REGISTER_RATE_LIMIT',
-        RegisterRateLimitConfig(enabled=False),
-    )
-    yield
-    reset_login_rate_limiter()
-
-
 def _build_postgres_test_config(default_config: Config | None, database_url: str) -> Generator[Config, None, None]:
     """Postgres test config with DB-backed sequence content."""
     test_config = Config(
         database_url=database_url,
-        jwt_secret=_JWT_SECRET,
-        registration_whitelist_enabled=False,
+        oidc_config=OidcConfig(
+            issuer_url='https://test.example',
+            authorized_parties=[
+                'http://localhost:3000',
+                'http://localhost:5173',
+                'http://localhost:3002',
+            ],
+            test_mode=True,
+        ),
     )
     db_module.reset_runtime_state(test_config)
     yield test_config

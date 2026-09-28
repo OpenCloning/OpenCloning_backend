@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from .helpers import (
     attach_standard_tokens,
     bearer_headers,
-    fetch_token,
     seed_standard_users,
 )
 
@@ -34,11 +33,6 @@ def _seed_workspaces_context(engine, client):
         session.commit()
 
     attach_standard_tokens(ctx, client)
-    ctx['token_owner_w1_viewer_w2'] = fetch_token(
-        client,
-        ctx['owner_w1_viewer_w2_email'],
-        ctx['owner_w1_viewer_w2_pw'],
-    )
     ctx['token'] = ctx['token_owner_w1_viewer_w2']
     return ctx
 

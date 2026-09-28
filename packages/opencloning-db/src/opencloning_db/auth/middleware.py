@@ -1,13 +1,13 @@
 """Authentication wrappers for mounted ASGI applications."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-RequestVerifier = Callable[[Headers], None]
+RequestVerifier = Callable[[Headers], Awaitable[None]]
 
 
 class AuthenticatedSubApp:
@@ -24,7 +24,7 @@ class AuthenticatedSubApp:
 
         headers = Headers(scope=scope)
         try:
-            self.verify_request(headers)
+            await self.verify_request(headers)
         except HTTPException as exc:
             response = JSONResponse(
                 {'detail': exc.detail},

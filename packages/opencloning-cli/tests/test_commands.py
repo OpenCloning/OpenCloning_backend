@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
 import opencloning_db.db as db_module
-from opencloning_db.models import EmailWhitelist, SequencingFile, User, Sequence
+from opencloning_db.models import SequencingFile, User, Sequence
 from opencloning_cli.main import app
 from opencloning_db.migrations import reset_database
 
@@ -53,12 +53,9 @@ class TestHelpAndTree:
         result = _invoke('admin', '--help')
         assert result.exit_code == 0
         assert 'list-users' in result.output
-        assert 'whitelist-list' in result.output
         assert 'list-workspaces' in result.output
         assert 'assign-user' in result.output
         assert 'set-instance-admin' in result.output
-        assert 'whitelist-add' in result.output
-        assert 'whitelist-remove' in result.output
 
 
 class TestMigrateCommand:
@@ -95,34 +92,6 @@ class TestSeedCommand:
         with Session(db_module.get_engine(config)) as session:
             assert session.query(SequencingFile).count() == 3
             assert session.query(Sequence).count() == 48
-
-
-class TestWhitelistCommands:
-    def test_whitelist_list(self, db_fixture):
-        _invoke('admin', 'whitelist-add', 'zebra@example.com')
-        _invoke('admin', 'whitelist-add', 'Allowed@Example.com')
-
-        result = _invoke('admin', 'whitelist-list')
-
-        assert result.exit_code == 0, result.output
-        assert result.output.splitlines() == ['allowed@example.com', 'zebra@example.com']
-
-    def test_whitelist_add_and_remove(self, db_fixture):
-        _, config = db_fixture
-
-        add_result = _invoke('admin', 'whitelist-add', 'Invited@Example.com')
-        assert add_result.exit_code == 0, add_result.output
-        assert 'email=invited@example.com' in add_result.output
-
-        with Session(db_module.get_engine(config)) as session:
-            assert session.query(EmailWhitelist).count() == 1
-
-        remove_result = _invoke('admin', 'whitelist-remove', 'invited@example.com')
-        assert remove_result.exit_code == 0, remove_result.output
-        assert 'email=invited@example.com' in remove_result.output
-
-        with Session(db_module.get_engine(config)) as session:
-            assert session.query(EmailWhitelist).count() == 0
 
 
 class TestStubCommand:

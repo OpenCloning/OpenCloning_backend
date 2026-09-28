@@ -7,8 +7,6 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, fi
 
 import opencloning_linkml.datamodel.models as opencloning_models
 from opencloning_db.models import (
-    DISPLAY_NAME_MIN_LENGTH,
-    PASSWORD_MIN_LENGTH,
     BaseSequence,
     SequenceType,
     Sequence,
@@ -34,16 +32,11 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
-# --- Auth (OAuth2 password + JWT) ---
-class Token(ApiModel):
-    access_token: str
-    token_type: str = 'bearer'
-
-
+# --- Auth (OIDC bearer) ---
 class UserPublic(ApiModel):
     id: int
-    email: str
-    display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
+    email: str | None = None
+    display_name: str
     is_instance_admin: bool
 
 
@@ -51,7 +44,7 @@ class UserRef(ApiModel):
     """Minimal user reference for embedding in resource responses."""
 
     id: int
-    display_name: str = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
+    display_name: str
 
 
 class UserWithRoleRef(UserRef):
@@ -77,12 +70,6 @@ class WorkspaceRename(ApiModel):
 class WorkspaceMemberAdd(ApiModel):
     email: EmailStr
     role: WorkspaceRole
-
-
-class RegisterBody(ApiModel):
-    email: EmailStr
-    password: str = Field(min_length=PASSWORD_MIN_LENGTH)
-    display_name: StrippedStr = Field(min_length=DISPLAY_NAME_MIN_LENGTH)
 
 
 # --- Sequence sample ---

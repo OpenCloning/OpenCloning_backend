@@ -9,7 +9,7 @@ from typing import Generator
 
 import pytest
 
-from opencloning_db.config import Config, _peek_config
+from opencloning_db.config import Config, OidcConfig, _peek_config
 import opencloning_db.db as db_module
 
 _TEST_DATABASE_URL = os.environ.get(
@@ -25,8 +25,11 @@ def temp_workspace() -> Generator[tuple[Path, Config], None, None]:
 
     config = Config(
         database_url=_TEST_DATABASE_URL,
-        jwt_secret='test-jwt-secret-not-for-production',
-        registration_whitelist_enabled=False,
+        oidc_config=OidcConfig(
+            issuer_url='https://test.example',
+            authorized_parties=['http://localhost:3002'],
+            test_mode=True,
+        ),
     )
     db_module.reset_runtime_state(config)
     with tempfile.TemporaryDirectory(prefix='opencloning-cli-test-') as tmp:
