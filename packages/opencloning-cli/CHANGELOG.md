@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.9.6...opencloning-cli-v1.10.0) (2026-09-28)
+
+
+### Features
+
+* Use OICD for log in ([#524](https://github.com/OpenCloning/OpenCloning_backend/issues/524)) ([7a7d092](https://github.com/OpenCloning/OpenCloning_backend/commit/7a7d0927129f45d8ebdae3e2ca315a806594ae94))
+
 ## [1.9.6](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v1.9.5...opencloning-cli-v1.9.6) (2026-09-18)
 
 
