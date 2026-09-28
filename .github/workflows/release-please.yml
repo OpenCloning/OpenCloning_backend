@@ -38,24 +38,36 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Find open release PR
+        id: find_pr
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          BRANCH=$(gh pr list \
+            --state open \
+            --search "head:release-please" \
+            --json headRefName \
+            --jq '.[0].headRefName // empty')
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
       - name: Install uv
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        if: ${{ steps.find_pr.outputs.branch != '' }}
         uses: astral-sh/setup-uv@v5
         with:
           version: 0.11.5
           enable-cache: true
 
       - name: Set up Python
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        if: ${{ steps.find_pr.outputs.branch != '' }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Sync uv.lock on release PR
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        if: ${{ steps.find_pr.outputs.branch != '' }}
         env:
-          RELEASE_BRANCH: ${{ fromJSON(steps.release.outputs.prs)[0].headBranch }}
-
+          RELEASE_BRANCH: ${{ steps.find_pr.outputs.branch }}
         run: |
           set -euo pipefail
 
