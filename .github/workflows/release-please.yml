@@ -54,7 +54,8 @@ jobs:
       - name: Sync uv.lock on release PR
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         env:
-          RELEASE_BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranch }}
+          RELEASE_BRANCH: ${{ fromJSON(steps.release.outputs.prs)[0].headBranch }}
+
         run: |
           set -euo pipefail
 
