@@ -7,6 +7,7 @@ import os
 from starlette.types import ASGIApp
 
 from opencloning.app_settings import settings as opencloning_settings
+from opencloning.observability.middleware import RequestContextMiddleware, register_error_handlers
 from opencloning_db.config import parse_bool
 from opencloning_db.routers import (
     auth,
@@ -24,6 +25,7 @@ from opencloning_db.routers import (
 
 def create_fastapi_app() -> FastAPI:
     app = FastAPI(title='OpenCloningDB API')
+    register_error_handlers(app)
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)
@@ -49,6 +51,7 @@ def wrap_with_cors(app: ASGIApp) -> ASGIApp:
         allow_credentials=True,
         allow_methods=['*'],
         allow_headers=['*'],
+        expose_headers=['x-request-id'],
     )
 
 
@@ -57,4 +60,4 @@ def create_app() -> ASGIApp:
 
 
 fastapi_app = create_fastapi_app()
-app = wrap_with_cors(fastapi_app)
+app = RequestContextMiddleware(wrap_with_cors(fastapi_app))

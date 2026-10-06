@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp
 
-from opencloning.main import create_app as create_cloning_app
+from opencloning.main import create_fastapi_app as create_cloning_fastapi_app
+from opencloning.main import wrap_with_cors as wrap_cloning_with_cors
+from opencloning.observability.middleware import RequestContextMiddleware, register_error_handlers
 
 from opencloning_db.auth.middleware import AuthenticatedSubApp, RequestVerifier
 from opencloning_db.api import create_app as create_db_app
@@ -36,10 +38,17 @@ def create_app(
         redoc_url=None,
         openapi_url=None,
     )
+    register_error_handlers(app)
 
+    # CORS wraps the auth check, so that 401 responses can be read by the browser.
     app.mount(
         '/cloning',
-        AuthenticatedSubApp(cloning_app or create_cloning_app(), cloning_verifier or verify_local_bearer_request),
+        wrap_cloning_with_cors(
+            AuthenticatedSubApp(
+                cloning_app or create_cloning_fastapi_app(),
+                cloning_verifier or verify_local_bearer_request,
+            )
+        ),
     )
     app.mount('/db', db_app or create_db_app())
 
@@ -55,4 +64,4 @@ def create_app(
     return app
 
 
-app = create_app()
+app = RequestContextMiddleware(create_app())

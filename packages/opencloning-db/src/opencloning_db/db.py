@@ -47,7 +47,8 @@ def get_engine(config: Config):
     global _engine, _bound_database_url
     url = config.database_url
     if _engine is None or _bound_database_url != url:
-        _engine = create_engine(url)
+        # hide_parameters: keep bound values (sequences, emails) out of exception messages and logs
+        _engine = create_engine(url, hide_parameters=True)
         _bound_database_url = url
     return _engine
 
