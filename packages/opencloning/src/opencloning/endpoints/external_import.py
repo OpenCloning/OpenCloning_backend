@@ -242,18 +242,13 @@ async def read_snapgene_history(response: Response, file: UploadFile = File(...)
 
 def handle_repository_errors(exception: Exception, repository_name: str) -> None:
     """
-    Centralized error handler for repository requests.
-    Re-raises HTTPException as-is, converts ConnectError to HTTPException with 504 status.
+    Centralized error handler for repository requests, to be called from an ``except`` block.
+    Converts ConnectError to HTTPException with 504 status. Anything else is re-raised: HTTPExceptions
+    are returned as-is, and unexpected errors end up as a generic 500 (logged once, with their stack).
     """
-    if isinstance(exception, HTTPException):
-        raise
-    elif isinstance(exception, ConnectError):
+    if isinstance(exception, ConnectError):
         raise HTTPException(504, f'Unable to connect to {repository_name}: {exception}')
-    else:  # pragma: no cover
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(500, f'Unexpected error: {exception}')
+    raise
 
 
 # TODO: a bit inconsistent that here you don't put {source: {...}} in the request, but
