@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
 from opencloning.observability.context import bind_user_to_request_context
@@ -15,7 +15,9 @@ from opencloning_db.config import Config, get_config
 from opencloning_db.db import get_engine
 from opencloning_db.models import User
 
-bearer_scheme = HTTPBearer()
+# auto_error=False: the scheme is only declared here (for the OpenAPI docs). The header itself is
+# validated by parse_bearer_token, so that missing or malformed headers are logged as on /cloning.
+bearer_scheme = HTTPBearer(auto_error=False)
 
 logger = logging.getLogger('opencloning_db.auth')
 
@@ -65,8 +67,10 @@ def get_db(config: Annotated[Config, Depends(get_config)]):
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    request: Request,
+    _credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     session: Annotated[Session, Depends(get_db)],
     config: Annotated[Config, Depends(get_config)],
 ) -> User:
-    return await resolve_user_from_token(credentials.credentials, session, config)
+    token = parse_bearer_token(request.headers.get('authorization'))
+    return await resolve_user_from_token(token, session, config)

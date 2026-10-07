@@ -134,6 +134,29 @@ def test_db_401_has_request_id_and_route_template(combined_client, log_output):
     [completed] = log_output.by_message('request_completed')
     assert completed['request_id'] == request_id
     assert completed['route'] == '/db/workspaces/{workspace_id}'
+    [auth_failed] = log_output.by_message('auth_failed')
+    assert auth_failed['reason'] == 'missing_header'
+    assert auth_failed['request_id'] == request_id
+
+
+@pytest.mark.parametrize(
+    'authorization, reason',
+    [
+        ('Basic abc', 'bad_scheme'),
+        ('Bearer', 'bad_scheme'),
+        ('Bearer s3cr3t-token-value', 'invalid_token'),
+    ],
+)
+def test_db_auth_failures_are_logged(combined_client, log_output, authorization, reason):
+    # Same auth events as /cloning: the /db dependency goes through parse_bearer_token too
+    response = combined_client.get('/db/workspaces/12', headers={'Authorization': authorization})
+
+    assert response.status_code == 401
+    assert response.json()['detail'].startswith('Could not validate credentials')
+    [auth_failed] = log_output.by_message('auth_failed')
+    assert auth_failed['reason'] == reason
+    assert auth_failed['request_id'] == response.headers['x-request-id']
+    assert 's3cr3t-token-value' not in log_output.text
 
 
 def test_not_found_has_request_id(combined_client, log_output):

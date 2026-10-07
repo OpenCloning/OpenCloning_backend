@@ -20,5 +20,5 @@ preload_app = False
 # RequestContextMiddleware. The worker copies gunicorn's (empty) access handlers to uvicorn.access.
 accesslog = None
 errorlog = '-'
-loglevel = os.getenv('LOG_LEVEL', 'info').lower()
+loglevel = (os.getenv('LOG_LEVEL') or 'info').lower()
 logconfig_dict = build_logging_config()
