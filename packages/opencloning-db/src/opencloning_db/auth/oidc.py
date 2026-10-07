@@ -17,6 +17,7 @@ Accepts pipe-delimited test tokens without crypto verification:
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,8 +30,10 @@ from opencloning_db.config import Config, OidcConfig
 
 TEST_TOKEN_PREFIX = 'test:'
 
+JWKS_MIN_REFRESH_SECONDS = 60
+
 _discovery_cache: dict[str, dict[str, Any]] = {}
-_jwks_cache: dict[str, dict[str, Any]] = {}
+_jwks_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 @dataclass(frozen=True)
@@ -135,27 +138,40 @@ async def _fetch_oidc_discovery(issuer_url: str, client) -> dict[str, Any]:
 
 
 async def _fetch_jwks(jwks_uri: str, client) -> dict[str, Any]:
-    cached = _jwks_cache.get(jwks_uri)
-    if cached is not None:
-        return cached
+    """Download the JWKS and store it in the cache together with the fetch time."""
     document = await _fetch_json(client, jwks_uri, 'Failed to fetch JWKS document')
-    _jwks_cache[jwks_uri] = document
+    _jwks_cache[jwks_uri] = (time.monotonic(), document)
     return document
 
 
-async def _signing_key_for_token(token: str, jwks_uri: str, client) -> Any:
-    jwks = await _fetch_jwks(jwks_uri, client)
-    keys = jwks.get('keys')
-    if not keys:
-        raise InvalidTokenError('JWKS document missing keys')
+def _find_key(jwks: dict[str, Any], kid: str) -> dict[str, Any] | None:
+    """Return the JWK entry whose ``kid`` matches, or None if there is no such key."""
+    for key_data in jwks.get('keys') or []:
+        if key_data.get('kid') == kid:
+            return key_data
+    return None
 
+
+async def _signing_key_for_token(token: str, jwks_uri: str, client) -> Any:
     kid = jwt.get_unverified_header(token).get('kid')
     if kid is None:
         raise InvalidTokenError('Token header missing kid')
-    for key_data in keys:
-        if key_data.get('kid') == kid:
-            return PyJWK.from_dict(key_data).key
-    raise InvalidTokenError('Unable to find signing key for token')
+
+    key_data = None
+    fetched_at = None
+    cached = _jwks_cache.get(jwks_uri)
+    if cached is not None:
+        fetched_at, cached_jwks = cached
+        key_data = _find_key(cached_jwks, kid)
+
+    # Unknown kid: the provider may have rotated keys, so refetch. Only do so if the cache is empty
+    # or older than JWKS_MIN_REFRESH_SECONDS, so forged tokens with random kids can't make us hit
+    # the JWKS endpoint more than once per interval.
+    if key_data is None and (fetched_at is None or time.monotonic() - fetched_at >= JWKS_MIN_REFRESH_SECONDS):
+        key_data = _find_key(await _fetch_jwks(jwks_uri, client), kid)
+    if key_data is None:
+        raise InvalidTokenError('Unable to find signing key for token')
+    return PyJWK.from_dict(key_data).key
 
 
 async def _fetch_json(client, url: str, error_message: str) -> dict[str, Any]:

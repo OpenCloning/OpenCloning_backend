@@ -52,10 +52,11 @@ def sign_rs256_token(private_key: RSAPrivateKey, payload: dict, *, kid: str | No
     return jwt.encode(payload, private_key, algorithm='RS256', headers=headers)
 
 
-def mock_oidc_http(jwk_dict: dict) -> None:
+def mock_oidc_http(jwk_dict: dict):
+    """Mock discovery + JWKS endpoints; return the JWKS route (for call counts)."""
     discovery_url = f'{MOCK_ISSUER}/.well-known/openid-configuration'
     respx.get(discovery_url).respond(200, json={'issuer': MOCK_ISSUER, 'jwks_uri': MOCK_JWKS_URI})
-    respx.get(MOCK_JWKS_URI).respond(200, json={'keys': [jwk_dict]})
+    return respx.get(MOCK_JWKS_URI).respond(200, json={'keys': [jwk_dict]})
 
 
 def jwks_oidc_config() -> OidcConfig:
@@ -295,6 +296,56 @@ def test_jwks_rejects_unknown_kid(mock_rsa_key_pair, allow_mock_issuer):
 
     with pytest.raises(InvalidTokenError, match='Unable to find signing key'):
         run_verify(token, jwks_oidc_config())
+
+
+def make_second_key_pair(kid: str) -> MockRsaKeyPair:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    jwk_dict = json.loads(RSAAlgorithm.to_jwk(private_key.public_key()))
+    jwk_dict.update({'kid': kid, 'use': 'sig', 'alg': 'RS256'})
+    return MockRsaKeyPair(private_key=private_key, jwk_dict=jwk_dict)
+
+
+@respx.mock
+def test_jwks_refetched_after_key_rotation(mock_rsa_key_pair, allow_mock_issuer, monkeypatch):
+    import opencloning_db.auth.oidc as oidc_module
+
+    mock_oidc_http(mock_rsa_key_pair.jwk_dict)
+    old_token = sign_rs256_token(mock_rsa_key_pair.private_key, valid_jwt_payload())
+    run_verify(old_token, jwks_oidc_config())  # populates the cache with the old JWKS
+
+    monkeypatch.setattr(oidc_module, 'JWKS_MIN_REFRESH_SECONDS', 0)  # as if >60 s have passed
+    new_pair = make_second_key_pair('rotated-key')
+    jwks_route = respx.get(MOCK_JWKS_URI).respond(200, json={'keys': [new_pair.jwk_dict]})
+    new_token = sign_rs256_token(new_pair.private_key, valid_jwt_payload(), kid='rotated-key')
+
+    identity = run_verify(new_token, jwks_oidc_config())
+
+    assert identity.subject == 'user_123'
+    assert jwks_route.call_count == 2  # initial fetch + one refetch on the unknown kid
+
+
+@respx.mock
+def test_jwks_refetch_for_unknown_kid_is_throttled(mock_rsa_key_pair, allow_mock_issuer):
+    jwks_route = mock_oidc_http(mock_rsa_key_pair.jwk_dict)
+    token = sign_rs256_token(mock_rsa_key_pair.private_key, valid_jwt_payload(), kid='unknown')
+
+    for _ in range(3):
+        with pytest.raises(InvalidTokenError, match='Unable to find signing key'):
+            run_verify(token, jwks_oidc_config())
+
+    # the first fetch is fresh, so unknown kids within the throttle window never refetch
+    assert jwks_route.call_count == 1
+
+
+@respx.mock
+def test_jwks_is_cached_between_verifications(mock_rsa_key_pair, allow_mock_issuer):
+    jwks_route = mock_oidc_http(mock_rsa_key_pair.jwk_dict)
+    token = sign_rs256_token(mock_rsa_key_pair.private_key, valid_jwt_payload())
+
+    run_verify(token, jwks_oidc_config())
+    run_verify(token, jwks_oidc_config())
+
+    assert jwks_route.call_count == 1
 
 
 @respx.mock
