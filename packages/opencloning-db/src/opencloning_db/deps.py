@@ -22,11 +22,10 @@ bearer_scheme = HTTPBearer(auto_error=False)
 logger = logging.getLogger('opencloning_db.auth')
 
 
-def credentials_exception(e: Exception | None = None) -> HTTPException:
-    extra = f' | {e}' if e else ''
+def credentials_exception() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=f'Could not validate credentials{extra}',
+        detail='Could not validate credentials',
         headers={'WWW-Authenticate': 'Bearer'},
     )
 
@@ -53,7 +52,7 @@ async def resolve_user_from_token(token: str, session: Session, config: Config) 
             # Raised by our own OIDC code with constant messages (never token content).
             extra['detail'] = str(e)
         logger.warning('auth_failed', extra=extra)
-        raise credentials_exception(e)
+        raise credentials_exception()
     bind_user_to_request_context(identity.subject)
     return resolve_oidc_user(session, config, identity)
 
