@@ -45,7 +45,7 @@ uv run opencloning-cli admin assign-user view-only-user@example.com 1 --role edi
 uv run opencloning-cli admin set-instance-admin bootstrap@example.com
 ```
 
-Local `.env.dev` sets `OIDC_TEST_MODE=1`, which accepts `test:...` bearer tokens. `OPENCLONING_TESTING=1` is separate and only required for `db seed` and `db stubs`.
+Local `.env.dev` sets `OIDC_TEST_MODE=1`, which accepts `test:...` bearer tokens and requires `OPENCLONING_TESTING=1` and only localhost/127.0.0.1 origins (config loading fails otherwise). `OPENCLONING_TESTING=1` is also required for `db seed` and `db stubs`.
 
 ## Generate DB Stubs
 

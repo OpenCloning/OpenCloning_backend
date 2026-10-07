@@ -74,8 +74,8 @@ class TestConfig(unittest.TestCase):
                 oidc = OidcConfig.from_env()
         self.assertEqual(oidc.authorized_parties, custom_origins)
 
-    def test_oidc_from_env_test_mode_uses_oidc_test_mode_env(self):
-        """OIDC_TEST_MODE controls test bearer tokens; OPENCLONING_TESTING does not."""
+    def test_oidc_from_env_test_mode_guards(self):
+        """OIDC_TEST_MODE requires OPENCLONING_TESTING and only localhost origins."""
         with patch.dict(
             os.environ,
             {
@@ -84,8 +84,47 @@ class TestConfig(unittest.TestCase):
             },
             clear=True,
         ):
+            with self.assertRaisesRegex(RuntimeError, 'requires OPENCLONING_TESTING=1'):
+                OidcConfig.from_env()
+
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OIDC_TEST_MODE': '1',
+                'OPENCLONING_TESTING': '1',
+            },
+            clear=True,
+        ):
             oidc = OidcConfig.from_env()
         self.assertTrue(oidc.test_mode)
+
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OIDC_TEST_MODE': '1',
+                'OPENCLONING_TESTING': '1',
+                'OIDC_AUTHORIZED_PARTIES': 'http://localhost:3000,https://app.example.com',
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, 'only allowed when all origins are localhost'):
+                OidcConfig.from_env()
+
+        with patch('opencloning_db.config.ALLOWED_ORIGINS', ['https://app.example.com']):
+            with patch.dict(
+                os.environ,
+                {
+                    'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                    'OIDC_TEST_MODE': '1',
+                    'OPENCLONING_TESTING': '1',
+                    'OIDC_AUTHORIZED_PARTIES': 'http://127.0.0.1:3000',
+                },
+                clear=True,
+            ):
+                with self.assertRaisesRegex(RuntimeError, 'only allowed when all origins are localhost'):
+                    OidcConfig.from_env()
 
         with patch.dict(
             os.environ,
