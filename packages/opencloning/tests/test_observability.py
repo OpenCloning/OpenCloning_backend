@@ -2,6 +2,7 @@
 
 import io
 import json
+import importlib
 import logging
 import os
 import subprocess
@@ -19,6 +20,7 @@ from opencloning._version import __version__
 from opencloning.observability.context import bind_user_to_request_context
 from opencloning.observability.logging_config import (
     OpenCloningJsonFormatter,
+    build_logging_config,
     RequestContextFilter,
 )
 from opencloning.observability.middleware import RequestContextMiddleware, register_error_handlers
@@ -289,3 +291,36 @@ def test_log_level_debug_and_json_output():
 def test_default_level_is_info():
     output = _run_logging_snippet({'LOG_LEVEL': ''})
     assert [json.loads(line)['message'] for line in output.splitlines()] == ['Booting worker']
+
+
+def test_build_logging_config_levels(monkeypatch):
+    monkeypatch.setenv('LOG_LEVEL', 'warning')
+    assert build_logging_config()['root']['level'] == 'WARNING'
+    assert build_logging_config('debug')['root']['level'] == 'DEBUG'
+    monkeypatch.delenv('LOG_LEVEL')
+    assert build_logging_config()['root']['level'] == 'INFO'
+
+
+def test_gunicorn_conf(monkeypatch):
+    import opencloning.observability.gunicorn_conf as gunicorn_conf
+
+    monkeypatch.setenv('GUNICORN_WORKERS', '3')
+    monkeypatch.setenv('GUNICORN_TIMEOUT', '5')
+    monkeypatch.setenv('LOG_LEVEL', 'DEBUG')
+    conf = importlib.reload(gunicorn_conf)
+    assert conf.workers == 3
+    assert conf.timeout == 5
+    assert conf.loglevel == 'debug'
+    assert conf.logconfig_dict['root']['level'] == 'DEBUG'
+    assert conf.worker_class == 'uvicorn_worker.UvicornWorker'
+
+
+def test_crash_before_response_gets_generic_500(log_output):
+    # A bare ASGI app that fails before sending anything: the middleware itself answers with the generic 500
+    async def app(scope, receive, send):
+        raise RuntimeError('kaboom')
+
+    response = TestClient(RequestContextMiddleware(app)).get('/boom')
+    assert response.status_code == 500
+    assert response.json() == {'detail': 'Internal Server Error', 'request_id': response.headers['x-request-id']}
+    assert len(log_output.by_message('unhandled_exception')) == 1

@@ -178,3 +178,12 @@ class NcbiAsyncRequestsTest(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(ValueError) as e:
             await ncbi_requests.get_genbank_sequence('NC_003424.3', None, 10, 1)
         assert e.value.args[0] == 'start, end, and strand must either all be None or none be None'
+
+
+def test_eutils_params_adds_api_key(monkeypatch):
+    params = {'db': 'nuccore'}
+    monkeypatch.setattr(ncbi_requests.settings, 'NCBI_API_KEY', None)
+    assert ncbi_requests._eutils_params(params) == params
+    monkeypatch.setattr(ncbi_requests.settings, 'NCBI_API_KEY', 'secret')
+    assert ncbi_requests._eutils_params(params) == {'db': 'nuccore', 'api_key': 'secret'}
+    assert ncbi_requests._datasets_headers() == {'api-key': 'secret'}
