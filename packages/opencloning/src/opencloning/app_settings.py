@@ -13,7 +13,6 @@ def parse_bool(value: str | bool) -> bool:
 # API settings ===============================================
 SERVE_FRONTEND = parse_bool(os.environ['SERVE_FRONTEND']) if 'SERVE_FRONTEND' in os.environ else False
 BATCH_CLONING = parse_bool(os.environ['BATCH_CLONING']) if 'BATCH_CLONING' in os.environ else True
-RECORD_STUBS = parse_bool(os.environ['RECORD_STUBS']) if 'RECORD_STUBS' in os.environ else False
 ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3002']
 if os.environ.get('ALLOWED_ORIGINS') is not None:
     # Remove trailing slash from each origin if ends with one
@@ -67,7 +66,6 @@ else:
 class Settings(BaseModel):
     SERVE_FRONTEND: bool
     BATCH_CLONING: bool
-    RECORD_STUBS: bool
     NCBI_API_KEY: str | None
     NCBI_MAX_SEQUENCE_LENGTH: int
     ALLOWED_ORIGINS: list[str]
@@ -85,7 +83,6 @@ class Settings(BaseModel):
 settings = Settings(
     SERVE_FRONTEND=SERVE_FRONTEND,
     BATCH_CLONING=BATCH_CLONING,
-    RECORD_STUBS=RECORD_STUBS,
     NCBI_API_KEY=NCBI_API_KEY,
     NCBI_MAX_SEQUENCE_LENGTH=NCBI_MAX_SEQUENCE_LENGTH,
     ALLOWED_ORIGINS=ALLOWED_ORIGINS,

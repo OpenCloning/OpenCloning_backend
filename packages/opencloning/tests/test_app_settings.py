@@ -21,7 +21,6 @@ class TestAppSettings(unittest.TestCase):
     def test_default_values(self):
         self.assertEqual(app_settings.settings.SERVE_FRONTEND, False)
         self.assertEqual(app_settings.settings.BATCH_CLONING, True)
-        self.assertEqual(app_settings.settings.RECORD_STUBS, False)
         # self.assertEqual(app_settings.settings.NCBI_API_KEY, None) > This is different in the CI
         self.assertEqual(
             app_settings.settings.ALLOWED_ORIGINS,
@@ -37,7 +36,6 @@ class TestAppSettings(unittest.TestCase):
     def test_settings_from_env(self):
         self.monkeypatch2.setenv('SERVE_FRONTEND', '1')
         self.monkeypatch2.setenv('BATCH_CLONING', '0')
-        self.monkeypatch2.setenv('RECORD_STUBS', '1')
         self.monkeypatch2.setenv('NCBI_API_KEY', 'test')
         self.monkeypatch2.setenv('ALLOWED_ORIGINS', 'hello,bye')
         self.monkeypatch2.setenv('PLANNOTATE_URL', 'http://dummy/url')
@@ -51,7 +49,6 @@ class TestAppSettings(unittest.TestCase):
 
         self.assertEqual(app_settings.settings.SERVE_FRONTEND, True)
         self.assertEqual(app_settings.settings.BATCH_CLONING, False)
-        self.assertEqual(app_settings.settings.RECORD_STUBS, True)
         self.assertEqual(app_settings.settings.NCBI_API_KEY, 'test')
         self.assertEqual(app_settings.settings.ALLOWED_ORIGINS, ['hello', 'bye'])
         self.assertEqual(app_settings.settings.PLANNOTATE_URL, 'http://dummy/url/')  # Trailing slash added
