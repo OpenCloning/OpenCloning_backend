@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.10.0...opencloning-db-v2.0.0) (2026-10-07)
+
+
+### Features
+
+* Changed to json login including request id and user id for observability ([#530](https://github.com/OpenCloning/OpenCloning_backend/issues/530)) ([5cdd615](https://github.com/OpenCloning/OpenCloning_backend/commit/5cdd61515dbe7a8d259b89468aaaac623f152032))
+
+
+### Bug Fixes
+
+* not return error stack in 401 response ([#536](https://github.com/OpenCloning/OpenCloning_backend/issues/536)) ([bfc6dc0](https://github.com/OpenCloning/OpenCloning_backend/commit/bfc6dc019fec582b1d8c09d6efd62a2fdf58c7c4))
+* small fixes suggested by AI review of [#530](https://github.com/OpenCloning/OpenCloning_backend/issues/530) ([#534](https://github.com/OpenCloning/OpenCloning_backend/issues/534)) ([f998c88](https://github.com/OpenCloning/OpenCloning_backend/commit/f998c884ba63039fd22ef37d9733b8f824b916d5))
+* support key rotation in oidc ([#535](https://github.com/OpenCloning/OpenCloning_backend/issues/535)) ([33a8805](https://github.com/OpenCloning/OpenCloning_backend/commit/33a88058b2ae5a5f74bb4cf2c2c05607b89af271))
+
 ## [1.10.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.9.6...opencloning-db-v1.10.0) (2026-09-28)
 
 

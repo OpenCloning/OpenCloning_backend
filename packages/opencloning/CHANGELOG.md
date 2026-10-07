@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.10.0...opencloning-v2.0.0) (2026-10-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop RECORD_STUBS functionality ([#532](https://github.com/OpenCloning/OpenCloning_backend/issues/532))
+
+### Features
+
+* Changed to json login including request id and user id for observability ([#530](https://github.com/OpenCloning/OpenCloning_backend/issues/530)) ([5cdd615](https://github.com/OpenCloning/OpenCloning_backend/commit/5cdd61515dbe7a8d259b89468aaaac623f152032))
+* drop RECORD_STUBS functionality ([#532](https://github.com/OpenCloning/OpenCloning_backend/issues/532)) ([032f365](https://github.com/OpenCloning/OpenCloning_backend/commit/032f365bf91a55b0fcec0aba1c2df74740941a62))
+
+
+### Bug Fixes
+
+* small fixes suggested by AI review of [#530](https://github.com/OpenCloning/OpenCloning_backend/issues/530) ([#534](https://github.com/OpenCloning/OpenCloning_backend/issues/534)) ([f998c88](https://github.com/OpenCloning/OpenCloning_backend/commit/f998c884ba63039fd22ef37d9733b8f824b916d5))
+
 ## [1.10.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v1.9.6...opencloning-v1.10.0) (2026-09-28)
 
 
