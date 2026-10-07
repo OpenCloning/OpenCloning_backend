@@ -168,6 +168,10 @@ async def _signing_key_for_token(token: str, jwks_uri: str, client) -> Any:
     # or older than JWKS_MIN_REFRESH_SECONDS, so forged tokens with random kids can't make us hit
     # the JWKS endpoint more than once per interval.
     if key_data is None and (fetched_at is None or time.monotonic() - fetched_at >= JWKS_MIN_REFRESH_SECONDS):
+        if cached is not None:
+            # Stamp the attempt before awaiting, so concurrent requests and a failing fetch both
+            # count against the throttle (the old document stays in place until the fetch succeeds).
+            _jwks_cache[jwks_uri] = (time.monotonic(), cached_jwks)
         key_data = _find_key(await _fetch_jwks(jwks_uri, client), kid)
     if key_data is None:
         raise InvalidTokenError('Unable to find signing key for token')

@@ -338,6 +338,28 @@ def test_jwks_refetch_for_unknown_kid_is_throttled(mock_rsa_key_pair, allow_mock
 
 
 @respx.mock
+def test_jwks_failed_refetch_is_throttled(mock_rsa_key_pair, allow_mock_issuer):
+    import opencloning_db.auth.oidc as oidc_module
+
+    jwks_route = mock_oidc_http(mock_rsa_key_pair.jwk_dict)
+    run_verify(sign_rs256_token(mock_rsa_key_pair.private_key, valid_jwt_payload()), jwks_oidc_config())
+    assert jwks_route.call_count == 1
+
+    # Age the cached JWKS past the throttle window, then make the JWKS endpoint fail
+    fetched_at, jwks = oidc_module._jwks_cache[MOCK_JWKS_URI]
+    oidc_module._jwks_cache[MOCK_JWKS_URI] = (fetched_at - 120, jwks)
+    jwks_route.respond(500)
+    unknown_kid_token = sign_rs256_token(mock_rsa_key_pair.private_key, valid_jwt_payload(), kid='unknown')
+
+    for _ in range(3):
+        with pytest.raises(InvalidTokenError):
+            run_verify(unknown_kid_token, jwks_oidc_config())
+
+    # only the first unknown-kid request retried the failing endpoint
+    assert jwks_route.call_count == 2
+
+
+@respx.mock
 def test_jwks_is_cached_between_verifications(mock_rsa_key_pair, allow_mock_issuer):
     jwks_route = mock_oidc_http(mock_rsa_key_pair.jwk_dict)
     token = sign_rs256_token(mock_rsa_key_pair.private_key, valid_jwt_payload())
