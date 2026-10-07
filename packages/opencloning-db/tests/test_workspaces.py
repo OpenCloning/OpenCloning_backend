@@ -205,7 +205,7 @@ def test_get_workspaces_unauthenticated_401(workspaces_client):
     c = workspaces_client['client']
     response = c.get('/workspaces')
     assert response.status_code == 401
-    assert response.json()['detail'] == 'Not authenticated'
+    assert response.json()['detail'] == 'Could not validate credentials'
 
 
 @readonly_db
@@ -214,7 +214,7 @@ def test_get_workspace_by_id_unauthenticated_401(workspaces_client):
     c = workspaces_client['client']
     response = c.get(f"/workspaces/{workspaces_client['w1']}")
     assert response.status_code == 401
-    assert response.json()['detail'] == 'Not authenticated'
+    assert response.json()['detail'] == 'Could not validate credentials'
 
 
 @readonly_db
@@ -313,7 +313,7 @@ def test_get_workspace_users_unauthenticated_401(workspaces_client):
     c = workspaces_client['client']
     response = c.get(_users_path(workspaces_client['w1']))
     assert response.status_code == 401
-    assert response.json()['detail'] == 'Not authenticated'
+    assert response.json()['detail'] == 'Could not validate credentials'
 
 
 def test_post_workspace_user_adds_new_member(workspaces_client):
@@ -544,7 +544,7 @@ def test_delete_workspace_user_unauthenticated_401(workspaces_client):
         _user_path(workspaces_client['w1'], workspaces_client['viewer_w1_id']),
     )
     assert response.status_code == 401
-    assert response.json()['detail'] == 'Not authenticated'
+    assert response.json()['detail'] == 'Could not validate credentials'
 
 
 @readonly_db
