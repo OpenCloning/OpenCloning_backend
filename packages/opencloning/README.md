@@ -81,7 +81,7 @@ docker build -f docker/opencloning.Dockerfile -t manulera/opencloningbackend .
 docker run -d --name backendcontainer -p 8000:8000 manulera/opencloningbackend
 ```
 
-To run with a read-only root filesystem while still allowing temporary files (required for tools like mafft), mount `/tmp` as tmpfs (RAM-backed writable storage). This will not work with `RECORD_STUBS=1` (see [Generating API stubs](#generating-api-stubs)).
+To run with a read-only root filesystem while still allowing temporary files (required for tools like mafft), mount `/tmp` as tmpfs (RAM-backed writable storage).
 
 ```bash
 docker run -d --name backendcontainer -p 8000:8000 \
@@ -173,17 +173,6 @@ If these variables are not set, Addgene import endpoints return an informative e
 Use of Addgene credentials and data must comply with Addgene Terms of Use.
 
 For CI, configure repository secrets named `ADDGENE_USERNAME` and `ADDGENE_PASSWORD` so Addgene-dependent tests can run.
-
-## Generating API stubs
-
-For the frontend, it may be useful to produce stubs (I use them for writing the tests). See how this is implemented
-by looking at the `RecordStubRoute` class in `api_config_utils.py`. To run the dev server and record stubs:
-
-```bash
-RECORD_STUBS=1 uvicorn opencloning.main:app --reload --reload-exclude='.venv'
-```
-
-This will record the stubs (requests and responses) in the `stubs` folder.
 
 ## Catalogs
 
