@@ -14,12 +14,14 @@ from .endpoints.assembly import router as assembly_router
 from .endpoints.no_assembly import router as no_assembly_router
 from .endpoints.no_input import router as no_input_router
 from .app_settings import settings
+from .observability.middleware import RequestContextMiddleware, register_error_handlers
 
 # =====================================================
 
 
 def create_fastapi_app() -> FastAPI:
     app = FastAPI()
+    register_error_handlers(app)
 
     router = get_router()
 
@@ -92,13 +94,9 @@ def wrap_with_cors(app: ASGIApp) -> ASGIApp:
         allow_credentials=True,
         allow_methods=['*'],
         allow_headers=['*'],
-        expose_headers=['x-warning'],
+        expose_headers=['x-warning', 'x-request-id'],
     )
 
 
-def create_app() -> ASGIApp:
-    return wrap_with_cors(create_fastapi_app())
-
-
 fastapi_app = create_fastapi_app()
-app = wrap_with_cors(fastapi_app)
+app = RequestContextMiddleware(wrap_with_cors(fastapi_app))

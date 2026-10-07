@@ -4,6 +4,10 @@
 #
 # GUNICORN_WORKERS: Gunicorn worker processes (default: 2).
 # GUNICORN_TIMEOUT: the timeout for each worker process (default: 20).
+# LOG_LEVEL: see opencloning/observability/logging_config.py
+#
+# Gunicorn settings (worker class, logging as one JSON object per line) live in
+# opencloning/observability/gunicorn_conf.py.
 
 case "${APP_TARGET}" in
     cloning) APP_MODULE=opencloning.main ;;
@@ -14,28 +18,17 @@ case "${APP_TARGET}" in
         ;;
 esac
 
-echo "GUNICORN_WORKERS: $GUNICORN_WORKERS"
-echo "APP_MODULE: $APP_MODULE"
-
 GUNICORN_ARGS=(
-    -k uvicorn.workers.UvicornWorker
-    -w "${GUNICORN_WORKERS:-2}"
-    --bind 0.0.0.0:8000
-    --timeout "${GUNICORN_TIMEOUT:-20}"
-    --no-control-socket
-    --access-logfile -
-    --error-logfile -
+    -c python:opencloning.observability.gunicorn_conf
     "${APP_MODULE}:app"
 )
 
 if [ "$USE_HTTPS" = "true" ]; then
-    echo "Using HTTPS"
     if [ ! -f "/certs/key.pem" ] || [ ! -f "/certs/cert.pem" ] || [ ! -r "/certs/key.pem" ] || [ ! -r "/certs/cert.pem" ]; then
         echo "Error: TLS certificate files /certs/key.pem and /certs/cert.pem must both exist and be readable"
         exit 1
     fi
     exec gunicorn "${GUNICORN_ARGS[@]}" --keyfile /certs/key.pem --certfile /certs/cert.pem
 else
-    echo "Using HTTP"
     exec gunicorn "${GUNICORN_ARGS[@]}"
 fi

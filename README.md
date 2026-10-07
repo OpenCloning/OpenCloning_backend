@@ -46,6 +46,20 @@ That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.
 
 `.env.dev` sets `OIDC_TEST_MODE=1`, so the API accepts `Authorization: Bearer test:<subject>|<display_name>` or `test:<subject>|<email>|<display_name>` without JWKS. Seeded users (for example `bootstrap+clerk_test@example.com`) have no OIDC identity yet; the first token with that email links the existing row. `OPENCLONING_TESTING=1` is only required for `db seed`, `db stubs`, and `/__test/reset-db`. For a real identity provider, set `OIDC_TEST_MODE=0` and a real `OIDC_ISSUER_URL`.
 
+## Logging and request IDs
+
+Both apps log one JSON object per line to stdout, for all loggers (app code, gunicorn, uvicorn, libraries). Every response carries an `X-Request-ID` header, and the same `request_id` is stamped on every log record of that request, so an error shown in the frontend can be traced to the server logs. Each request produces one `request_completed` event (method, route template, status, duration). Request bodies, query strings, headers and client IPs are never logged.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LOG_LEVEL` | `INFO` | Log level of the root and gunicorn loggers |
+
+The JSON logging is configured by gunicorn, through [`opencloning/observability/gunicorn_conf.py`](packages/opencloning/src/opencloning/observability/gunicorn_conf.py) (which also reads `GUNICORN_WORKERS` and `GUNICORN_TIMEOUT`), so it applies to the Docker images. Plain `uvicorn` (as in the commands above) keeps uvicorn's default logs, which is what you want during development. To see the JSON logs locally, run the app the way the image does (no `--reload`):
+
+```bash
+uv run gunicorn -c python:opencloning.observability.gunicorn_conf opencloning_db.combined:app
+```
+
 ## Dependency guardrail (deptry)
 
 This repository uses a uv workspace. In a workspace, dependencies are resolved in one shared environment, so imports can appear to work even when a package does not declare them in its own `pyproject.toml`.

@@ -1,11 +1,15 @@
 """Workspace membership checks for API routes."""
 
+import logging
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fastapi import HTTPException, status
 
 from opencloning_db.models import WorkspaceMembership, WorkspaceRole
+
+logger = logging.getLogger('opencloning_db.auth')
 
 _ROLE_ORDER: dict[WorkspaceRole, int] = {
     WorkspaceRole.viewer: 0,
@@ -34,9 +38,15 @@ def assert_workspace_access(
             WorkspaceMembership.workspace_id == workspace_id,
         )
     )
-    if membership is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Not allowed for this workspace')
-    if not has_at_least(membership.role, min_role):
+    if membership is None or not has_at_least(membership.role, min_role):
+        logger.warning(
+            'access_denied',
+            extra={
+                'reason': 'not_member' if membership is None else 'insufficient_role',
+                'workspace_id': workspace_id,
+                'required_role': min_role.value,
+            },
+        )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Not allowed for this workspace')
     return membership
 

@@ -325,11 +325,11 @@ class GenBankTest(unittest.TestCase):
     # succeeds, but the request that gets the sequence fails
     @respx.mock
     def test_request_wrong_id2(self):
-        respx.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
             return_value=httpx.Response(200, json={'result': {'uids': ['1'], '1': {'slen': 1000}}})
         )
         # 400 is the error code for a wrong sequence accession :_)
-        respx.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi').respond(400, text='')
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi').respond(400, text='')
         source = NCBISequenceSource(
             id=1,
             repository_id='wrong_id',
@@ -342,7 +342,7 @@ class GenBankTest(unittest.TestCase):
         """Test that the request fails if the NCBI is down"""
 
         # First request fails
-        respx.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
             side_effect=httpx.ConnectError('Connection error')
         )
         source = NCBISequenceSource(
@@ -353,10 +353,10 @@ class GenBankTest(unittest.TestCase):
         self.assertEqual(response.status_code, 504)
 
         # Second request fails
-        respx.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
             return_value=httpx.Response(200, json={'result': {'uids': ['1'], '1': {'slen': 1000}}})
         )
-        respx.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi').mock(
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi').mock(
             side_effect=httpx.ConnectError('Connection error')
         )
         response = client.post('/repository_id/genbank', json=source.model_dump())

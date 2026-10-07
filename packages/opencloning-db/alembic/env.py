@@ -9,7 +9,9 @@ from opencloning_db.models import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Do not disable loggers that already exist in the process (e.g. the app's own loggers when
+    # migrations run in-process), which is what fileConfig does by default.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
