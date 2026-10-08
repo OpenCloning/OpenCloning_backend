@@ -6,7 +6,11 @@ from pydna.dseqrecord import Dseqrecord
 from pydna.primer import Primer as PydnaPrimer
 from pydantic import create_model, Field
 from typing import Annotated
-from opencloning.endpoints.endpoint_utils import format_products, parse_restriction_enzymes
+from opencloning.endpoints.endpoint_utils import (
+    check_unambiguous_overhangs,
+    format_products,
+    parse_restriction_enzymes,
+)
 from opencloning.temp_functions import is_assembly_complete, minimal_assembly_overlap
 from ..dna_functions import (
     read_dsrecord_from_json,
@@ -319,6 +323,7 @@ async def restriction_and_ligation(
 
     fragments = [read_dsrecord_from_json(seq) for seq in sequences]
     enzymes = parse_restriction_enzymes(source.restriction_enzymes)
+    check_unambiguous_overhangs(sequences, fragments, enzymes)
     completed_source = source if is_assembly_complete(source) else None
 
     try:
