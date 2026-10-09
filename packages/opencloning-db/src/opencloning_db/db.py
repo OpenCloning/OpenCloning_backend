@@ -521,7 +521,7 @@ def cloning_strategy_to_db(
     ctx: WriteContext,
     tags: list[Tag] | None = None,
 ) -> tuple[list[Sequence], dict[int, int]]:
-    from opencloning_db.workspace_deps import get_sequence_in_workspace_for_user
+    from opencloning_db.workspace_deps import get_primer_in_workspace_for_user, get_sequence_in_workspace_for_user
 
     sequences = []
     entity_mapping = {}  # Combined mapping for sequences and primers (by id)
@@ -552,7 +552,9 @@ def cloning_strategy_to_db(
         db_primer = (
             Primer.from_pydantic(primer, ctx=ctx)
             if primer.database_id is None
-            else session.get(Primer, primer.database_id)
+            else get_primer_in_workspace_for_user(
+                session, ctx.user, ctx.workspace_id, primer.database_id, WorkspaceRole.editor
+            )
         )
         entity_mapping[primer.id] = db_primer
 
