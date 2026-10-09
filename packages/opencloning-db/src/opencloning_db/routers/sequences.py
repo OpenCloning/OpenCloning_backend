@@ -821,7 +821,23 @@ def post_cloning_strategy(
     cloning_strategy: BaseCloningStrategy,
 ):
     _, session, _workspace_id = ctx.destructure()
-    sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, ctx=ctx)
+    # Same validation as the bulk endpoints, but a wrong database_id is rejected, not cleared and re-matched.
+    row = validate_and_sync_cloning_strategy_dict(cloning_strategy.model_dump(mode='json'), session, ctx)
+    if row.parsing_errors:
+        raise HTTPException(status_code=400, detail=row.parsing_errors)
+    if row.primer_database_id_mismatches or row.sequence_database_id_mismatches:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'primer_database_id_mismatches': [
+                    m.model_dump(mode='json') for m in row.primer_database_id_mismatches
+                ],
+                'sequence_database_id_mismatches': [
+                    m.model_dump(mode='json') for m in row.sequence_database_id_mismatches
+                ],
+            },
+        )
+    sequences, id_mappings = cloning_strategy_to_db(row.cloning_strategy, session, ctx=ctx)
     session.flush()
     response = _cloning_strategy_response_from_db(sequences, id_mappings)
     session.refresh(session.get(Sequence, response.id))
