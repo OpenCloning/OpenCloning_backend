@@ -129,14 +129,18 @@ SCOPED_MODELS = [
 @readonly_db
 @pytest.mark.parametrize('model', [*SCOPED_MODELS, Source], ids=lambda m: m.__name__)
 def test_bound_session_hides_other_workspace(scope_db, model):
+    # For each model type, get the id of the row created in each workspace
     own_id = scope_db['ids'][scope_db['w1']][model.__name__]
     foreign_id = scope_db['ids'][scope_db['w2']][model.__name__]
     with _bound_session(scope_db['engine'], scope_db['w1']) as session:
+        # Requesting rows by id
         assert session.get(model, own_id) is not None
         assert session.get(model, foreign_id) is None
+        # Request all rows for that model type
         ids = set(session.scalars(select(model.id)))
         assert own_id in ids
         assert foreign_id not in ids
+        # Select query
         assert session.query(model).filter_by(id=foreign_id).first() is None
         # Inside a subquery
         assert (
@@ -145,13 +149,20 @@ def test_bound_session_hides_other_workspace(scope_db, model):
         )
 
 
+def _inputs_of(session: Session, source_id: int) -> list[SourceInput]:
+    return session.scalars(select(SourceInput).where(SourceInput.source_id == source_id)).all()
+
+
 @readonly_db
 def test_bound_session_hides_other_workspace_source_inputs(scope_db):
     own_source_id = scope_db['ids'][scope_db['w1']]['Source']
     foreign_source_id = scope_db['ids'][scope_db['w2']]['Source']
+    with Session(scope_db['engine']) as session:
+        # The foreign source has inputs, so an empty result below means hidden, not missing
+        assert _inputs_of(session, foreign_source_id) != []
     with _bound_session(scope_db['engine'], scope_db['w1']) as session:
-        assert set(session.scalars(select(SourceInput.source_id))) == {own_source_id}
-        assert session.get(SourceInput, (foreign_source_id, 0)) is None
+        assert _inputs_of(session, own_source_id) != []
+        assert _inputs_of(session, foreign_source_id) == []
 
 
 def test_bound_session_filters_relationship_loads(scope_db):
@@ -163,6 +174,7 @@ def test_bound_session_filters_relationship_loads(scope_db):
         session.execute(input_entity_tag.insert().values(input_entity_id=foreign_primer_id, tag_id=own_tag_id))
         session.commit()
 
+    # The tag in workspace 1 does not show the primer in workspace 2
     with _bound_session(scope_db['engine'], w1) as session:
         tag = session.get(Tag, own_tag_id)
         lazy_ids = {entity.id for entity in tag.input_entities}
@@ -171,6 +183,8 @@ def test_bound_session_filters_relationship_loads(scope_db):
     with _bound_session(scope_db['engine'], w1) as session:
         tag = session.scalars(select(Tag).where(Tag.id == own_tag_id).options(selectinload(Tag.input_entities))).one()
         assert foreign_primer_id not in {entity.id for entity in tag.input_entities}
+
+    # The primer in workspace 2 does not show the tag in workspace 1
     with _bound_session(scope_db['engine'], w2) as session:
         assert session.get(Primer, foreign_primer_id).tags == []
 
@@ -186,7 +200,9 @@ def test_alternating_workspaces_use_the_right_workspace(scope_db):
     for _ in range(3):
         for w in (w1, w2):
             with _bound_session(scope_db['engine'], w) as session:
+                # For entities with workspace_id
                 assert set(session.scalars(select(Primer.id))) == expected_primers[w]
+                # For linked rows (models without workspace_id)
                 assert set(session.scalars(select(SequencingFile.id))) == {scope_db['ids'][w]['SequencingFile']}
 
 
