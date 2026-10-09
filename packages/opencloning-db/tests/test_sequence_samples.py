@@ -251,7 +251,7 @@ def test_patch_sequence_sample_owner_ok(seq_samples_client):
 def test_patch_sequence_sample_cross_workspace_sequence_rejected(
     seq_samples_client,
 ):
-    """PATCH sample to W2 sequence under W1 header: 403 (not 404)."""
+    """PATCH sample to W2 sequence under W1 header: 404, same as a nonexistent sequence."""
     c = seq_samples_client['client']
     tok = seq_samples_client['token_owner_w1']
     response = c.patch(
@@ -259,8 +259,8 @@ def test_patch_sequence_sample_cross_workspace_sequence_rejected(
         headers=workspace_headers(tok, seq_samples_client['w1']),
         json={'sequence_id': seq_samples_client['seq_w2_id']},
     )
-    assert response.status_code == 403
-    assert 'Not allowed' in response.json()['detail']
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'BaseSequence not found'
 
 
 @readonly_db

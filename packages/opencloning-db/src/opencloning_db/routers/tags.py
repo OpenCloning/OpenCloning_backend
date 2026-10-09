@@ -48,9 +48,7 @@ def _attach_tag_to_resource(
     conflict_message: str,
 ) -> TagRead:
     resource = loader(session, current_user, workspace_id, resource_id, WorkspaceRole.editor)
-    tag = session.get(Tag, tag_id)
-    if tag is None or tag.workspace_id != resource.workspace_id:
-        raise HTTPException(status_code=404, detail='Tag not found')
+    tag = get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
     if tag in resource.tags:
         raise HTTPException(status_code=409, detail=conflict_message)
     resource.tags.append(tag)
@@ -68,9 +66,7 @@ def _remove_tag_from_resource(
     missing_link_message: str,
 ) -> RemovedResponse:
     resource = loader(session, current_user, workspace_id, resource_id, WorkspaceRole.editor)
-    tag = session.get(Tag, tag_id)
-    if tag is None or tag.workspace_id != resource.workspace_id:
-        raise HTTPException(status_code=404, detail='Tag not found')
+    tag = get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
     if tag not in resource.tags:
         raise HTTPException(status_code=404, detail=missing_link_message)
     resource.tags.remove(tag)

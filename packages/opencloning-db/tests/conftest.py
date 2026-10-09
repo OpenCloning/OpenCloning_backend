@@ -8,6 +8,7 @@ import opencloning_db.db as db_module
 from fastapi.testclient import TestClient
 from opencloning_db.api import app, fastapi_app
 from opencloning_db.deps import get_db
+from opencloning_db.workspace_scope import require_workspace_scope
 from sqlalchemy.engine import Engine
 import pytest
 
@@ -78,6 +79,7 @@ def _engine_client_config(
 
     def override_get_db():
         session = Session(postgres_test_engine)
+        require_workspace_scope(session)
         try:
             yield session
         finally:

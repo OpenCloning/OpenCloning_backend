@@ -14,6 +14,7 @@ from opencloning_db.auth.provisioning import resolve_oidc_user
 from opencloning_db.config import Config, get_config
 from opencloning_db.db import get_engine
 from opencloning_db.models import User
+from opencloning_db.workspace_scope import require_workspace_scope
 
 # auto_error=False: the scheme is only declared here (for the OpenAPI docs). The header itself is
 # validated by parse_bearer_token, so that missing or malformed headers are logged as on /cloning.
@@ -59,6 +60,8 @@ async def resolve_user_from_token(token: str, session: Session, config: Config) 
 
 def get_db(config: Annotated[Config, Depends(get_config)]):
     session = Session(get_engine(config))
+    # Workspace data can only be queried once a workspace context binds the session (see workspace_scope)
+    require_workspace_scope(session)
     try:
         yield session
     finally:

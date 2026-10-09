@@ -22,6 +22,7 @@ from opencloning_db.models import (
     WorkspaceRole,
 )
 from opencloning_db.workspace_auth import assert_workspace_access
+from opencloning_db.workspace_scope import bind_workspace
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +42,7 @@ def get_viewer_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for read-only endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.viewer)
+    bind_workspace(session, workspace_id)
     return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
@@ -51,6 +53,7 @@ def get_editor_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for write endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.editor)
+    bind_workspace(session, workspace_id)
     return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
