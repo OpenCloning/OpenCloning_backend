@@ -3,6 +3,9 @@
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
+from unittest.mock import patch
+from opencloning_db.routers import sequences as sequences_router
+from opencloning_db.config import get_config
 from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
 from pydna.opencloning_models import TextFileSequence
@@ -1857,3 +1860,44 @@ def test_post_sequences_bulk_integrity_error_returns_409(sequences_client, monke
 
     r = _post_sequences_bulk(c, h_token, wid, payload, strict=True)
     assert r.status_code == 409
+
+
+def test_post_sequencing_files_too_large(sequences_client):
+    """Sequencing files above the configured limit are rejected with 413 and nothing is stored."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_w1_id']
+    cfg = get_config()
+    with patch.object(cfg, 'max_sequencing_file_size_mb', 1):
+        up = post_sequencing_file_upload(c, sid, tok, wid, 'big.ab1', b'A' * (1024 * 1024 + 1))
+    assert up.status_code == 413
+    listed = c.get(f"/sequences/{sid}/sequencing_files", headers=workspace_headers(tok, wid))
+    assert listed.json() == []
+
+
+def test_validate_upload_sequences_too_large(sequences_client):
+    """Sequence files above MAX_SEQUENCE_FILE_SIZE_MB are rejected with 413."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    with patch.object(sequences_router.settings, 'MAX_SEQUENCE_FILE_SIZE_MB', 1):
+        r = c.post(
+            '/sequences/validate-upload',
+            headers=workspace_headers(tok, wid),
+            files={'files': ('big.fasta', b'>a\n' + b'A' * (1024 * 1024 + 1), 'text/plain')},
+        )
+    assert r.status_code == 413
+
+
+def test_post_cloning_strategy_long_primer(sequences_client):
+    """POST /sequences rejects primers above the maximum length."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    r = c.post(
+        '/sequences',
+        headers=workspace_headers(tok, wid),
+        json={'sources': [], 'sequences': [], 'primers': [{'id': 1, 'name': 'p', 'sequence': 'A' * 1001}]},
+    )
+    assert r.status_code == 422

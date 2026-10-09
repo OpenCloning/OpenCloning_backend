@@ -39,6 +39,20 @@ class TestConfig(unittest.TestCase):
         app_config.set_config(previous_config)
         self.assertEqual(cfg.database_url, 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev')
         self.assertEqual(cfg.oidc_config.issuer_url, 'https://idp.example.dev')
+        self.assertEqual(cfg.max_sequencing_file_size_mb, 20)
+
+    def test_max_sequencing_file_size_from_env(self):
+        with patch.dict(
+            os.environ,
+            {
+                'OPENCLONING_DB_URL': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'MAX_SEQUENCING_FILE_SIZE_MB': '5',
+            },
+            clear=True,
+        ):
+            cfg = app_config._load_config_from_env()
+        self.assertEqual(cfg.max_sequencing_file_size_mb, 5)
 
     def test_get_config_requires_runtime_env_vars(self):
         """Missing env vars produce one actionable runtime error."""

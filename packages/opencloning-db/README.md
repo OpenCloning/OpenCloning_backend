@@ -57,6 +57,15 @@ Set `OIDC_TEST_MODE=0` and `OIDC_ISSUER_URL`. Optional claim names are `OIDC_SUB
 
 The API loads the issuer discovery document, verifies RS256 session JWTs against JWKS, and requires a matching `azp`.
 
+## Upload limits
+
+Uploaded files are rejected with HTTP 413 when they exceed the configured size. Primer sequences are limited to 1000 bp (not configurable).
+
+| Variable | Default | Applies to |
+| --- | --- | --- |
+| `MAX_SEQUENCE_FILE_SIZE_MB` | `10` | Sequence files and cloning strategy files (`/sequences/validate-upload`, `/sequences/bulk`, `/sequences/cloning_strategy/bulk/validate`) |
+| `MAX_SEQUENCING_FILE_SIZE_MB` | `20` | Each file uploaded to `/sequences/{id}/sequencing_files` |
+
 ## Database migrations (Alembic)
 
 Schema changes are defined in **`opencloning_db.models`** and applied with **Alembic** in this package (`alembic/`, `alembic.ini`). Edit the models first, generate or adjust the revision under `alembic/versions/`, then run migrations against each database.

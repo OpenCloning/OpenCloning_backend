@@ -8,6 +8,7 @@ from pydantic import create_model, Field
 from typing import Annotated
 from opencloning.endpoints.endpoint_utils import format_products, parse_restriction_enzymes
 from opencloning.temp_functions import is_assembly_complete, minimal_assembly_overlap
+from opencloning.pydantic_models import PrimerModel
 from ..dna_functions import (
     read_dsrecord_from_json,
 )
@@ -25,7 +26,6 @@ from opencloning_linkml.datamodel import (
     HomologousRecombinationSource,
     RestrictionAndLigationSource,
     GatewaySource,
-    Primer as PrimerModel,
     TextFileSequence,
     RecombinaseSource,
 )

@@ -15,6 +15,9 @@ from pydna.primer import Primer
 from pydna.opencloning_models import UploadedFileSource
 from pydna.parsers import parse as pydna_parse
 from pydna.parsers import parse_snapgene
+from opencloning.app_settings import settings
+from opencloning.endpoints.endpoint_utils import read_upload_with_limit
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH
 
 router = get_router()
 
@@ -55,13 +58,13 @@ async def post_batch_cloning(
     desired_output: Annotated[Literal['simulate_cloning', 'primers_only'], Form(...)],
     assembly_accession: str = Form(..., pattern=r'^GC[AF]_[0-9.]+$', min_length=1),
     gene_list: str = Form(...),
-    integration_binding_forward: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
-    integration_binding_reverse: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1),
+    integration_binding_forward: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1, max_length=MAX_PRIMER_LENGTH),
+    integration_binding_reverse: str = Form(..., pattern=r'^[ACGTacgt]+$', min_length=1, max_length=MAX_PRIMER_LENGTH),
     plasmid_file: UploadFile | None = File(None),
     addgene_id: str | None = Form(None),
     plasmid_option: Annotated[Literal['addgene', 'file', 'default'], Form(...)] = None,
-    checking_primer_forward: str = Form('', pattern=r'^[ACGTacgt]*$'),
-    checking_primer_reverse: str = Form('', pattern=r'^[ACGTacgt]*$'),
+    checking_primer_forward: str = Form('', pattern=r'^[ACGTacgt]*$', max_length=MAX_PRIMER_LENGTH),
+    checking_primer_reverse: str = Form('', pattern=r'^[ACGTacgt]*$', max_length=MAX_PRIMER_LENGTH),
     resistance_marker: Annotated[Literal['kanmx6', 'natmx6', 'hphmx6', 'other'], Form(...)] = None,
 ):
     genes = [gene.strip() for gene in gene_list.split() if gene.strip()]
@@ -115,7 +118,7 @@ async def post_batch_cloning(
         try:
             assert plasmid_file is not None
             assert plasmid_file.filename is not None
-            file_content = await plasmid_file.read()
+            file_content = await read_upload_with_limit(plasmid_file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
             if plasmid_file.filename.endswith('.dna'):
                 plasmid = parse_snapgene(file_content)[0]
             else:
