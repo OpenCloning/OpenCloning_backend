@@ -26,6 +26,7 @@ class TestAppSettings(unittest.TestCase):
             app_settings.settings.ALLOWED_ORIGINS,
             ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3002'],
         )
+        self.assertEqual(app_settings.settings.MAX_SEQUENCE_FILE_SIZE_MB, 10)
         self.assertEqual(app_settings.settings.PLANNOTATE_URL, None)
         self.assertEqual(app_settings.settings.PLANNOTATE_TIMEOUT, 20)
         self.assertEqual(app_settings.settings.PROXY_URL, None)
@@ -38,6 +39,7 @@ class TestAppSettings(unittest.TestCase):
         self.monkeypatch2.setenv('BATCH_CLONING', '0')
         self.monkeypatch2.setenv('NCBI_API_KEY', 'test')
         self.monkeypatch2.setenv('ALLOWED_ORIGINS', 'hello,bye')
+        self.monkeypatch2.setenv('MAX_SEQUENCE_FILE_SIZE_MB', '3')
         self.monkeypatch2.setenv('PLANNOTATE_URL', 'http://dummy/url')
         self.monkeypatch2.setenv('PLANNOTATE_TIMEOUT', '30')
         self.monkeypatch2.setenv('PROXY_URL', 'http://dummy/url')
@@ -48,6 +50,7 @@ class TestAppSettings(unittest.TestCase):
         reload(app_settings)
 
         self.assertEqual(app_settings.settings.SERVE_FRONTEND, True)
+        self.assertEqual(app_settings.settings.MAX_SEQUENCE_FILE_SIZE_MB, 3)
         self.assertEqual(app_settings.settings.BATCH_CLONING, False)
         self.assertEqual(app_settings.settings.NCBI_API_KEY, 'test')
         self.assertEqual(app_settings.settings.ALLOWED_ORIGINS, ['hello', 'bye'])

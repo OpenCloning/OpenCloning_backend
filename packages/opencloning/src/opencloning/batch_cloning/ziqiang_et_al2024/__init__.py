@@ -67,9 +67,7 @@ def ziqiang_et_al2024():
 
 
 @router.post('/batch_cloning/ziqiang_et_al2024', response_model=BaseCloningStrategy)
-async def ziqiang_et_al2024_post(
-    protospacers: Annotated[list[str], Body(..., min_length=1)], until_bp: bool = Query(False)
-):
+def ziqiang_et_al2024_post(protospacers: Annotated[list[str], Body(..., min_length=1)], until_bp: bool = Query(False)):
     try:
         validate_protospacers(protospacers)
     except ValueError as e:
@@ -100,7 +98,7 @@ async def ziqiang_et_al2024_post(
         fwd_primer = next(p for p in cloning_strategy.primers if p.id == fwd_primer_id)
         rvs_primer = next(p for p in cloning_strategy.primers if p.id == rvs_primer_id)
 
-        resp = await pcr(pcr_source, [template_sequence], [fwd_primer, rvs_primer], 7, 0)
+        resp = pcr(pcr_source, [template_sequence], [fwd_primer, rvs_primer], 7, 0)
         pcr_product: TextFileSequence = TextFileSequence.model_validate(resp['sequences'][0])
         pcr_source: PCRSource = PCRSource.model_validate(resp['sources'][0])
         cloning_strategy.add_source_and_sequence(pcr_source, pcr_product)
@@ -118,14 +116,14 @@ async def ziqiang_et_al2024_post(
     # Make them
     input_sequences = [next(s for s in cloning_strategy.sequences if s.id == p) for p in pcr_product_ids]
     response = Response()
-    resp = await restriction_and_ligation(response, golden_gate_source, input_sequences, False)
+    resp = restriction_and_ligation(response, golden_gate_source, input_sequences, False)
     golden_gate_product: TextFileSequence = TextFileSequence.model_validate(resp['sequences'][0])
     golden_gate_source: RestrictionAndLigationSource = RestrictionAndLigationSource.model_validate(resp['sources'][0])
     cloning_strategy.add_source_and_sequence(golden_gate_source, golden_gate_product)
 
     bp_target = next(s for s in cloning_strategy.sequences if s.id == 6)
     gateway_source = GatewaySource(id=0, input=[], output_name='entry_clone', reaction_type='BP', greedy=False)
-    resp = await gateway(gateway_source, [golden_gate_product, bp_target], circular_only=True, only_multi_site=True)
+    resp = gateway(gateway_source, [golden_gate_product, bp_target], circular_only=True, only_multi_site=True)
     gateway_product: TextFileSequence = TextFileSequence.model_validate(resp['sequences'][0])
     gateway_source: GatewaySource = GatewaySource.model_validate(resp['sources'][0])
     cloning_strategy.add_source_and_sequence(gateway_source, gateway_product)
@@ -143,7 +141,7 @@ async def ziqiang_et_al2024_post(
     sequences_to_clone = [s for s in cloning_strategy.sequences if s.id not in all_input_ids]
 
     gateway_source = GatewaySource(id=0, input=[], output_name='expression_clone', reaction_type='LR', greedy=False)
-    resp = await gateway(gateway_source, sequences_to_clone, circular_only=True, only_multi_site=True)
+    resp = gateway(gateway_source, sequences_to_clone, circular_only=True, only_multi_site=True)
     index_of_product = next(i for i, s in enumerate(resp['sequences']) if '/label="Cas9"' in s.file_content)
     expression_clone: TextFileSequence = TextFileSequence.model_validate(resp['sequences'][index_of_product])
     gateway_source: GatewaySource = GatewaySource.model_validate(resp['sources'][index_of_product])

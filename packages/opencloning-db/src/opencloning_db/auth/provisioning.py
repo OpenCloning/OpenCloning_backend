@@ -85,7 +85,7 @@ def _create_user_with_default_workspace(
     external_subject: str,
 ) -> User:
     user = User(
-        email=email,
+        email=normalize_email(email) if email else None,
         display_name=display_name,
         auth_provider=auth_provider,
         external_subject=external_subject,

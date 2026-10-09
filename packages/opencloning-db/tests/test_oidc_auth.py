@@ -183,6 +183,14 @@ def test_jit_user_gets_default_workspace(oidc_client):
     assert workspaces[0]['role'] == 'owner'
 
 
+def test_jit_user_email_is_normalized(oidc_client):
+    subject = f'user-{uuid4().hex}'
+    token = make_test_bearer_token(subject, 'Mixed Case', email=f'  Mixed.{subject}@Example.COM ')
+    response = oidc_client.get('/auth/me', headers=bearer_headers(token))
+    assert response.status_code == 200
+    assert response.json()['email'] == f'mixed.{subject}@example.com'
+
+
 def test_repeat_login_reuses_same_user(oidc_client):
     subject = f'user-{uuid4().hex}'
     token = make_test_bearer_token(subject, f'User {subject[:8]}')

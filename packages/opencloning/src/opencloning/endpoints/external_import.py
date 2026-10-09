@@ -10,7 +10,7 @@ from typing import Annotated
 from pydna.utils import location_boundaries
 from pydna.opencloning_models import CloningStrategy as PydnaCloningStrategy
 
-from opencloning.endpoints.endpoint_utils import format_products
+from opencloning.endpoints.endpoint_utils import format_products, read_upload_with_limit
 from pydna.snapgene_history_parser import parse_snapgene_history, SnapgeneHistoryParserWarning
 
 from ..get_router import get_router
@@ -76,7 +76,7 @@ router = get_router()
         },
     },
 )
-async def read_from_file(
+def read_from_file(
     response: Response,
     file: UploadFile = File(...),
     sequence_file_format: SequenceFileFormat | None = Query(
@@ -127,7 +127,7 @@ async def read_from_file(
     dseqs = list()
     warning_messages = list()
 
-    file_content = await file.read()
+    file_content = read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
     if sequence_file_format == 'snapgene':
         file_streamer = io.BytesIO(file_content)
     else:
@@ -224,8 +224,8 @@ async def read_from_file(
         },
     },
 )
-async def read_snapgene_history(response: Response, file: UploadFile = File(...)):
-    file_content = await file.read()
+def read_snapgene_history(response: Response, file: UploadFile = File(...)):
+    file_content = read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
     try:
         with warnings.catch_warnings(record=True, category=SnapgeneHistoryParserWarning) as warnings_captured:
             seqr = parse_snapgene_history(file_content, file.filename or 'file.dna')

@@ -8,10 +8,12 @@ import respx
 import httpx
 from importlib import reload
 import time
+from unittest.mock import patch
 
 import opencloning.request_examples as request_examples
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning.main as _main
+from opencloning.endpoints import external_import
 from opencloning_linkml.datamodel import (
     NCBISequenceSource,
     TextFileSequence,
@@ -293,6 +295,20 @@ class ReadFileTest(unittest.TestCase):
         self.assertEqual(
             response.json()['detail'], 'Provided coordinates are incompatible with sequences in the file.'
         )
+
+
+class FileSizeLimitTest(unittest.TestCase):
+    def test_file_too_large(self):
+        """Files above MAX_SEQUENCE_FILE_SIZE_MB are rejected with 413."""
+        content = b'>seq\n' + b'A' * (1024 * 1024 + 1) + b'\n'
+        with patch.object(external_import.settings, 'MAX_SEQUENCE_FILE_SIZE_MB', 1):
+            for endpoint in ['/read_from_file', '/read_snapgene_history']:
+                response = client.post(endpoint, files={'file': ('big.fasta', content)})
+                self.assertEqual(response.status_code, 413, endpoint)
+                self.assertIn('maximum size of 1 MB', response.json()['detail'])
+            # A small file is still accepted
+            response = client.post('/read_from_file', files={'file': ('small.fasta', b'>seq\nACGT\n')})
+            self.assertEqual(response.status_code, 200)
 
 
 class GenBankTest(unittest.TestCase):

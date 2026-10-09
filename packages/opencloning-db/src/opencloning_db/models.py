@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import List, Optional, TypeVar, Union, get_args, Self
 
 from opencloning.dna_functions import read_dsrecord_from_json
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH
 from sqlalchemy import (
     CheckConstraint,
     Column,
@@ -422,6 +423,8 @@ class Primer(InputEntity):
             raise ValueError('Primer sequence must only contain ACGT characters')
         if len(value) < 2:
             raise ValueError('Primer sequence must be at least 2 characters long')
+        if len(value) > MAX_PRIMER_LENGTH:
+            raise ValueError(f'Primer sequence cannot be longer than {MAX_PRIMER_LENGTH} characters')
         return value
 
     @validates('uid')

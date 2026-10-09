@@ -70,7 +70,7 @@ async def get_restriction_enzyme_list():
         },
     },
 )
-async def cloning_strategy_is_valid(data: dict, response: Response):
+def cloning_strategy_is_valid(data: dict, response: Response):
     """Validate a cloning strategy and migrate it to the latest version if necessary"""
     warnings = []
     cs = validate_cloning_strategy_format_and_migrate(data, warnings)
@@ -87,7 +87,7 @@ async def validate_syntax(syntax: Syntax):
 
 
 @router.post('/normalize_cloning_strategy', response_model=BaseCloningStrategy)
-async def normalize_cloning_strategy(cs: BaseCloningStrategy):
+def normalize_cloning_strategy(cs: BaseCloningStrategy):
     """Normalize a cloning strategy"""
     with id_mode(use_python_internal_id=False):
         cs_pydna = PydnaCloningStrategy.model_validate(cs.model_dump())
@@ -95,7 +95,7 @@ async def normalize_cloning_strategy(cs: BaseCloningStrategy):
 
 
 @router.post('/rename_sequence', response_model=TextFileSequence)
-async def rename_sequence(
+def rename_sequence(
     sequence: TextFileSequence,
     name: str = Query(..., description='The new name of the sequence.', pattern=r'^[^\s]+$'),
 ):
@@ -105,7 +105,7 @@ async def rename_sequence(
 
 
 @router.post('/align_sanger', response_model=list[str])
-async def align_sanger(
+def align_sanger(
     sequence: TextFileSequence,
     traces: list[str],
 ):

@@ -44,7 +44,16 @@ uv run uvicorn opencloning_db.combined:app --reload --reload-exclude='.venv'
 
 That will serve the cloning API at [http://127.0.0.1:8000/cloning](http://127.0.0.1:8000/cloning) and the database API at [http://127.0.0.1:8001/db](http://127.0.0.1:8001/db).
 
-`.env.dev` sets `OIDC_TEST_MODE=1`, so the API accepts `Authorization: Bearer test:<subject>|<display_name>` or `test:<subject>|<email>|<display_name>` without JWKS. Seeded users (for example `bootstrap+clerk_test@example.com`) have no OIDC identity yet; the first token with that email links the existing row. `OPENCLONING_TESTING=1` is only required for `db seed`, `db stubs`, and `/__test/reset-db`. For a real identity provider, set `OIDC_TEST_MODE=0` and a real `OIDC_ISSUER_URL`.
+`.env.dev` sets `OIDC_TEST_MODE=1`, so the API accepts `Authorization: Bearer test:<subject>|<display_name>` or `test:<subject>|<email>|<display_name>` without JWKS. Seeded users (for example `bootstrap+clerk_test@example.com`) have no OIDC identity yet; the first token with that email links the existing row. `OIDC_TEST_MODE=1` requires `OPENCLONING_TESTING=1` and only localhost/127.0.0.1 origins in `ALLOWED_ORIGINS` and `OIDC_AUTHORIZED_PARTIES` (config loading fails otherwise), which is also required for `db seed`, `db stubs`, and `/__test/reset-db`. For a real identity provider, set `OIDC_TEST_MODE=0` and a real `OIDC_ISSUER_URL`.
+
+## Upload limits
+
+File uploads are size-limited; requests above the limit are rejected with HTTP 413. Primer sequences are limited to 1000 bp (not configurable).
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MAX_SEQUENCE_FILE_SIZE_MB` | `10` | Maximum size (MB) of each uploaded sequence file (GenBank, FASTA, SnapGene, cloning strategy JSON...) |
+| `MAX_SEQUENCING_FILE_SIZE_MB` | `20` | Maximum size (MB) of each uploaded sequencing file (database API only) |
 
 ## Logging and request IDs
 

@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from pydna.dseqrecord import Dseqrecord
 from opencloning_linkml.datamodel import Source, TextFileSequence
 from typing import Literal
@@ -50,3 +50,16 @@ def parse_restriction_enzymes(enzymes: list[str]) -> RestrictionBatch:
     if len(invalid_enzymes):
         raise HTTPException(404, 'These enzymes do not exist: ' + ', '.join(invalid_enzymes))
     return RestrictionBatch(first=[e for e in enzymes if e is not None])
+
+
+def read_upload_with_limit(file: UploadFile, max_size_mb: int) -> bytes:
+    """Read an uploaded file, raising a 413 error if it exceeds ``max_size_mb`` megabytes."""
+    max_bytes = max_size_mb * 1024 * 1024
+    error = HTTPException(413, f'File {file.filename} exceeds the maximum size of {max_size_mb} MB')
+    if file.size is not None and file.size > max_bytes:
+        raise error
+    # In case size is not known, read at most one byte over the limit
+    content = file.file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise error
+    return content

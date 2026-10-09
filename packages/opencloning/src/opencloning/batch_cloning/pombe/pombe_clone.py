@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from dataclasses import dataclass
@@ -220,5 +221,8 @@ async def main(
 
     assert output_dir is not None
     assert plasmid is not None
-    simulate_and_write(locus_ctx, primers, plasmid, common_primer_forward, common_primer_reverse, output_dir)
+    # Simulation is CPU-bound, so it runs in a thread to avoid blocking the event loop
+    await asyncio.to_thread(
+        simulate_and_write, locus_ctx, primers, plasmid, common_primer_forward, common_primer_reverse, output_dir
+    )
     return None

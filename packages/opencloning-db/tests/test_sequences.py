@@ -1,12 +1,17 @@
 """Sequences routes: workspace scoping, filters, cloning strategy graph, and files."""
 
+import copy
 from opencloning.dna_functions import read_dsrecord_from_json
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
+from fastapi import HTTPException
+from unittest.mock import patch
+from opencloning_db.routers import sequences as sequences_router
+from opencloning_db.config import get_config
 from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
 from pydna.opencloning_models import TextFileSequence
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -1701,7 +1706,7 @@ def test_patch_sequence_cross_workspace_header_404(sequences_client):
 
 def test_post_cloning_strategy_from_example(sequences_client):
     c = sequences_client['client']
-    body = opencloning_models.CloningStrategy.model_validate(cs_pcr.model_dump(mode='json')).model_dump(mode='json')
+    body = cs_pcr.model_dump(mode='json')
     r = c.post(
         '/sequences',
         headers=workspace_headers(
@@ -1715,6 +1720,166 @@ def test_post_cloning_strategy_from_example(sequences_client):
     out = r.json()
     assert 'id' in out
     assert isinstance(out['mappings'], list)
+
+
+def _get_pcr_cs_ws1(sequences_client):
+    return (
+        sequences_client['client'].get(
+            f"/sequences/{sequences_client['pcr_product_id']}/cloning_strategy",
+            headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        )
+    ).json()
+
+
+def _post_strategy(sequences_client, body, *, workspace='w1'):
+    return sequences_client['client'].post(
+        '/sequences',
+        headers=workspace_headers(
+            sequences_client[f'token_owner_{workspace}'],
+            sequences_client[workspace],
+            extra={'Content-Type': 'application/json'},
+        ),
+        json=body,
+    )
+
+
+def test_post_cloning_strategy_foreign_and_missing_primer_id_indistinguishable(sequences_client):
+    """Foreign-workspace and nonexistent primer ids give the same 409, never 200/500."""
+    foreign = _get_pcr_cs_ws1(sequences_client)
+    # Post the existing cs to another workspace
+    r_foreign = _post_strategy(sequences_client, foreign, workspace='w2')
+    missing = copy.deepcopy(foreign)
+    missing['primers'][0]['database_id'] = 10**9
+    r_missing = _post_strategy(sequences_client, missing, workspace='w1')
+
+    assert r_foreign.status_code == r_missing.status_code == 409
+
+    foreign_mismatches = r_foreign.json()['detail']['primer_database_id_mismatches']
+    assert len(foreign_mismatches) == 2
+    assert all(m['kind'] == 'not_found' for m in foreign_mismatches)
+
+    missing_mismatches = r_missing.json()['detail']['primer_database_id_mismatches']
+    assert len(missing_mismatches) == 1
+    assert all(m['kind'] == 'not_found' for m in missing_mismatches)
+    assert missing_mismatches[0]['provided_database_id'] == 10**9
+
+
+def test_post_cloning_strategy_primer_sequence_mismatch(sequences_client):
+    """A primer database_id that exists in the workspace but with a different sequence is rejected."""
+    body = _get_pcr_cs_ws1(sequences_client)
+    # Swap the database ids of the two primers, so each points to the other's sequence
+    assert len(body['primers']) == 2
+    body['primers'][0]['database_id'], body['primers'][1]['database_id'] = (
+        body['primers'][1]['database_id'],
+        body['primers'][0]['database_id'],
+    )
+    r = _post_strategy(sequences_client, body)
+    assert r.status_code == 409
+
+    mismatches = r.json()['detail']['primer_database_id_mismatches']
+    assert len(mismatches) == 2
+    assert all(m['kind'] == 'sequence_mismatch' for m in mismatches)
+    assert r.json()['detail']['sequence_database_id_mismatches'] == []
+
+
+def _set_product_database_id(body, product_id, new_database_id):
+    product_source = next(s for s in body['sources'] if s['database_id'] == product_id)
+    product_source['database_id'] = new_database_id
+
+
+def test_post_cloning_strategy_sequence_database_id_mismatch(sequences_client):
+    """A database_id pointing at content with a different SEGUID cannot be used to forge provenance."""
+    body = _get_pcr_cs_ws1(sequences_client)
+    # seq_w1 exists in the workspace, but its content is not the pcr product
+    _set_product_database_id(body, sequences_client['pcr_product_id'], sequences_client['seq_w1_id'])
+    r = _post_strategy(sequences_client, body)
+    assert r.status_code == 409
+
+    mismatches = r.json()['detail']['sequence_database_id_mismatches']
+    assert len(mismatches) == 1
+    assert mismatches[0]['kind'] == 'seguid_mismatch'
+    assert mismatches[0]['provided_database_id'] == sequences_client['seq_w1_id']
+    assert r.json()['detail']['primer_database_id_mismatches'] == []
+
+
+def test_post_cloning_strategy_foreign_and_missing_sequence_id_indistinguishable(sequences_client):
+    """Foreign-workspace and nonexistent sequence ids give the same 409, never 200/500."""
+    foreign = _get_pcr_cs_ws1(sequences_client)
+    # seq_w2 lives in w2, but we post to w1
+    _set_product_database_id(foreign, sequences_client['pcr_product_id'], sequences_client['seq_w2_id'])
+    r_foreign = _post_strategy(sequences_client, foreign, workspace='w1')
+
+    missing = _get_pcr_cs_ws1(sequences_client)
+    _set_product_database_id(missing, sequences_client['pcr_product_id'], 10**9)
+    r_missing = _post_strategy(sequences_client, missing, workspace='w1')
+
+    assert r_foreign.status_code == r_missing.status_code == 409
+
+    foreign_mismatches = r_foreign.json()['detail']['sequence_database_id_mismatches']
+    assert len(foreign_mismatches) == 1
+    assert foreign_mismatches[0]['kind'] == 'not_found'
+    assert foreign_mismatches[0]['provided_database_id'] == sequences_client['seq_w2_id']
+
+    missing_mismatches = r_missing.json()['detail']['sequence_database_id_mismatches']
+    assert len(missing_mismatches) == 1
+    assert missing_mismatches[0]['kind'] == 'not_found'
+    assert missing_mismatches[0]['provided_database_id'] == 10**9
+
+
+def _count_workspace_rows(sequences_client, workspace_id):
+    with Session(sequences_client['engine']) as session:
+        n_sequences = session.scalar(
+            select(func.count()).select_from(BaseSequence).where(BaseSequence.workspace_id == workspace_id)
+        )
+        n_primers = session.scalar(select(func.count()).select_from(Primer).where(Primer.workspace_id == workspace_id))
+    return n_sequences, n_primers
+
+
+def test_post_cloning_strategy_valid_database_ids_link_existing(sequences_client):
+    """Correct database_ids are accepted and no new rows are created."""
+    body = _get_pcr_cs_ws1(sequences_client)
+    counts_before = _count_workspace_rows(sequences_client, sequences_client['w1'])
+    r = _post_strategy(sequences_client, body, workspace='w1')
+    assert r.status_code == 200, r.text
+    assert r.json()['id'] == sequences_client['pcr_product_id']
+    assert _count_workspace_rows(sequences_client, sequences_client['w1']) == counts_before
+
+
+def test_post_cloning_strategy_without_database_ids_creates_repeated_rows(sequences_client):
+    """Entities without a database_id are not looked up by content, so duplicates can be created."""
+    body = cs_pcr.model_dump(mode='json')
+    n_sequences, n_primers = _count_workspace_rows(sequences_client, sequences_client['w1'])
+    r = _post_strategy(sequences_client, body, workspace='w1')
+    assert r.status_code == 200, r.text
+    assert r.json()['id'] != sequences_client['pcr_product_id']
+    mapped_ids = {m['databaseId'] for m in r.json()['mappings']}
+    assert not mapped_ids & {sequences_client['primer1_id'], sequences_client['primer2_id']}
+    new_n_sequences, new_n_primers = _count_workspace_rows(sequences_client, sequences_client['w1'])
+    assert new_n_sequences > n_sequences
+    assert new_n_primers == n_primers + 2
+
+
+def test_post_cloning_strategy_invalid_strategy_400(sequences_client):
+    body = _get_pcr_cs_ws1(sequences_client)
+    body['sources'] = []
+    r = _post_strategy(sequences_client, body)
+    assert r.status_code == 400
+
+
+def test_cloning_strategy_to_db_foreign_primer_404(sequences_client):
+    """A primer from another workspace is not resolved, even for a user who can access both."""
+    body = _get_pcr_cs_ws1(sequences_client)
+    # Only the primers should be foreign: sequences are treated as new
+    for source in body['sources']:
+        source['database_id'] = None
+    strategy = opencloning_models.CloningStrategy.model_validate(body)
+    with Session(sequences_client['engine']) as session:
+        with pytest.raises(HTTPException) as exc:
+            cloning_strategy_to_db(
+                strategy, session, ctx=_write_ctx(sequences_client['w2'], sequences_client['owner_w1_id'])
+            )
+    assert exc.value.status_code == 404
+    assert exc.value.detail == 'Primer not found'
 
 
 def test_search_rotation_errors():
@@ -1857,3 +2022,44 @@ def test_post_sequences_bulk_integrity_error_returns_409(sequences_client, monke
 
     r = _post_sequences_bulk(c, h_token, wid, payload, strict=True)
     assert r.status_code == 409
+
+
+def test_post_sequencing_files_too_large(sequences_client):
+    """Sequencing files above the configured limit are rejected with 413 and nothing is stored."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    sid = sequences_client['seq_w1_id']
+    cfg = get_config()
+    with patch.object(cfg, 'max_sequencing_file_size_mb', 1):
+        up = post_sequencing_file_upload(c, sid, tok, wid, 'big.ab1', b'A' * (1024 * 1024 + 1))
+    assert up.status_code == 413
+    listed = c.get(f"/sequences/{sid}/sequencing_files", headers=workspace_headers(tok, wid))
+    assert listed.json() == []
+
+
+def test_validate_upload_sequences_too_large(sequences_client):
+    """Sequence files above MAX_SEQUENCE_FILE_SIZE_MB are rejected with 413."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    with patch.object(sequences_router.settings, 'MAX_SEQUENCE_FILE_SIZE_MB', 1):
+        r = c.post(
+            '/sequences/validate-upload',
+            headers=workspace_headers(tok, wid),
+            files={'files': ('big.fasta', b'>a\n' + b'A' * (1024 * 1024 + 1), 'text/plain')},
+        )
+    assert r.status_code == 413
+
+
+def test_post_cloning_strategy_long_primer(sequences_client):
+    """POST /sequences rejects primers above the maximum length."""
+    c = sequences_client['client']
+    tok = sequences_client['token_owner_w1']
+    wid = sequences_client['w1']
+    r = c.post(
+        '/sequences',
+        headers=workspace_headers(tok, wid),
+        json={'sources': [], 'sequences': [], 'primers': [{'id': 1, 'name': 'p', 'sequence': 'A' * 1001}]},
+    )
+    assert r.status_code == 422

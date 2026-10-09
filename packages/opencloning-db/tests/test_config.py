@@ -39,6 +39,20 @@ class TestConfig(unittest.TestCase):
         app_config.set_config(previous_config)
         self.assertEqual(cfg.database_url, 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev')
         self.assertEqual(cfg.oidc_config.issuer_url, 'https://idp.example.dev')
+        self.assertEqual(cfg.max_sequencing_file_size_mb, 20)
+
+    def test_max_sequencing_file_size_from_env(self):
+        with patch.dict(
+            os.environ,
+            {
+                'OPENCLONING_DB_URL': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'MAX_SEQUENCING_FILE_SIZE_MB': '5',
+            },
+            clear=True,
+        ):
+            cfg = app_config._load_config_from_env()
+        self.assertEqual(cfg.max_sequencing_file_size_mb, 5)
 
     def test_get_config_requires_runtime_env_vars(self):
         """Missing env vars produce one actionable runtime error."""
@@ -74,8 +88,8 @@ class TestConfig(unittest.TestCase):
                 oidc = OidcConfig.from_env()
         self.assertEqual(oidc.authorized_parties, custom_origins)
 
-    def test_oidc_from_env_test_mode_uses_oidc_test_mode_env(self):
-        """OIDC_TEST_MODE controls test bearer tokens; OPENCLONING_TESTING does not."""
+    def test_oidc_from_env_test_mode_guards(self):
+        """OIDC_TEST_MODE requires OPENCLONING_TESTING and only localhost origins."""
         with patch.dict(
             os.environ,
             {
@@ -84,8 +98,47 @@ class TestConfig(unittest.TestCase):
             },
             clear=True,
         ):
+            with self.assertRaisesRegex(RuntimeError, 'requires OPENCLONING_TESTING=1'):
+                OidcConfig.from_env()
+
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OIDC_TEST_MODE': '1',
+                'OPENCLONING_TESTING': '1',
+            },
+            clear=True,
+        ):
             oidc = OidcConfig.from_env()
         self.assertTrue(oidc.test_mode)
+
+        with patch.dict(
+            os.environ,
+            {
+                'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                'OIDC_TEST_MODE': '1',
+                'OPENCLONING_TESTING': '1',
+                'OIDC_AUTHORIZED_PARTIES': 'http://localhost:3000,https://app.example.com',
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, 'only allowed when all origins are localhost'):
+                OidcConfig.from_env()
+
+        with patch('opencloning_db.config.ALLOWED_ORIGINS', ['https://app.example.com']):
+            with patch.dict(
+                os.environ,
+                {
+                    'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                    'OIDC_TEST_MODE': '1',
+                    'OPENCLONING_TESTING': '1',
+                    'OIDC_AUTHORIZED_PARTIES': 'http://127.0.0.1:3000',
+                },
+                clear=True,
+            ):
+                with self.assertRaisesRegex(RuntimeError, 'only allowed when all origins are localhost'):
+                    OidcConfig.from_env()
 
         with patch.dict(
             os.environ,
