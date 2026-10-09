@@ -569,10 +569,9 @@ class TestToDbInput(unittest.TestCase):
 
 
 class TestSequenceSample(_MemoryDbTestCase):
-    """Tests for ``SequenceSample`` validators."""
+    """A sample's workspace is tied to its sequence's workspace by composite foreign keys."""
 
-    def test_sequence_sample_workspace_mismatch_raises(self):
-        """Re-pointing ``sequence_id`` across workspaces triggers validator."""
+    def _seed(self) -> dict[str, int]:
         with Session(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
@@ -582,47 +581,30 @@ class TestSequenceSample(_MemoryDbTestCase):
             seq_w2 = Sequence(workspace_id=w2.id, file_content='q2.gb', seguid='SEGUID-Q2', created_by_id=1)
             session.add_all([seq_w1, seq_w2])
             session.flush()
-            samp = SequenceSample(
-                sequence_id=seq_w1.id,
-                workspace_id=w1.id,
-                uid='U',
-            )
+            samp = SequenceSample(sequence_id=seq_w1.id, workspace_id=w1.id, uid='U')
             session.add(samp)
-            session.flush()
+            session.commit()
+            return {'w2': w2.id, 'seq_w1': seq_w1.id, 'seq_w2': seq_w2.id, 'sample': samp.id}
 
-            samp.sequence_id = seq_w2.id
-            with self.assertRaisesRegex(ValueError, 'workspace_id must match'):
+    def test_sequence_sample_workspace_mismatch_raises(self):
+        """Re-pointing ``sequence_id`` to a sequence of another workspace is rejected by the database."""
+        ids = self._seed()
+        with Session(self.engine) as session:
+            session.get(SequenceSample, ids['sample']).sequence_id = ids['seq_w2']
+            with self.assertRaises(IntegrityError):
                 session.flush()
 
     def test_sample_workspace_must_match_sequence_workspace(self):
-        """Changing a sample's ``workspace_id`` away from its sequence's workspace fails."""
+        """A sample's ``workspace_id`` cannot differ from its sequence's workspace."""
+        ids = self._seed()
         with Session(self.engine) as session:
-            w1 = Workspace(name='W1')
-            w2 = Workspace(name='W2')
-            session.add_all([w1, w2])
-            session.flush()
-            seq = Sequence(workspace_id=w1.id, file_content='q.gb', seguid='SEGUID-Q', created_by_id=1)
-            session.add(seq)
-            session.flush()
-            samp = SequenceSample(
-                sequence_id=seq.id,
-                workspace_id=w1.id,
-                uid='U',
-            )
-            session.add(samp)
-            session.flush()
-            samp.workspace_id = w2.id
-            with self.assertRaisesRegex(ValueError, 'workspace_id must match'):
+            session.get(SequenceSample, ids['sample']).workspace_id = ids['w2']
+            with self.assertRaises(IntegrityError):
                 session.flush()
-            # Same if inserting directly (via hook)
-            session.add(
-                SequenceSample(
-                    sequence_id=seq.id,
-                    workspace_id=w2.id,
-                    uid='U',
-                )
-            )
-            with self.assertRaisesRegex(ValueError, 'workspace_id must match'):
+        # Same when inserting a new sample
+        with Session(self.engine) as session:
+            session.add(SequenceSample(sequence_id=ids['seq_w1'], workspace_id=ids['w2'], uid='U2'))
+            with self.assertRaises(IntegrityError):
                 session.flush()
 
 
