@@ -170,10 +170,10 @@ class TestSequence(_MemoryDbTestCase):
             session.flush()
             samp = SequenceSample(
                 sequence_id=seq.id,
-                uid_workspace_id=ws.id,
+                workspace_id=ws.id,
                 uid='S-1',
             )
-            sil = SequenceInLine(sequence_id=seq.id, line_id=line.id)
+            sil = SequenceInLine(sequence_id=seq.id, line_id=line.id, workspace_id=ws.id)
             session.add_all([samp, sil])
             session.flush()
             session.refresh(seq)
@@ -195,7 +195,7 @@ class TestSequence(_MemoryDbTestCase):
             session.add_all([template, line])
             session.flush()
 
-            sil = SequenceInLine(sequence_id=template.id, line_id=line.id)
+            sil = SequenceInLine(sequence_id=template.id, line_id=line.id, workspace_id=ws.id)
             session.add(sil)
             session.commit()
             session.refresh(sil)
@@ -285,22 +285,11 @@ class TestPrimer(_MemoryDbTestCase):
         pp.id = primer.id
         self.assertEqual(out, pp)
 
-    def test_workspace_columns_must_match(self):
-        """``workspace_id`` and ``uid_workspace_id`` cannot diverge."""
-        with self.assertRaisesRegex(ValueError, 'uid_workspace_id must equal'):
-            Primer(
-                workspace_id=1,
-                uid_workspace_id=2,
-                sequence='AT',
-                uid=None,
-            )
-
     def test_uid_empty_string_rejected(self):
         """Empty string UID is invalid (use NULL)."""
         with self.assertRaisesRegex(ValueError, 'cannot be empty string'):
             Primer(
                 workspace_id=1,
-                uid_workspace_id=1,
                 sequence='AT',
                 uid='',
             )
@@ -308,12 +297,12 @@ class TestPrimer(_MemoryDbTestCase):
     def test_sequence_invalid_characters_rejected_on_instantiation(self):
         """Primer sequence must be ACGT only (ORM ``@validates``)."""
         with self.assertRaisesRegex(ValueError, 'only contain ACGT'):
-            Primer(workspace_id=1, uid_workspace_id=1, name='p', sequence='ATNX')
+            Primer(workspace_id=1, name='p', sequence='ATNX')
 
     def test_sequence_too_short_rejected_on_instantiation(self):
         """Primer sequence must be at least two bases."""
         with self.assertRaisesRegex(ValueError, 'at least 2 characters'):
-            Primer(workspace_id=1, uid_workspace_id=1, name='p', sequence='A')
+            Primer(workspace_id=1, name='p', sequence='A')
 
     def test_from_pydantic_rejects_sequence_too_short(self):
         """``from_pydantic`` applies the same sequence rules as direct construction."""
@@ -582,7 +571,7 @@ class TestToDbInput(unittest.TestCase):
 class TestSequenceSample(_MemoryDbTestCase):
     """Tests for ``SequenceSample`` validators."""
 
-    def test_sequence_sample_uid_workspace_id_mismatch_raises(self):
+    def test_sequence_sample_workspace_mismatch_raises(self):
         """Re-pointing ``sequence_id`` across workspaces triggers validator."""
         with Session(self.engine) as session:
             w1 = Workspace(name='W1')
@@ -595,18 +584,18 @@ class TestSequenceSample(_MemoryDbTestCase):
             session.flush()
             samp = SequenceSample(
                 sequence_id=seq_w1.id,
-                uid_workspace_id=w1.id,
+                workspace_id=w1.id,
                 uid='U',
             )
             session.add(samp)
             session.flush()
 
             samp.sequence_id = seq_w2.id
-            with self.assertRaisesRegex(ValueError, 'uid_workspace_id must match'):
+            with self.assertRaisesRegex(ValueError, 'workspace_id must match'):
                 session.flush()
 
-    def test_uid_workspace_must_match_sequence_workspace(self):
-        """Changing ``uid_workspace_id`` away from sequence workspace fails."""
+    def test_sample_workspace_must_match_sequence_workspace(self):
+        """Changing a sample's ``workspace_id`` away from its sequence's workspace fails."""
         with Session(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
@@ -617,23 +606,23 @@ class TestSequenceSample(_MemoryDbTestCase):
             session.flush()
             samp = SequenceSample(
                 sequence_id=seq.id,
-                uid_workspace_id=w1.id,
+                workspace_id=w1.id,
                 uid='U',
             )
             session.add(samp)
             session.flush()
-            samp.uid_workspace_id = w2.id
-            with self.assertRaisesRegex(ValueError, 'uid_workspace_id must match'):
+            samp.workspace_id = w2.id
+            with self.assertRaisesRegex(ValueError, 'workspace_id must match'):
                 session.flush()
             # Same if inserting directly (via hook)
             session.add(
                 SequenceSample(
                     sequence_id=seq.id,
-                    uid_workspace_id=w2.id,
+                    workspace_id=w2.id,
                     uid='U',
                 )
             )
-            with self.assertRaisesRegex(ValueError, 'uid_workspace_id must match'):
+            with self.assertRaisesRegex(ValueError, 'workspace_id must match'):
                 session.flush()
 
 
@@ -650,7 +639,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             seq_w2 = Sequence(workspace_id=w2.id, file_content='s2.gb', name='S2', seguid='SEGUID-S2', created_by_id=1)
             session.add_all([line_w1, seq_w2])
             session.flush()
-            session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w2.id))
+            session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w2.id, workspace_id=w2.id))
             with self.assertRaisesRegex(ValueError, 'SequenceInLine line workspace must match sequence workspace'):
                 session.flush()
 
@@ -663,7 +652,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             seq_w1 = Sequence(workspace_id=w1.id, file_content='s1.gb', name='S1', seguid='SEGUID-S1', created_by_id=1)
             session.add_all([line_w1, seq_w1])
             session.flush()
-            session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w1.id))
+            session.add(SequenceInLine(line_id=line_w1.id, sequence_id=seq_w1.id, workspace_id=w1.id))
             session.flush()
 
     def test_source_input_workspace_mismatch_raises(self):
@@ -786,8 +775,8 @@ class TestLine(_MemoryDbTestCase):
             )
             session.add_all([allele_seq, plasmid_seq])
             session.flush()
-            sil_a = SequenceInLine(sequence_id=allele_seq.id, line_id=line.id)
-            sil_p = SequenceInLine(sequence_id=plasmid_seq.id, line_id=line.id)
+            sil_a = SequenceInLine(sequence_id=allele_seq.id, line_id=line.id, workspace_id=ws.id)
+            sil_p = SequenceInLine(sequence_id=plasmid_seq.id, line_id=line.id, workspace_id=ws.id)
             session.add_all([sil_a, sil_p])
             session.flush()
             session.refresh(line)

@@ -292,8 +292,8 @@ def post_line(
 
     line = Line.from_create(uid=body.uid, ctx=ctx)
     line.parents = parents
-    line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in allele_seqs] + [
-        SequenceInLine(sequence=seq) for seq in plasmid_seqs
+    line.sequences_in_line = [SequenceInLine(sequence=seq, workspace_id=workspace_id) for seq in allele_seqs] + [
+        SequenceInLine(sequence=seq, workspace_id=workspace_id) for seq in plasmid_seqs
     ]
 
     session.add(line)
@@ -361,7 +361,9 @@ def post_lines_bulk(
             ]
             line = Line.from_create(uid=item.uid, ctx=ctx)
             line.parents = parents
-            line.sequences_in_line = [SequenceInLine(sequence=seq) for seq in sequences_into_line]
+            line.sequences_in_line = [
+                SequenceInLine(sequence=seq, workspace_id=workspace_id) for seq in sequences_into_line
+            ]
             db_lines.append(line)
 
     for line in db_lines:
@@ -414,7 +416,7 @@ def patch_line_links(
                 WorkspaceRole.editor,
                 expected_type=SequenceType.allele,
             )
-            line.sequences_in_line.append(SequenceInLine(sequence=seq))
+            line.sequences_in_line.append(SequenceInLine(sequence=seq, workspace_id=workspace_id))
 
     if body.plasmid_ids is not None:
         for sil in list(line.plasmids):
@@ -429,7 +431,7 @@ def patch_line_links(
                 WorkspaceRole.editor,
                 expected_type=SequenceType.plasmid,
             )
-            line.sequences_in_line.append(SequenceInLine(sequence=seq))
+            line.sequences_in_line.append(SequenceInLine(sequence=seq, workspace_id=workspace_id))
 
     if body.parent_ids is not None:
         if line_id in body.parent_ids:

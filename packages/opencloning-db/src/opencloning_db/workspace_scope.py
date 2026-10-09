@@ -22,9 +22,7 @@ from opencloning_db.models import (
     Base,
     InputEntity,
     Line,
-    Primer,
     SequenceInstance,
-    SequenceSample,
     SequencingFile,
     Source,
     SourceInput,
@@ -43,9 +41,9 @@ _NO_WORKSPACE = 0
 # Models that do not belong to a workspace.
 GLOBAL_MODELS: tuple[type[Base], ...] = (User, Workspace, WorkspaceMembership)
 # Models with their own workspace_id column (subclasses included).
-DIRECT_WORKSPACE_MODELS: tuple[type[Base], ...] = (InputEntity, Tag, Line)
+DIRECT_WORKSPACE_MODELS: tuple[type[Base], ...] = (InputEntity, Tag, Line, SequenceInstance)
 # Models that belong to the workspace of the sequence they are attached to (subclasses included).
-INDIRECT_WORKSPACE_MODELS: tuple[type[Base], ...] = (SequenceInstance, SequencingFile, Source, SourceInput)
+INDIRECT_WORKSPACE_MODELS: tuple[type[Base], ...] = (SequencingFile, Source, SourceInput)
 
 
 class WorkspaceScopeError(RuntimeError):
@@ -91,15 +89,7 @@ def _workspace_criteria(workspace_id: int) -> tuple:
         with_loader_criteria(InputEntity, lambda cls: cls.workspace_id == workspace_id, include_aliases=True),
         with_loader_criteria(Tag, lambda cls: cls.workspace_id == workspace_id, include_aliases=True),
         with_loader_criteria(Line, lambda cls: cls.workspace_id == workspace_id, include_aliases=True),
-        with_loader_criteria(
-            SequenceInstance,
-            lambda cls: _belongs_to_workspace(cls.sequence_id, workspace_id),
-            include_aliases=True,
-        ),
-        # Samples and primers keep a copy of their workspace (uid_workspace_id) for the per-workspace UID index.
-        # Models validate that it matches the real one, but the database does not, so a sample whose copy disagrees
-        # with its sequence is hidden from every workspace.
-        with_loader_criteria(SequenceSample, lambda cls: cls.uid_workspace_id == workspace_id, include_aliases=True),
+        with_loader_criteria(SequenceInstance, lambda cls: cls.workspace_id == workspace_id, include_aliases=True),
         with_loader_criteria(
             SequencingFile,
             lambda cls: _belongs_to_workspace(cls.sequence_id, workspace_id),
@@ -145,9 +135,4 @@ def _check_written_rows_workspace(session: Session, *_) -> None:
             raise WorkspaceScopeError(
                 f'{type(obj).__name__} of workspace {obj.workspace_id} '
                 f'written in a session bound to workspace {workspace_id}'
-            )
-        # A primer whose workspace copy disagrees with its real workspace is still readable (through the real one)
-        if isinstance(obj, Primer) and obj.uid_workspace_id != workspace_id:
-            raise WorkspaceScopeError(
-                f'Primer with uid_workspace_id {obj.uid_workspace_id} written in a session bound to workspace {workspace_id}'
             )

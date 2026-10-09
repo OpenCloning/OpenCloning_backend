@@ -130,8 +130,8 @@ def _seed_lines_context(engine):
         line_w2 = Line(workspace_id=ctx['w2'], uid='L-W2', created_by_id=ctx['owner_w2_id'])
         line_filter = Line(workspace_id=ctx['w1'], uid='L-FILTER', created_by_id=ctx['owner_w1_id'])
         line_filter.sequences_in_line = [
-            SequenceInLine(sequence=allele_filter),
-            SequenceInLine(sequence=plasmid_filter),
+            SequenceInLine(sequence=allele_filter, workspace_id=ctx['w1']),
+            SequenceInLine(sequence=plasmid_filter, workspace_id=ctx['w1']),
         ]
         line_parent_to_be_added = Line(
             workspace_id=ctx['w1'], uid='L-PARENT-TO-BE-ADDED', created_by_id=ctx['owner_w1_id']
@@ -139,8 +139,8 @@ def _seed_lines_context(engine):
         line_seeded_parented = Line(workspace_id=ctx['w1'], uid='L-SEEDED-PARENTED', created_by_id=ctx['owner_w1_id'])
         line_seeded_parented.parents = [line_w1]
         line_seeded_parented.sequences_in_line = [
-            SequenceInLine(sequence=allele_w1),
-            SequenceInLine(sequence=plasmid_w1),
+            SequenceInLine(sequence=allele_w1, workspace_id=ctx['w1']),
+            SequenceInLine(sequence=plasmid_w1, workspace_id=ctx['w1']),
         ]
         line_tagged = Line(workspace_id=ctx['w1'], uid='L-TAGGED', created_by_id=ctx['owner_w1_id'])
         tag_filter = Tag(name='line-filter-tag', workspace_id=ctx['w1'])

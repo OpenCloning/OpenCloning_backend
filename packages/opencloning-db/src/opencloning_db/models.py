@@ -31,6 +31,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import (
     DeclarativeBase,
+    column_property,
     Mapped,
     mapped_column,
     relationship,
@@ -201,6 +202,9 @@ class InputEntity(Base):
             unique=True,
             postgresql_where=text("type = 'template_sequence'"),
         ),
+        # We turn the pair into a unique constraint to use it as a FK in primer,
+        # so that the primer table has a workspace_id named the same.
+        UniqueConstraint('id', 'workspace_id', name='uq_input_entity_id_workspace'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -235,7 +239,11 @@ class BaseSequence(InputEntity):
     sequence_type: Mapped[Optional[SequenceType]] = mapped_column(
         Enum(SequenceType, validate_strings=True), default=None, nullable=True
     )
-    instances: Mapped[List['SequenceInstance']] = relationship(back_populates='sequence', cascade='all, delete-orphan')
+    instances: Mapped[List['SequenceInstance']] = relationship(
+        back_populates='sequence',
+        cascade='all, delete-orphan',
+        foreign_keys='SequenceInstance.sequence_id',
+    )
 
     __mapper_args__ = {
         'polymorphic_abstract': True,
@@ -397,25 +405,27 @@ class Primer(InputEntity):
     __table_args__ = (
         CheckConstraint("uid IS NULL OR uid <> ''", name='primer_uid_not_empty'),
         Index('uq_primer_workspace_uid_ci', 'workspace_id', text('lower(uid)'), unique=True),
+        ForeignKeyConstraint(
+            ['id', 'workspace_id'],
+            ['input_entity.id', 'input_entity.workspace_id'],
+            name='fk_primer_workspace_matches_input_entity',
+        ),
     )
 
     id: Mapped[int] = mapped_column(ForeignKey('input_entity.id'), primary_key=True)
-    # Duplicates InputEntity.workspace_id to support workspace-scoped UID uniqueness.
-    uid_workspace_id: Mapped[int] = mapped_column('workspace_id', ForeignKey('workspace.id'), nullable=False)
+    # primer.workspace_id copies input_entity.workspace_id, for workspace-scoped UID uniqueness.
+    # Both columns are written through this one attribute, and the composite FK above keeps them equal.
+    workspace_id: Mapped[int] = column_property(
+        Column('workspace_id', Integer, nullable=False), InputEntity.__table__.c.workspace_id
+    )
     uid: Mapped[Optional[str]] = mapped_column(nullable=True)
     sequence: Mapped[str]
 
     __mapper_args__ = {
         'polymorphic_identity': 'primer',
+        # Explicit, because the composite FK is a second foreign key to input_entity
+        'inherit_condition': id == InputEntity.id,
     }
-
-    @validates('workspace_id', 'uid_workspace_id')
-    def _primer_workspace_columns_must_match(self, key: str, value: int) -> int:
-        other_key = 'uid_workspace_id' if key == 'workspace_id' else 'workspace_id'
-        other = getattr(self, other_key, None)
-        if other is not None and value != other:
-            raise ValueError('Primer uid_workspace_id must equal workspace_id on the input_entity row.')
-        return value
 
     @validates('sequence')
     def _validate_sequence(self, key, value: str) -> str:
@@ -442,7 +452,6 @@ class Primer(InputEntity):
     ) -> 'Primer':
         return cls(
             workspace_id=ctx.workspace_id,
-            uid_workspace_id=ctx.workspace_id,
             created_by_id=ctx.user.id,
             **pydantic_primer.model_dump(include={'sequence', 'name'}),
         )
@@ -462,7 +471,6 @@ class Primer(InputEntity):
             sequence=sequence,
             uid=uid,
             workspace_id=ctx.workspace_id,
-            uid_workspace_id=ctx.workspace_id,
             created_by_id=ctx.user.id,
         )
 
@@ -631,12 +639,29 @@ class SequenceInstance(Base):
     """
 
     __tablename__ = 'sequence_instance'
+    __table_args__ = (
+        # In postgres, composite FKs require a unique constraint on the foreign key columns
+        # We add this even if the id already has a unique constraint
+        UniqueConstraint('id', 'workspace_id', name='uq_sequence_instance_id_workspace'),
+        # This ensures that sequences and instances are in the same workspace.
+        # It is added so that we can enforce uniqueness of uid/workspace_id in the SequenceSample table.
+        # Otherwise, we would have to make a copy column of workspace_id in the SequenceSample table.
+        # That column would be alterable with SQL, and the workspace could be changed to not
+        # match the sequence's workspace.
+        ForeignKeyConstraint(
+            ['sequence_id', 'workspace_id'],
+            ['input_entity.id', 'input_entity.workspace_id'],
+            name='fk_sequence_instance_workspace_matches_sequence',
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sequence_id: Mapped[int] = mapped_column(ForeignKey('base_sequence.id'), nullable=False)
+    workspace_id: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column()
 
-    sequence: Mapped['BaseSequence'] = relationship(back_populates='instances')
+    # Explicit, because the composite FK is a second path to the sequence
+    sequence: Mapped['BaseSequence'] = relationship(back_populates='instances', foreign_keys=[sequence_id])
 
     __mapper_args__ = {
         'polymorphic_on': type,
@@ -653,15 +678,27 @@ class SequenceSample(SequenceInstance):
     """
 
     __tablename__ = 'sequence_sample'
-    __table_args__ = (Index('uq_sequence_sample_workspace_uid_ci', 'workspace_id', text('lower(uid)'), unique=True),)
+    __table_args__ = (
+        Index('uq_sequence_sample_workspace_uid_ci', 'workspace_id', text('lower(uid)'), unique=True),
+        ForeignKeyConstraint(
+            ['id', 'workspace_id'],
+            ['sequence_instance.id', 'sequence_instance.workspace_id'],
+            name='fk_sequence_sample_workspace_matches_instance',
+        ),
+    )
 
     id: Mapped[int] = mapped_column(ForeignKey('sequence_instance.id'), primary_key=True)
-    # Duplicates the owning sequence workspace to support workspace-scoped UID uniqueness.
-    uid_workspace_id: Mapped[int] = mapped_column('workspace_id', ForeignKey('workspace.id'), nullable=False)
+    # sequence_sample.workspace_id copies sequence_instance.workspace_id, for workspace-scoped UID uniqueness.
+    # Both columns are written through this one attribute, and the composite FK above keeps them equal.
+    workspace_id: Mapped[int] = column_property(
+        Column('workspace_id', Integer, nullable=False), SequenceInstance.__table__.c.workspace_id
+    )
     uid: Mapped[str] = mapped_column()
 
     __mapper_args__ = {
         'polymorphic_identity': 'sequence_sample',
+        # Explicit, because the composite FK is a second foreign key to sequence_instance
+        'inherit_condition': id == SequenceInstance.id,
     }
 
 
@@ -795,15 +832,13 @@ def _validate_sequence_sample_workspace(session: SASession) -> None:
     """Validate that the workspace of the SequenceSample matches the workspace of the linked sequence."""
     for s in [*session.new, *session.dirty]:
         if isinstance(s, SequenceSample):
-            uid_ws = _require_value(
-                s.uid_workspace_id, 'Missing required uid_workspace_id for SequenceSample validation.'
-            )
+            uid_ws = _require_value(s.workspace_id, 'Missing required workspace_id for SequenceSample validation.')
             seq = _require_row(session, BaseSequence, 'BaseSequence', instance=s.sequence, row_id=s.sequence_id)
             ws_id_sequence = _require_value(
                 seq.workspace_id, 'Missing required workspace ID for SequenceSample workspace validation.'
             )
             if uid_ws != ws_id_sequence:
-                raise ValueError('SequenceSample uid_workspace_id must match the workspace of the linked sequence.')
+                raise ValueError('SequenceSample workspace_id must match the workspace of the linked sequence.')
 
 
 def _validate_sequence_in_line_workspace(session: SASession) -> None:

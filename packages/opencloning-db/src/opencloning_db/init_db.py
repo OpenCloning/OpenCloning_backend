@@ -114,7 +114,7 @@ def load_seed_data(engine: Engine) -> None:
                 if seq.name in ['entry_clone_lacZ']:
                     continue
                 if seq.sequence_type == SequenceType.allele or seq.sequence_type == SequenceType.plasmid:
-                    new_line.sequences_in_line.append(SequenceInLine(sequence=seq))
+                    new_line.sequences_in_line.append(SequenceInLine(sequence=seq, workspace_id=workspace.id))
             new_line.tags.append(tag)
             session.add(new_line)
 
@@ -127,14 +127,13 @@ def load_seed_data(engine: Engine) -> None:
                 SequenceSample(
                     uid=f"{tag_name}-sample",
                     sequence_id=last_seq.id,
-                    uid_workspace_id=workspace.id,
+                    workspace_id=workspace.id,
                 )
             )
 
         # Find the primer that is used for testing, and add a uid to it
         test_primer = session.scalar(select(Primer).where(Primer.name == 'fwd_restriction_then_ligation'))
         test_primer.uid = 'ML7'
-        test_primer.uid_workspace_id = workspace.id
         tag = session.scalar(select(Tag).where(Tag.name == 'restriction_then_ligation'))
         test_primer.tags.append(tag)
         session.add(test_primer)
@@ -155,7 +154,7 @@ def load_seed_data(engine: Engine) -> None:
         # # Add itself as sequencing data twice, and sample id to the sequence
         # session.add(create_sequencing_file(seq, pydantic_seq.file_content.encode('utf-8'), 'entry_clone_lacZ.gb'))
         # session.add(create_sequencing_file(seq, pydantic_seq.file_content.encode('utf-8'), 'entry_clone_lacZ2.gb'))
-        # session.add(SequenceSample(uid='entry_clone_lacZ-sample', sequence_id=seq.id, uid_workspace_id=workspace.id))
+        # session.add(SequenceSample(uid='entry_clone_lacZ-sample', sequence_id=seq.id, workspace_id=workspace.id))
 
         # Add a template sequence
         template_sequence = TemplateSequence.from_create(
@@ -163,11 +162,11 @@ def load_seed_data(engine: Engine) -> None:
         )
         new_line = Line.from_create(uid='template_sequence-line', ctx=seed_ctx)
         new_line.parents = [parent_strain]
-        new_line.sequences_in_line.append(SequenceInLine(sequence=template_sequence))
+        new_line.sequences_in_line.append(SequenceInLine(sequence=template_sequence, workspace_id=workspace.id))
         session.add(new_line)
         # Add also a real plasmid to the same line
         plasmid = session.scalar(select(Sequence).where(Sequence.name == 'pREX0008'))
-        new_line.sequences_in_line.append(SequenceInLine(sequence=plasmid))
+        new_line.sequences_in_line.append(SequenceInLine(sequence=plasmid, workspace_id=workspace.id))
         session.flush()
 
         # Add a template plasmid without a line
