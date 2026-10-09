@@ -828,35 +828,23 @@ def _require_row(
     return row
 
 
-def _validate_sequence_sample_workspace(session: SASession) -> None:
-    """Validate that the workspace of the SequenceSample matches the workspace of the linked sequence."""
-    for s in [*session.new, *session.dirty]:
-        if isinstance(s, SequenceSample):
-            uid_ws = _require_value(s.workspace_id, 'Missing required workspace_id for SequenceSample validation.')
-            seq = _require_row(session, BaseSequence, 'BaseSequence', instance=s.sequence, row_id=s.sequence_id)
-            ws_id_sequence = _require_value(
-                seq.workspace_id, 'Missing required workspace ID for SequenceSample workspace validation.'
-            )
-            if uid_ws != ws_id_sequence:
-                raise ValueError('SequenceSample workspace_id must match the workspace of the linked sequence.')
-
-
 def _validate_sequence_in_line_workspace(session: SASession) -> None:
-    """Validate that the workspace of the SequenceInLine matches the workspace of the linked sequence."""
+    """Validate that the line of a SequenceInLine is in the workspace of the instance.
+
+    The database already guarantees that the instance is in the workspace of its sequence
+    (fk_sequence_instance_workspace_matches_sequence), so this ties the line to the sequence's workspace.
+    """
     for sil in [*session.new, *session.dirty]:
         if not isinstance(sil, SequenceInLine):
             continue
-        sil_sequence = _require_row(
-            session, BaseSequence, 'BaseSequence', instance=sil.sequence, row_id=sil.sequence_id
-        )
-        ws_id_sequence = _require_value(
-            sil_sequence.workspace_id, 'Missing required workspace ID for SequenceInLine workspace validation.'
+        ws_id_instance = _require_value(
+            sil.workspace_id, 'Missing required workspace ID for SequenceInLine workspace validation.'
         )
         sil_line = _require_row(session, Line, 'Line', instance=sil.line, row_id=sil.line_id)
         ws_id_line = _require_value(
             sil_line.workspace_id, 'Missing required workspace ID for SequenceInLine workspace validation.'
         )
-        if ws_id_line != ws_id_sequence:
+        if ws_id_line != ws_id_instance:
             raise ValueError('SequenceInLine line workspace must match sequence workspace.')
 
 
@@ -893,7 +881,6 @@ def _validate_tag_links_workspace(session: SASession) -> None:
 
 @event.listens_for(SASession, 'before_flush')
 def _validate_cross_workspace_invariants(session, *_):
-    _validate_sequence_sample_workspace(session)
     _validate_sequence_in_line_workspace(session)
     _validate_source_input_workspace(session)
     _validate_tag_links_workspace(session)
