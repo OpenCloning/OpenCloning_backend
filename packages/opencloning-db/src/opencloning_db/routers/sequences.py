@@ -821,8 +821,11 @@ def post_cloning_strategy(
     cloning_strategy: BaseCloningStrategy,
 ):
     _, session, _workspace_id = ctx.destructure()
-    # Same validation as the bulk endpoints, but a wrong database_id is rejected, not cleared and re-matched.
-    row = validate_and_sync_cloning_strategy_dict(cloning_strategy.model_dump(mode='json'), session, ctx)
+    # Same validation as the bulk endpoints, but a wrong database_id is rejected (not cleared and re-matched),
+    # and entities without a database_id are not looked up by content, so repeated sequences can be created.
+    row = validate_and_sync_cloning_strategy_dict(
+        cloning_strategy.model_dump(mode='json'), session, ctx, match_by_sequence=False
+    )
     if row.parsing_errors:
         raise HTTPException(status_code=400, detail=row.parsing_errors)
     if row.primer_database_id_mismatches or row.sequence_database_id_mismatches:

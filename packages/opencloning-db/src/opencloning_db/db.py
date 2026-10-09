@@ -218,6 +218,8 @@ def _sync_primers_with_db(
     primers: list[opencloning_models.Primer],
     session: Session,
     workspace_id: int,
+    *,
+    match_by_sequence: bool = True,
 ) -> list[PrimerDatabaseIdMismatch]:
     if len(primers) == 0:
         return []
@@ -227,7 +229,7 @@ def _sync_primers_with_db(
     mismatches, primer_sequences, sequences_needing_match = _verify_incoming_primer_database_ids(
         primers, existing_primers_by_id
     )
-    if len(sequences_needing_match) > 0:
+    if match_by_sequence and len(sequences_needing_match) > 0:
         existing_primers_by_sequence = get_db_primers_grouped_by_sequence(
             session, workspace_id, sequences_needing_match
         )
@@ -421,6 +423,8 @@ def _sync_sequences_via_dseqrecords(
     pydna_strategy: pydna_opencloning_models.CloningStrategy,
     session: Session,
     workspace_id: int,
+    *,
+    match_by_sequence: bool = True,
 ) -> tuple[pydna_opencloning_models.CloningStrategy, list[SequenceDatabaseIdMismatch]]:
     terminals = pydna_strategy.to_dseqrecords()
     seguid_cache: SeguidCache = {}
@@ -430,7 +434,9 @@ def _sync_sequences_via_dseqrecords(
         _collect_dseqrecord_graph_lookups(terminal, seguids, database_ids, seguid_cache)
 
     existing_sequences_by_id = get_db_sequences_from_database_ids(session, workspace_id, database_ids)
-    existing_sequences_by_seguid = get_db_sequences_grouped_by_seguid(session, workspace_id, seguids)
+    existing_sequences_by_seguid = (
+        get_db_sequences_grouped_by_seguid(session, workspace_id, seguids) if match_by_sequence else {}
+    )
 
     mismatches: list[SequenceDatabaseIdMismatch] = []
     visited: set[int] = set()
@@ -468,6 +474,7 @@ def sync_cloning_strategy_with_db(
     session: Session,
     *,
     ctx: ReadContext,
+    match_by_sequence: bool = True,
 ) -> CloningStrategySyncResult:
     """
     Sync a cloning strategy against existing workspace entities. It assumes that is
@@ -477,19 +484,22 @@ def sync_cloning_strategy_with_db(
     - If ``database_id`` is set, verify it exists in the workspace and matches sequence
       (case-insensitive). On failure, record a mismatch warning and clear ``database_id``.
     - Then match remaining primers by sequence; if exactly one workspace primer matches,
-      set ``database_id`` to that primer.
+      set ``database_id`` to that primer (skipped if ``match_by_sequence`` is False).
 
     For sequences (via pydna graph):
     - Rebuild terminal ``Dseqrecord`` objects with ``to_dseqrecords()``.
     - Validate or resolve ``database_id`` by SEGUID; on match, replace source with
-      ``DatabaseSource`` (dropping parent provenance).
+      ``DatabaseSource`` (dropping parent provenance). If ``match_by_sequence`` is False,
+      only provided ``database_id`` values are validated; nothing is resolved by SEGUID.
     - Rebuild the strategy with ``from_dseqrecords()``.
     """
     synced_primers = [
         opencloning_models.Primer.model_validate(primer.model_dump(mode='json'))
         for primer in (cloning_strategy.primers or [])
     ]
-    primer_mismatches = _sync_primers_with_db(synced_primers, session, ctx.workspace_id)
+    primer_mismatches = _sync_primers_with_db(
+        synced_primers, session, ctx.workspace_id, match_by_sequence=match_by_sequence
+    )
     pydna_strategy = pydna_opencloning_models.CloningStrategy.model_validate(cloning_strategy.model_dump(mode='json'))
 
     with pydna_opencloning_models.id_mode(use_python_internal_id=False):
@@ -497,6 +507,7 @@ def sync_cloning_strategy_with_db(
             pydna_strategy,
             session,
             ctx.workspace_id,
+            match_by_sequence=match_by_sequence,
         )
 
         linkml_strategy = opencloning_models.CloningStrategy.model_validate(pydna_strategy.model_dump(mode='json'))

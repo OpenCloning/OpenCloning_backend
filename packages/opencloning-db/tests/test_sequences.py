@@ -1845,6 +1845,20 @@ def test_post_cloning_strategy_valid_database_ids_link_existing(sequences_client
     assert _count_workspace_rows(sequences_client, sequences_client['w1']) == counts_before
 
 
+def test_post_cloning_strategy_without_database_ids_creates_repeated_rows(sequences_client):
+    """Entities without a database_id are not looked up by content, so duplicates can be created."""
+    body = cs_pcr.model_dump(mode='json')
+    n_sequences, n_primers = _count_workspace_rows(sequences_client, sequences_client['w1'])
+    r = _post_strategy(sequences_client, body, workspace='w1')
+    assert r.status_code == 200, r.text
+    assert r.json()['id'] != sequences_client['pcr_product_id']
+    mapped_ids = {m['databaseId'] for m in r.json()['mappings']}
+    assert not mapped_ids & {sequences_client['primer1_id'], sequences_client['primer2_id']}
+    new_n_sequences, new_n_primers = _count_workspace_rows(sequences_client, sequences_client['w1'])
+    assert new_n_sequences > n_sequences
+    assert new_n_primers == n_primers + 2
+
+
 def test_post_cloning_strategy_invalid_strategy_400(sequences_client):
     body = _get_pcr_cs_ws1(sequences_client)
     body['sources'] = []
