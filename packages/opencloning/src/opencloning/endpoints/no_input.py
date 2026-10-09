@@ -7,12 +7,12 @@ from pydantic import create_model, Field
 from typing import Annotated
 
 from opencloning.endpoints.endpoint_utils import format_products
+from opencloning.pydantic_models import PrimerModel
 
 from ..dna_functions import (
     format_sequence_genbank,
 )
 from opencloning_linkml.datamodel import (
-    Primer as PrimerModel,
     TextFileSequence,
     ManuallyTypedSource,
     OligoHybridizationSource,

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
 
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH
 from opencloning_db.bulk_validation import bulk_commit_or_conflict, bulk_conflict_response, frequency_duplicates
 
 from opencloning_db.apimodels import (
@@ -54,7 +55,7 @@ def _normalize_uid(value: str | None) -> str | None:
 
 
 def _is_invalid_sequence(value: str) -> bool:
-    return len(value) <= 2 or re.fullmatch(r'[ACGTacgt]+', value) is None
+    return len(value) <= 2 or len(value) > MAX_PRIMER_LENGTH or re.fullmatch(r'[ACGTacgt]+', value) is None
 
 
 def _primer_bulk_rows_with_flags(

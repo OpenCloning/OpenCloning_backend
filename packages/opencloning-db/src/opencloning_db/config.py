@@ -93,10 +93,13 @@ def _load_config_from_env() -> 'Config':
             'Missing required OpenCloning environment variables: ' f'{missing}. For local development load .env.dev'
         )
 
-    return Config(
+    _config = Config(
         database_url=os.environ['OPENCLONING_DB_URL'],
         oidc_config=OidcConfig.from_env(),
     )
+    if os.environ.get('MAX_SEQUENCING_FILE_SIZE_MB'):
+        _config.max_sequencing_file_size_mb = int(os.environ['MAX_SEQUENCING_FILE_SIZE_MB'])
+    return _config
 
 
 class Config(BaseModel):
@@ -119,6 +122,11 @@ class Config(BaseModel):
     )
     oidc_config: OidcConfig = Field(
         description='OIDC authentication settings.',
+    )
+    max_sequencing_file_size_mb: int = Field(
+        default=20,
+        gt=0,
+        description='Maximum size (in MB) of each uploaded sequencing file.',
     )
 
 

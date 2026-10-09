@@ -959,3 +959,23 @@ def test_post_primers_bulk_integrity_error_returns_409(primers_client, monkeypat
     assert r.status_code == 409
     rows = r.json()
     assert len(rows) == 1
+
+
+def test_post_primer_too_long(primers_client):
+    """Primers above 1000 bp are rejected."""
+    c = primers_client['client']
+    wid = primers_client['w1']
+    headers = workspace_headers(primers_client['token_owner_w1'], wid)
+    r = c.post('/primers', headers=headers, json={'name': 'long', 'sequence': 'A' * 1001})
+    assert r.status_code == 422
+    r = c.post('/primers', headers=headers, json={'name': 'ok', 'sequence': 'A' * 1000})
+    assert r.status_code == 200
+
+
+def test_validate_upload_primer_too_long(primers_client):
+    """Bulk validation flags primers above 1000 bp as invalid."""
+    c = primers_client['client']
+    headers = workspace_headers(primers_client['token_viewer_w1'], primers_client['w1'])
+    r = c.post('/primers/validate-upload', headers=headers, json=[{'name': 'long', 'sequence': 'A' * 1001}])
+    assert r.status_code == 200
+    assert r.json()[0]['sequence_invalid'] is True

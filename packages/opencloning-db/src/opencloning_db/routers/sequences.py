@@ -4,6 +4,10 @@ import warnings
 from typing import Annotated, List
 from urllib.parse import quote
 from opencloning.dna_functions import read_dsrecord_from_json
+from opencloning.app_settings import settings
+from opencloning.endpoints.endpoint_utils import read_upload_with_limit
+from opencloning.pydantic_models import BaseCloningStrategy
+from opencloning_db.config import get_config
 import opencloning_linkml.datamodel.models as opencloning_models
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
 from fastapi import status
@@ -374,7 +378,7 @@ async def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str |
     loaded_files: list[tuple[str, str | bytes]] = []
     for file in files:
         file_name = file.filename or 'unnamed'
-        file_bytes = await file.read()
+        file_bytes = await read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
         if file_name.lower().endswith('.dna'):
             loaded_files.append((file_name, file_bytes))
         else:
@@ -534,10 +538,11 @@ async def validate_cloning_strategy_bulk(
     output: list[CloningStrategySyncResult] = list()
     warning_list = list()
     for file in files:
+        file_content = await read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
         if file.filename.endswith('.dna'):
-            data, json_errors, warning_list = _parse_snapgene_history_file(await file.read(), file.filename)
+            data, json_errors, warning_list = _parse_snapgene_history_file(file_content, file.filename)
         else:
-            data, json_errors = parse_cloning_strategy_file(await file.read())
+            data, json_errors = parse_cloning_strategy_file(file_content)
         if data is None:
             output.append(CloningStrategySyncResult(file_name=file.filename, parsing_errors=json_errors))
             continue
@@ -752,9 +757,11 @@ async def post_sequence_sequencing_files(
         session, current_user, workspace_id, sequence_id, WorkspaceRole.editor
     )
     db_sequence = require_real_sequence(db_sequence, detail='sequencing_files endpoint only supports real sequences.')
+    max_size_mb = get_config().max_sequencing_file_size_mb
+    # Read all files first, so that nothing is created if any file is too large
+    contents = [await read_upload_with_limit(upload, max_size_mb) for upload in files]
     created = []
-    for upload in files:
-        content = await upload.read()
+    for upload, content in zip(files, contents):
         sf = create_sequencing_file(
             sequence=db_sequence,
             file_content=content,
@@ -811,7 +818,7 @@ def download_sequencing_file(
 @router.post('/sequences', response_model=CloningStrategyResponse)
 def post_cloning_strategy(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
-    cloning_strategy: opencloning_models.CloningStrategy,
+    cloning_strategy: BaseCloningStrategy,
 ):
     _, session, _workspace_id = ctx.destructure()
     sequences, id_mappings = cloning_strategy_to_db(cloning_strategy, session, ctx=ctx)
