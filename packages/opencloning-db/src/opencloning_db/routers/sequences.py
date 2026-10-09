@@ -374,11 +374,11 @@ def _has_any_sequence_warning(rows: list[SequenceValidationRow], strict: bool) -
     )
 
 
-async def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str | bytes]]:
+def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str | bytes]]:
     loaded_files: list[tuple[str, str | bytes]] = []
     for file in files:
         file_name = file.filename or 'unnamed'
-        file_bytes = await read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
+        file_bytes = read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
         if file_name.lower().endswith('.dna'):
             loaded_files.append((file_name, file_bytes))
         else:
@@ -466,18 +466,18 @@ def _sequence_validation_rows_with_flags(
 
 
 @router.post('/sequences/validate-upload', response_model=list[SequenceValidationRow])
-async def validate_upload_sequences(
+def validate_upload_sequences(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
     files: List[UploadFile] = File(...),
 ):
     _, session, workspace_id = ctx.destructure()
-    loaded_files = await _load_uploaded_files(files)
+    loaded_files = _load_uploaded_files(files)
     rows, _records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     return rows
 
 
 @router.post('/sequences/bulk', response_model=list[SequenceRef])
-async def post_sequences_bulk(
+def post_sequences_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     files: List[UploadFile] = File(...),
     strict: bool = Query(description='Fail on any validation warning', default=True),
@@ -488,7 +488,7 @@ async def post_sequences_bulk(
         get_tag_in_workspace_for_user(session, current_user, workspace_id, tag_id, WorkspaceRole.editor)
         for tag_id in sorted(set(tags))
     ]
-    loaded_files = await _load_uploaded_files(files)
+    loaded_files = _load_uploaded_files(files)
     validation_rows, records = _sequence_validation_rows_with_flags(loaded_files, session, workspace_id)
     if _has_any_sequence_warning(validation_rows, strict):
         return bulk_conflict_response(validation_rows)
@@ -530,7 +530,7 @@ def _parse_snapgene_history_file(content: bytes, file_name: str) -> tuple[dict |
 
 
 @router.post('/sequences/cloning_strategy/bulk/validate', response_model=list[CloningStrategySyncResult])
-async def validate_cloning_strategy_bulk(
+def validate_cloning_strategy_bulk(
     ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
     files: List[UploadFile] = File(...),
 ):
@@ -538,7 +538,7 @@ async def validate_cloning_strategy_bulk(
     output: list[CloningStrategySyncResult] = list()
     warning_list = list()
     for file in files:
-        file_content = await read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
+        file_content = read_upload_with_limit(file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
         if file.filename.endswith('.dna'):
             data, json_errors, warning_list = _parse_snapgene_history_file(file_content, file.filename)
         else:
@@ -746,7 +746,7 @@ def get_sequence_sequencing_files(
 
 
 @router.post('/sequences/{sequence_id}/sequencing_files', response_model=List[SequencingFileRef])
-async def post_sequence_sequencing_files(
+def post_sequence_sequencing_files(
     sequence_id: int,
     ctx: Annotated[WorkspaceContext, Depends(get_editor_workspace_ctx)],
     files: List[UploadFile] = File(...),
@@ -759,7 +759,7 @@ async def post_sequence_sequencing_files(
     db_sequence = require_real_sequence(db_sequence, detail='sequencing_files endpoint only supports real sequences.')
     max_size_mb = get_config().max_sequencing_file_size_mb
     # Read all files first, so that nothing is created if any file is too large
-    contents = [await read_upload_with_limit(upload, max_size_mb) for upload in files]
+    contents = [read_upload_with_limit(upload, max_size_mb) for upload in files]
     created = []
     for upload, content in zip(files, contents):
         sf = create_sequencing_file(

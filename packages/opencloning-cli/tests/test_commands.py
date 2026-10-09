@@ -74,7 +74,8 @@ class TestMigrateCommand:
 
 
 class TestSeedCommand:
-    def test_requires_testing_mode(self, temp_workspace):
+    def test_requires_testing_mode(self, temp_workspace, monkeypatch):
+        monkeypatch.delenv('OPENCLONING_TESTING', raising=False)
         result = _invoke('db', 'seed')
 
         assert result.exit_code == 1
