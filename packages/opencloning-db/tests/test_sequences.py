@@ -1147,7 +1147,7 @@ def test_post_sequences_bulk_unknown_tag_404(sequences_client):
     assert len(list_r.json()['items']) == 0
 
 
-def test_post_sequences_bulk_cross_workspace_tag_403(sequences_client):
+def test_post_sequences_bulk_cross_workspace_tag_404(sequences_client):
     c = sequences_client['client']
     h_token = sequences_client['token_owner_w1']
     wid = sequences_client['w1']
@@ -1158,7 +1158,8 @@ def test_post_sequences_bulk_cross_workspace_tag_403(sequences_client):
         ),
     ]
     r = _post_sequences_bulk(c, h_token, wid, payload, strict=True, tags=[sequences_client['filter_tag_w2_id']])
-    assert r.status_code == 403
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
 
     list_r = c.get('/sequences', headers=workspace_headers(h_token, wid), params={'name': 'bulk_wrtag'})
     assert list_r.status_code == 200
@@ -1666,7 +1667,7 @@ def test_download_sequencing_file_no_workspace_header_422(sequences_client):
 
 
 def test_download_sequencing_file_wrong_workspace_404(sequences_client):
-    """W1 file id with W2 header: 404 (sequence not in selected workspace)."""
+    """W1 file id with W2 header: 404 (the file is not visible outside its workspace)."""
     c = sequences_client['client']
     uploaded = post_sequencing_file_upload(
         c,
@@ -1687,7 +1688,7 @@ def test_download_sequencing_file_wrong_workspace_404(sequences_client):
         ),
     )
     assert download.status_code == 404
-    assert download.json()['detail'] == 'BaseSequence not found'
+    assert download.json()['detail'] == 'Sequencing file not found'
 
 
 @readonly_db

@@ -388,7 +388,7 @@ def test_post_template_sequences_bulk_unknown_tag_404(template_sequences_client)
     assert create_r.status_code == 200
 
 
-def test_post_template_sequences_bulk_cross_workspace_tag_403(template_sequences_client):
+def test_post_template_sequences_bulk_cross_workspace_tag_404(template_sequences_client):
     c = template_sequences_client['client']
     headers = workspace_headers(template_sequences_client['token_owner_w1'], template_sequences_client['w1'])
     payload = [{'name': 'bulk_wrong_tag_template', 'sequence_type': 'allele'}]
@@ -399,7 +399,8 @@ def test_post_template_sequences_bulk_cross_workspace_tag_403(template_sequences
         params=[('tags', str(template_sequences_client['tag_w2_id']))],
         json=payload,
     )
-    assert r.status_code == 403
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
 
     create_r = c.post('/template_sequences', headers=headers, json=payload[0])
     assert create_r.status_code == 200

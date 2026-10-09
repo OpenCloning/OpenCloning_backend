@@ -1080,7 +1080,7 @@ def test_post_lines_bulk_unknown_tag_404(lines_client):
     assert create_r.status_code == 200
 
 
-def test_post_lines_bulk_cross_workspace_tag_403(lines_client):
+def test_post_lines_bulk_cross_workspace_tag_404(lines_client):
     c = lines_client['client']
     headers = workspace_headers(lines_client['token_owner_w1'], lines_client['w1'])
     payload = [{'uid': 'L-BULK-WRONG-TAG', 'genotype': ['allele-aux'], 'plasmids': [], 'parent_uids': []}]
@@ -1091,7 +1091,8 @@ def test_post_lines_bulk_cross_workspace_tag_403(lines_client):
         params=[('tags', str(lines_client['tag_w2_id']))],
         json=payload,
     )
-    assert r.status_code == 403
+    assert r.status_code == 404
+    assert r.json()['detail'] == 'Tag not found'
 
     create_r = c.post(
         '/lines',
