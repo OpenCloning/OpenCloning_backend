@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import Form, File, UploadFile, HTTPException
 from typing import Annotated, Literal
 import os
@@ -44,6 +45,21 @@ DEFAULT_PLASMID_OPTIONS = {
         'hphmx6': ('addgene', '105162', None),  # pFA6a-hphMX6-3nmt1
     },
 }
+
+
+def _load_plasmid_file(plasmid_file: UploadFile | None):
+    assert plasmid_file is not None
+    assert plasmid_file.filename is not None
+    file_content = read_upload_with_limit(plasmid_file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
+    if plasmid_file.filename.endswith('.dna'):
+        return parse_snapgene(file_content)[0]
+    plasmid = pydna_parse(file_content.decode('utf-8'))[0]
+    plasmid.source = UploadedFileSource(
+        file_name=plasmid_file.filename,
+        sequence_file_format=plasmid.annotations['pydna_parse_sequence_file_format'],
+        index_in_file=0,
+    )
+    return plasmid
 
 
 def raise_plasmid_import_error(exception: Exception, mode) -> None:
@@ -116,18 +132,8 @@ async def post_batch_cloning(
 
     elif plasmid_option == 'file':
         try:
-            assert plasmid_file is not None
-            assert plasmid_file.filename is not None
-            file_content = await read_upload_with_limit(plasmid_file, settings.MAX_SEQUENCE_FILE_SIZE_MB)
-            if plasmid_file.filename.endswith('.dna'):
-                plasmid = parse_snapgene(file_content)[0]
-            else:
-                plasmid = pydna_parse(file_content.decode('utf-8'))[0]
-                plasmid.source = UploadedFileSource(
-                    file_name=plasmid_file.filename,
-                    sequence_file_format=plasmid.annotations['pydna_parse_sequence_file_format'],
-                    index_in_file=0,
-                )
+            # Parsing is CPU-bound, so it runs in a thread to avoid blocking the event loop
+            plasmid = await asyncio.to_thread(_load_plasmid_file, plasmid_file)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f'Plasmid loading failed: {e}')
 
@@ -156,12 +162,12 @@ async def post_batch_cloning(
             raise HTTPException(status_code=400, detail=f'Cloning failed: {e}')
 
         try:
-            pombe_summary(temp_dir)
-            pombe_gather(temp_dir)
+            await asyncio.to_thread(pombe_summary, temp_dir)
+            await asyncio.to_thread(pombe_gather, temp_dir)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f'Summary failed: {e}')
 
         zip_filename = f'{temp_dir}_archive'
-        shutil.make_archive(zip_filename, 'zip', temp_dir)
+        await asyncio.to_thread(shutil.make_archive, zip_filename, 'zip', temp_dir)
         zip_file = f'{zip_filename}.zip'
         return FileResponse(zip_file, filename='batch_cloning_output.zip')
