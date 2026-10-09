@@ -4,6 +4,7 @@ from contextlib import contextmanager
 
 import pytest
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from opencloning_db.context import WriteContext
@@ -51,8 +52,8 @@ def _seed_workspace(session: Session, workspace_id: int, user_id: int, suffix: s
     tag = Tag(name=f'tag-{suffix}', workspace_id=workspace_id)
     product.tags.append(tag)
     line = Line.from_create(uid=f'line-{suffix}', ctx=ctx)
-    sequence_in_line = SequenceInLine(sequence=template, line=line)
-    sample = SequenceSample(uid=f'uid-{suffix}', sequence_id=product.id, uid_workspace_id=workspace_id)
+    sequence_in_line = SequenceInLine(sequence=template, line=line, workspace_id=workspace_id)
+    sample = SequenceSample(uid=f'uid-{suffix}', sequence_id=product.id, workspace_id=workspace_id)
     sequencing_file = create_sequencing_file(product, b'ABIF', f'{suffix}.ab1')
     session.add_all([tag, line, sequence_in_line, sample, sequencing_file])
     session.flush()
@@ -211,34 +212,14 @@ def test_unscoped_session_is_not_affected(scope_db):
         assert {scope_db['ids'][scope_db['w1']]['Tag'], scope_db['ids'][scope_db['w2']]['Tag']} <= ids
 
 
-def test_sample_with_inconsistent_workspace_copy_is_hidden(scope_db):
-    """SequenceSample.uid_workspace_id disagreeing with the sequence's workspace (only possible outside the ORM)."""
-    w1, w2 = scope_db['w1'], scope_db['w2']
-    sample_id = scope_db['ids'][w1]['SequenceSample']
-    sample_table = SequenceSample.__table__
+@pytest.mark.parametrize('model', [Primer, SequenceSample], ids=lambda m: m.__name__)
+def test_database_rejects_inconsistent_workspace_copy(scope_db, model):
+    """The workspace copy next to the uid cannot disagree with the real workspace, even through raw SQL."""
+    table = model.__table__
+    row_id = scope_db['ids'][scope_db['w1']][model.__name__]
     with Session(scope_db['engine']) as session:
-        session.execute(update(sample_table).where(sample_table.c.id == sample_id).values(workspace_id=w2))
-        session.commit()
-    for workspace_id in (w1, w2):
-        with _bound_session(scope_db['engine'], workspace_id) as session:
-            assert session.get(SequenceSample, sample_id) is None
-            assert sample_id not in set(session.scalars(select(SequenceSample.id)))
-
-
-def test_write_guard_rejects_primer_with_inconsistent_workspace_copy(scope_db):
-    """Primer.uid_workspace_id disagreeing with workspace_id (only possible outside the ORM)."""
-    w1, w2 = scope_db['w1'], scope_db['w2']
-    primer_id = scope_db['ids'][w1]['Primer']
-    primer_table = Primer.__table__
-    with Session(scope_db['engine']) as session:
-        session.execute(update(primer_table).where(primer_table.c.id == primer_id).values(workspace_id=w2))
-        session.commit()
-    with _bound_session(scope_db['engine'], w1) as session:
-        primer = session.get(Primer, primer_id)
-        assert primer is not None
-        primer.name = 'renamed'
-        with pytest.raises(WorkspaceScopeError):
-            session.flush()
+        with pytest.raises(IntegrityError):
+            session.execute(update(table).where(table.c.id == row_id).values(workspace_id=scope_db['w2']))
 
 
 def test_write_guard_rejects_rows_of_other_workspace(scope_db):

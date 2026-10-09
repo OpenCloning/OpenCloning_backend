@@ -242,3 +242,124 @@ class TestMigration_8deebdee4ca0:
                         """
                     )
                 )
+
+
+class TestMigration_e5067e8acca3:
+    """sequence_instance.workspace_id is backfilled from the workspace of the instance's sequence."""
+
+    @staticmethod
+    def _sequence_id(workspace_id: int) -> int:
+        """Id of the sequence seeded in the workspace."""
+        return workspace_id * 100
+
+    def _seed_workspace(self, conn, *, workspace_id: int, user_id: int) -> list[int]:
+        """One sequence with a sample and a line instance; returns the instance ids."""
+        seq_id = self._sequence_id(workspace_id)
+        conn.execute(
+            text('INSERT INTO workspace (id, name) VALUES (:workspace_id, :name)'),
+            {'workspace_id': workspace_id, 'name': f'migration-ws-{workspace_id}'},
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO input_entity (id, workspace_id, type, name, created_by_id)
+                VALUES (:seq_id, :workspace_id, 'sequence', 'seq', :user_id)
+                """
+            ),
+            {'seq_id': seq_id, 'workspace_id': workspace_id, 'user_id': user_id},
+        )
+        conn.execute(
+            text("INSERT INTO base_sequence (id, sequence_type) VALUES (:seq_id, 'allele')"), {'seq_id': seq_id}
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO sequence (id, overhang_crick_3prime, overhang_watson_3prime, seguid, file_content)
+                VALUES (:seq_id, 0, 0, :seguid, '')
+                """
+            ),
+            {'seq_id': seq_id, 'seguid': f'MIGTESTSEG{workspace_id}'},
+        )
+
+        sample_id = conn.execute(
+            text("INSERT INTO sequence_instance (sequence_id, type) VALUES (:seq_id, 'sequence_sample') RETURNING id"),
+            {'seq_id': seq_id},
+        ).scalar_one()
+        conn.execute(
+            text("INSERT INTO sequence_sample (id, workspace_id, uid) VALUES (:id, :workspace_id, 'sample')"),
+            {'id': sample_id, 'workspace_id': workspace_id},
+        )
+
+        line_id = conn.execute(
+            text(
+                "INSERT INTO line (workspace_id, uid, created_by_id) VALUES (:workspace_id, 'line', :user_id) RETURNING id"
+            ),
+            {'workspace_id': workspace_id, 'user_id': user_id},
+        ).scalar_one()
+        in_line_id = conn.execute(
+            text(
+                "INSERT INTO sequence_instance (sequence_id, type) VALUES (:seq_id, 'sequence_in_line') RETURNING id"
+            ),
+            {'seq_id': seq_id},
+        ).scalar_one()
+        conn.execute(
+            text('INSERT INTO sequence_in_line (id, line_id) VALUES (:id, :line_id)'),
+            {'id': in_line_id, 'line_id': line_id},
+        )
+        return [sample_id, in_line_id]
+
+    def test_backfills_sequence_instance_workspace(self, postgres_test_engine_write):
+        engine = postgres_test_engine_write
+        downgrade_to(engine, 'eae106d3b1d2')
+
+        with engine.begin() as conn:
+            user_id = conn.execute(
+                text(
+                    """
+                    INSERT INTO "user" (email, display_name, is_instance_admin)
+                    VALUES ('migration@test.com', 'Migr', false)
+                    RETURNING id
+                    """
+                )
+            ).scalar_one()
+            instance_ids = {
+                workspace_id: self._seed_workspace(conn, workspace_id=workspace_id, user_id=user_id)
+                for workspace_id in (1, 2)
+            }
+
+        migrate_to(engine, 'e5067e8acca3')
+
+        # Every instance should have received the workspace of its sequence
+        expected_workspace_by_instance = {}
+        for workspace_id, ids in instance_ids.items():
+            for instance_id in ids:
+                expected_workspace_by_instance[instance_id] = workspace_id
+
+        with engine.connect() as conn:
+            workspace_by_instance = dict(
+                conn.execute(text('SELECT id, workspace_id FROM sequence_instance')).fetchall()
+            )
+            nullable = conn.execute(
+                text(
+                    """
+                    SELECT is_nullable FROM information_schema.columns
+                    WHERE table_name = 'sequence_instance' AND column_name = 'workspace_id'
+                    """
+                )
+            ).scalar_one()
+        assert workspace_by_instance == expected_workspace_by_instance
+        assert nullable == 'NO'
+
+        # The new composite FK rejects an instance in another workspace than its sequence:
+        # here an instance of the workspace 1 sequence that claims to be in workspace 2
+        with engine.begin() as conn:
+            with pytest.raises(IntegrityError):
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO sequence_instance (sequence_id, workspace_id, type)
+                        VALUES (:sequence_id, :workspace_id, 'sequence_sample')
+                        """
+                    ),
+                    {'sequence_id': self._sequence_id(1), 'workspace_id': 2},
+                )

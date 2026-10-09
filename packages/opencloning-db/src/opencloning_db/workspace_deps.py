@@ -149,7 +149,7 @@ def get_sequence_sample_in_workspace_for_user(
     sample = (
         session.query(SequenceSample)
         .filter(
-            SequenceSample.uid_workspace_id == workspace_id,
+            SequenceSample.workspace_id == workspace_id,
             func.lower(SequenceSample.uid) == uid.lower(),
         )
         .first()
@@ -157,5 +157,5 @@ def get_sequence_sample_in_workspace_for_user(
     if sample is None:
         raise HTTPException(status_code=404, detail='Sequence sample not found')
 
-    assert_workspace_access(session, user.id, sample.uid_workspace_id, min_role)
+    assert_workspace_access(session, user.id, sample.workspace_id, min_role)
     return sample

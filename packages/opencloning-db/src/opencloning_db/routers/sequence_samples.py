@@ -36,7 +36,7 @@ def get_sequence_samples(
     """List sequence samples in a workspace (lab samples with user-defined UIDs)."""
     current_user, session, workspace_id = ctx.destructure()
 
-    query = session.query(SequenceSample).filter_by(uid_workspace_id=workspace_id)
+    query = session.query(SequenceSample).filter_by(workspace_id=workspace_id)
     if uid is not None:
         query = query.filter(SequenceSample.uid.ilike(f"%{uid}%"))
     records = query.all()
@@ -65,7 +65,7 @@ def post_sequence_sample(
     existing = (
         session.query(SequenceSample)
         .filter(
-            SequenceSample.uid_workspace_id == workspace_id,
+            SequenceSample.workspace_id == workspace_id,
             func.lower(SequenceSample.uid) == body.uid.lower(),
         )
         .first()
@@ -75,7 +75,7 @@ def post_sequence_sample(
     ps = SequenceSample(
         uid=body.uid,
         sequence_id=body.sequence_id,
-        uid_workspace_id=workspace_id,
+        workspace_id=workspace_id,
     )
     session.add(ps)
     session.commit()

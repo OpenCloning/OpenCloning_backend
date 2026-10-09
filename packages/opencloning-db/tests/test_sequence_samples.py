@@ -60,12 +60,12 @@ def _seed_seq_samples_context(engine):
         sample_w1 = SequenceSample(
             uid='S-W1',
             sequence_id=seq_w1.id,
-            uid_workspace_id=ctx['w1'],
+            workspace_id=ctx['w1'],
         )
         sample_w2 = SequenceSample(
             uid='S-W2',
             sequence_id=seq_w2.id,
-            uid_workspace_id=ctx['w2'],
+            workspace_id=ctx['w2'],
         )
         session.add_all([sample_w1, sample_w2])
         session.commit()

@@ -40,14 +40,12 @@ def _seed_tags_context(engine):
 
         primer_w1 = Primer(
             workspace_id=ctx['w1'],
-            uid_workspace_id=ctx['w1'],
             name='primer-w1',
             sequence='ATGC',
             created_by_id=ctx['owner_w1_id'],
         )
         primer_w2 = Primer(
             workspace_id=ctx['w2'],
-            uid_workspace_id=ctx['w2'],
             name='primer-w2',
             sequence='ATGC',
             created_by_id=ctx['owner_w2_id'],

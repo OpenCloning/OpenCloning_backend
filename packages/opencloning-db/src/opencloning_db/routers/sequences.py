@@ -123,7 +123,7 @@ def get_sequences(
             .where(
                 SequenceSample.sequence_id == BaseSequence.id,
                 SequenceSample.uid.ilike(f"%{uid}%"),
-                SequenceSample.uid_workspace_id == workspace_id,
+                SequenceSample.workspace_id == workspace_id,
             )
         )
         query = query.where(exists(subq))
@@ -134,7 +134,7 @@ def get_sequences(
             .where(
                 SequenceSample.sequence_id == BaseSequence.id,
                 SequenceSample.uid.isnot(None),
-                SequenceSample.uid_workspace_id == workspace_id,
+                SequenceSample.workspace_id == workspace_id,
             )
         )
         query = query.where(exists(subq))
@@ -332,7 +332,7 @@ def get_sequence_by_uid(
         .join(SequenceSample, SequenceSample.sequence_id == Sequence.id)
         .where(
             func.lower(SequenceSample.uid) == uid.lower(),
-            SequenceSample.uid_workspace_id == workspace_id,
+            SequenceSample.workspace_id == workspace_id,
         )
         .options(
             selectinload(InputEntity.tags),

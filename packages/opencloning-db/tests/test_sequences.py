@@ -91,7 +91,7 @@ def _seed_sequences_context(engine, config):
         sample_w1 = SequenceSample(
             uid='UID-W1',
             sequence_id=seq_w1.id,
-            uid_workspace_id=w1,
+            workspace_id=w1,
         )
         session.add(sample_w1)
 
@@ -116,13 +116,13 @@ def _seed_sequences_context(engine, config):
         line = Line.from_create(uid='line-for-seq-filter', ctx=w1_ctx)
         session.add(line)
         session.flush()
-        session.add(SequenceInLine(sequence_id=pcr_template.id, line_id=line.id))
+        session.add(SequenceInLine(sequence_id=pcr_template.id, line_id=line.id, workspace_id=w1))
 
         session.add(
             SequenceSample(
                 uid='FILTER-UID-99',
                 sequence_id=pcr_product.id,
-                uid_workspace_id=w1,
+                workspace_id=w1,
             )
         )
 
@@ -618,7 +618,7 @@ def test_delete_sequence_rejects_when_in_strain(sequences_client):
         )
         session.add(line)
         session.flush()
-        session.add(SequenceInLine(sequence_id=sid, line_id=line.id))
+        session.add(SequenceInLine(sequence_id=sid, line_id=line.id, workspace_id=sequences_client['w1']))
         session.commit()
 
     r = c.delete(
