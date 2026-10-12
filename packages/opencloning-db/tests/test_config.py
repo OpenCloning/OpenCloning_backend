@@ -54,6 +54,33 @@ class TestConfig(unittest.TestCase):
             cfg = app_config._load_config_from_env()
         self.assertEqual(cfg.max_sequencing_file_size_mb, 5)
 
+    def test_max_sequencing_file_size_from_env_is_validated(self):
+        for value in ('0', '-1', 'abc'):
+            with (
+                self.subTest(value=value),
+                patch.dict(
+                    os.environ,
+                    {
+                        'OPENCLONING_DB_URL': 'postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
+                        'OIDC_ISSUER_URL': 'https://idp.example.dev',
+                        'MAX_SEQUENCING_FILE_SIZE_MB': value,
+                    },
+                    clear=True,
+                ),
+            ):
+                with self.assertRaises(ValidationError):
+                    app_config._load_config_from_env()
+
+    def test_config_is_frozen(self):
+        cfg = Config(
+            database_url='postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_dev',
+            oidc_config=OidcConfig(issuer_url='https://idp.example.dev', authorized_parties=['http://localhost:3000']),
+        )
+        with self.assertRaises(ValidationError):
+            cfg.max_sequencing_file_size_mb = 5
+        with self.assertRaises(ValidationError):
+            cfg.oidc_config.test_mode = True
+
     def test_get_config_requires_runtime_env_vars(self):
         """Missing env vars produce one actionable runtime error."""
         previous_config = app_config.config

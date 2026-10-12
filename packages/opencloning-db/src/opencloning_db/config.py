@@ -9,7 +9,7 @@ import os
 from urllib.parse import urlparse
 
 from opencloning.app_settings import ALLOWED_ORIGINS
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 from sqlalchemy.engine import make_url
 
 _LOCAL_HOSTNAMES = {'localhost', '127.0.0.1'}
@@ -26,6 +26,8 @@ def parse_bool(value: str | bool) -> bool:
 
 class OidcConfig(BaseModel):
     """OIDC bearer-token authentication settings."""
+
+    model_config = ConfigDict(frozen=True)
 
     issuer_url: str = Field(
         description='OIDC issuer URL used for discovery and JWT validation.',
@@ -96,17 +98,20 @@ def _load_config_from_env() -> 'Config':
             'Missing required OpenCloning environment variables: ' f'{missing}. For local development load .env.dev'
         )
 
-    _config = Config(
+    optional_settings = {}
+    if os.environ.get('MAX_SEQUENCING_FILE_SIZE_MB'):
+        optional_settings['max_sequencing_file_size_mb'] = os.environ['MAX_SEQUENCING_FILE_SIZE_MB']
+    return Config(
         database_url=os.environ['OPENCLONING_DB_URL'],
         oidc_config=OidcConfig.from_env(),
+        **optional_settings,
     )
-    if os.environ.get('MAX_SEQUENCING_FILE_SIZE_MB'):
-        _config.max_sequencing_file_size_mb = int(os.environ['MAX_SEQUENCING_FILE_SIZE_MB'])
-    return _config
 
 
 class Config(BaseModel):
     """OpenCloning database configuration."""
+
+    model_config = ConfigDict(frozen=True)
 
     @field_validator('database_url')
     @classmethod
