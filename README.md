@@ -54,6 +54,7 @@ File uploads are size-limited; requests above the limit are rejected with HTTP 4
 | --- | --- | --- |
 | `MAX_SEQUENCE_FILE_SIZE_MB` | `10` | Maximum size (MB) of each uploaded sequence file (GenBank, FASTA, SnapGene, cloning strategy JSON...) |
 | `MAX_SEQUENCING_FILE_SIZE_MB` | `20` | Maximum size (MB) of each uploaded sequencing file (database API only) |
+| `MAX_REQUEST_BODY_SIZE_MB` | `100` | Maximum size (MB) of any request body, enforced while it is received, so oversized uploads are rejected before they are written to temporary files |
 
 ## Logging and request IDs
 

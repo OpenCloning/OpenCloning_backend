@@ -67,6 +67,7 @@ Uploaded files are rejected with HTTP 413 when they exceed the configured size. 
 | --- | --- | --- |
 | `MAX_SEQUENCE_FILE_SIZE_MB` | `10` | Sequence files and cloning strategy files (`/sequences/validate-upload`, `/sequences/bulk`, `/sequences/cloning_strategy/bulk/validate`) |
 | `MAX_SEQUENCING_FILE_SIZE_MB` | `20` | Each file uploaded to `/sequences/{id}/sequencing_files` |
+| `MAX_REQUEST_BODY_SIZE_MB` | `100` | Whole request body of any endpoint, enforced while it is received (before uploads are written to temporary files) |
 
 ## Database migrations (Alembic)
 

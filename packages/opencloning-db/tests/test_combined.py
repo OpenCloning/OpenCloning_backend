@@ -114,3 +114,11 @@ def test_combined_openapi_exposes_cloning_and_db_apps_for_authenticated_user(com
     assert '/' in cloning_paths
     assert '/auth/me' in db_paths
     assert '/workspaces' in db_paths
+
+
+def test_db_app_registers_body_size_limit():
+    from opencloning.body_size_limit import MaxBodySizeMiddleware
+    from opencloning_db.api import create_fastapi_app
+
+    app = create_fastapi_app()
+    assert any(m.cls is MaxBodySizeMiddleware for m in app.user_middleware)

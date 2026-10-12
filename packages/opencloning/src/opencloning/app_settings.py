@@ -32,6 +32,10 @@ NCBI_MAX_SEQUENCE_LENGTH = (
 MAX_SEQUENCE_FILE_SIZE_MB = (
     int(os.environ.get('MAX_SEQUENCE_FILE_SIZE_MB')) if os.environ.get('MAX_SEQUENCE_FILE_SIZE_MB') is not None else 10
 )
+# Maximum size (in MB) of any request body, enforced while it is received (see body_size_limit.py)
+MAX_REQUEST_BODY_SIZE_MB = (
+    int(os.environ.get('MAX_REQUEST_BODY_SIZE_MB')) if os.environ.get('MAX_REQUEST_BODY_SIZE_MB') is not None else 100
+)
 PLANNOTATE_URL = os.environ['PLANNOTATE_URL'] if 'PLANNOTATE_URL' in os.environ else None
 PLANNOTATE_TIMEOUT = int(os.environ['PLANNOTATE_TIMEOUT']) if 'PLANNOTATE_TIMEOUT' in os.environ else 20
 # Handle trailing slash:
@@ -74,6 +78,7 @@ class Settings(BaseModel):
     NCBI_API_KEY: str | None
     NCBI_MAX_SEQUENCE_LENGTH: int
     MAX_SEQUENCE_FILE_SIZE_MB: int = Field(gt=0)
+    MAX_REQUEST_BODY_SIZE_MB: int = Field(gt=0)
     ALLOWED_ORIGINS: list[str]
     PLANNOTATE_URL: str | None
     PLANNOTATE_TIMEOUT: int
@@ -91,6 +96,7 @@ settings = Settings(
     NCBI_API_KEY=NCBI_API_KEY,
     NCBI_MAX_SEQUENCE_LENGTH=NCBI_MAX_SEQUENCE_LENGTH,
     MAX_SEQUENCE_FILE_SIZE_MB=MAX_SEQUENCE_FILE_SIZE_MB,
+    MAX_REQUEST_BODY_SIZE_MB=MAX_REQUEST_BODY_SIZE_MB,
     ALLOWED_ORIGINS=ALLOWED_ORIGINS,
     PLANNOTATE_URL=PLANNOTATE_URL,
     PLANNOTATE_TIMEOUT=PLANNOTATE_TIMEOUT,
