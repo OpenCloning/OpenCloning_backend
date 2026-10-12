@@ -11,8 +11,8 @@ refused at flush.
 A session can also be bound read-only (viewer routes). Then every write is refused: in the ORM at flush, and by
 Postgres for any statement (``SET TRANSACTION READ ONLY``, re-applied to each new transaction).
 
-``UnscopedSession`` is the explicit opt-out that sees all workspaces. Only seeding and tests use it. Request code
-must never use it.
+``UnscopedSession`` is the explicit opt-out that sees all workspaces. Only tests use it; application code must not
+(enforced by the ``unscoped-session-check`` pre-commit hook).
 
 Limits: core table queries (``select(table.c...)``) and raw SQL are not filtered by the scoping.
 """
@@ -60,7 +60,7 @@ class RequestSession(Session):
 
 
 class UnscopedSession(Session):
-    """Explicit opt-out of workspace scoping: sees and writes all workspaces. Only for seeding and tests."""
+    """Explicit opt-out of workspace scoping: sees and writes all workspaces. Only for tests."""
 
 
 def bind_workspace(session: Session, workspace_id: int, *, read_only: bool = False) -> None:

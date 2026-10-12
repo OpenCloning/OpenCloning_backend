@@ -13,10 +13,11 @@ from pathlib import Path
 import opencloning_linkml.datamodel.models as opencloning_models
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from opencloning_db.workspace_scope import UnscopedSession
+from sqlalchemy.orm import Session
 
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
+from opencloning_db.workspace_scope import bind_workspace
 from opencloning_db.models import (
     Line,
     Primer,
@@ -43,7 +44,8 @@ def load_seed_data(engine: Engine) -> None:
             cloning_strategies.append(opencloning_models.CloningStrategy.model_validate(json.load(f)))
             file_names.append(os.path.basename(file))
 
-    with UnscopedSession(engine) as session:
+    # Scoped session: users, workspaces and memberships (global) first, then the data of the bootstrap workspace
+    with Session(engine) as session:
         last_seq = None
         sequencing_sequence = None
         # Dummy user and workspace for development purposes (without access)
@@ -99,6 +101,8 @@ def load_seed_data(engine: Engine) -> None:
             )
         )
 
+        # All the seeded workspace data belongs to the bootstrap workspace
+        bind_workspace(session, workspace.id)
         seed_ctx = WriteContext(user=bootstrap_user, workspace_id=workspace.id)
 
         parent_strain = Line.from_create(uid='parent_strain', ctx=seed_ctx)

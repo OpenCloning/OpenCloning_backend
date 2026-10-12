@@ -47,6 +47,15 @@ repos:
         language: system
         files: \.py$
         exclude: packages/opencloning/tests/
+  # Hook to ensure that UnscopedSession (which bypasses workspace scoping) stays out of application code
+  - repo: local
+    hooks:
+      - id: unscoped-session-check
+        name: unscoped-session-check
+        entry: python scripts/check_unscoped_session_usage.py
+        language: system
+        files: \.py$
+        exclude: ^packages/[^/]+/tests/
   - repo: local
     hooks:
       - id: deptry
