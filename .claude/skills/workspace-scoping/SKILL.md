@@ -27,7 +27,7 @@ Sessions are **fail-closed by default**: any `Session`, including a plain `Sessi
 
 | Session | Created by | Behaviour |
 |---|---|---|
-| `UnscopedSession` | `init_db` seeding, tests that seed or inspect workspace data | no filtering, no write guard. Never in request code |
+| `UnscopedSession` | tests that seed or inspect workspace data | no filtering, no write guard. Never in application code |
 | Unbound `RequestSession` / plain `Session` | `get_db` (`RequestSession`, same behaviour as `Session`; not SQLAlchemy's `scoped_session`), CLI admin commands, `combined.py` token check | only `User`, `Workspace` and `WorkspaceMembership` may be queried; anything else raises `WorkspaceScopeError` |
 | Bound | the workspace context dependency calls `bind_workspace(session, workspace_id)` after the membership check | every ORM SELECT is filtered to that workspace; writes to other workspaces are refused |
 | Bound read-only | `get_viewer_workspace_ctx` calls `bind_workspace(..., read_only=True)` | as bound, and every write is refused |
@@ -45,7 +45,7 @@ Rows of other workspaces behave as if they did not exist. `session.get` returns 
 
 **Not covered:**
 - Core table queries (`select(table.c...)`) and raw SQL are not filtered. Don't use them for workspace data in request code.
-- There is no opt-out inside a request session. `UnscopedSession` is only for seeding and tests, and `test_unscoped_session_is_only_used_for_seeding` fails if it appears anywhere else in the source. New code that must cross workspaces needs a deliberate decision, and an update of that test.
+- There is no opt-out inside a request session. `UnscopedSession` is only for tests: the pre-commit hook `unscoped-session-check` (`scripts/check_unscoped_session_usage.py`) runs on every `.py` file except the tests of any package (`exclude: ^packages/[^/]+/tests/`), and rejects it everywhere except its definition. Application code outside requests binds a plain `Session` to the workspace it works on, as `init_db.load_seed_data` does: global models first, then `bind_workspace` before the workspace data. New code that must cross workspaces needs a deliberate decision, and an update of `ALLOWED_FILES` in that script.
 
 ## Model classification
 

@@ -1,7 +1,6 @@
 """Automatic workspace scoping of ORM queries and writes (opencloning_db.workspace_scope)."""
 
 from contextlib import contextmanager
-from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select, text, update
@@ -284,20 +283,6 @@ def test_viewer_context_is_read_only_and_editor_context_is_not(scope_db):
         session.execute(_RAW_TAG_INSERT, {'workspace_id': w1})
         # Not persisted, so the test can be readonly
         session.rollback()
-
-
-def test_unscoped_session_is_only_used_for_seeding():
-    """UnscopedSession bypasses the workspace scoping, so it must stay out of application code."""
-    packages = Path(__file__).resolve().parents[2]
-    users = {
-        path.relative_to(packages).as_posix()
-        for path in packages.glob('*/src/**/*.py')
-        if 'UnscopedSession' in path.read_text()
-    }
-    assert users == {
-        'opencloning-db/src/opencloning_db/workspace_scope.py',
-        'opencloning-db/src/opencloning_db/init_db.py',
-    }
 
 
 @readonly_db
