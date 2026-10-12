@@ -65,6 +65,9 @@ class OidcConfig(BaseModel):
             # Test mode accepts unsigned tokens, so it must be an explicit opt-in for local throwaway instances.
             if not parse_bool(os.getenv('OPENCLONING_TESTING', False)):
                 raise RuntimeError('OIDC_TEST_MODE=1 requires OPENCLONING_TESTING=1')
+            # Config sanity check only (catches a real frontend pointed at a test-mode backend).
+            # It does not restrict network access: any client that can reach the port can send
+            # test tokens, so test-mode servers must only be exposed on trusted networks.
             non_local = [
                 origin
                 for origin in [*authorized_parties, *ALLOWED_ORIGINS]

@@ -47,6 +47,8 @@ Every database route requires `Authorization: Bearer ...`. When the cloning app 
 - `test:<subject>|<display_name>`
 - `test:<subject>|<email>|<display_name>`
 
+`OIDC_TEST_MODE=1` requires `OPENCLONING_TESTING=1` and only localhost/127.0.0.1 origins in `ALLOWED_ORIGINS` and `OIDC_AUTHORIZED_PARTIES`. The origin check is a config sanity check, not a network restriction: any client that can reach the server can authenticate as any user with a test token, so only expose a test-mode server on a trusted network.
+
 Seeded demo users (for example `bootstrap+clerk_test@example.com`) start with no OIDC identity. The first token whose email matches links that row and does not create another workspace.
 
 `OPENCLONING_TESTING=1` only enables `db seed`, `db stubs`, and `/__test/reset-db`. It does not accept or reject bearer tokens.
