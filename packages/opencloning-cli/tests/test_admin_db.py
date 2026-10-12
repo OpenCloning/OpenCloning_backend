@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 import opencloning_db.db as db_module
 from opencloning_db.models import User, Workspace, WorkspaceMembership, WorkspaceRole
@@ -18,7 +18,7 @@ def admin_db_session(temp_workspace):
     _, config = temp_workspace
     engine = db_module.get_engine(config)
     reset_database(engine)
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         user = User(
             email='alice@example.com',
             display_name='Alice',

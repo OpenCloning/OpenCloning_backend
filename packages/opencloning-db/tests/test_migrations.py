@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.init_db import load_seed_data
 from opencloning_db.models import Base, User
@@ -30,7 +30,7 @@ def test_truncate_application_tables_preserves_alembic_version(postgres_test_eng
     with postgres_test_engine_write.connect() as conn:
         version_before = conn.execute(text('SELECT version_num FROM alembic_version')).scalar_one()
 
-    with Session(postgres_test_engine_write) as session:
+    with UnscopedSession(postgres_test_engine_write) as session:
         assert session.query(User).count() > 0
 
     truncate_application_tables(postgres_test_engine_write)
@@ -39,7 +39,7 @@ def test_truncate_application_tables_preserves_alembic_version(postgres_test_eng
         version_after = conn.execute(text('SELECT version_num FROM alembic_version')).scalar_one()
     assert version_after == version_before
 
-    with Session(postgres_test_engine_write) as session:
+    with UnscopedSession(postgres_test_engine_write) as session:
         assert session.query(User).count() == 0
 
 

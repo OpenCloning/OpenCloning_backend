@@ -9,7 +9,7 @@ import unittest
 import opencloning_linkml.datamodel.models as opencloning_models
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 from sqlalchemy.exc import IntegrityError
 
 from opencloning_db.context import WriteContext
@@ -59,7 +59,7 @@ class _MemoryDbTestCase(unittest.TestCase):
         super().setUp()
         self.engine = create_engine(_TEST_DATABASE_URL)
         reset_database(self.engine)
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             session.add(User(email='test@test.com', display_name='Test'))
             session.commit()
 
@@ -141,7 +141,7 @@ class TestSequence(_MemoryDbTestCase):
 
     def test_base_sequence_loads_concrete_template_subclass(self):
         """Loading through ``BaseSequence`` preserves the concrete template subtype."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -160,7 +160,7 @@ class TestSequence(_MemoryDbTestCase):
 
     def test_sample_uids_only_sequence_samples(self):
         """``sample_uids`` lists UIDs from ``SequenceSample`` only."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -181,7 +181,7 @@ class TestSequence(_MemoryDbTestCase):
 
     def test_sequence_in_line_accepts_template_sequence_in_same_workspace(self):
         """Template sequences can be linked to lines through the shared SequenceInLine table."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -207,7 +207,7 @@ class TestSequence(_MemoryDbTestCase):
         """Reads GenBank file text from the sequence row itself."""
         file_content = pcr_product.format('genbank')
 
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -238,7 +238,7 @@ class TestSequence(_MemoryDbTestCase):
             base.to_pydantic_sequence()
 
     def test_template_sequence_to_pydantic(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             for sequence_type in [SequenceType.allele, SequenceType.plasmid]:
                 ws = Workspace(name='W')
                 session.add(ws)
@@ -266,7 +266,7 @@ class TestPrimer(_MemoryDbTestCase):
 
     def test_from_pydantic_and_to_pydantic_roundtrip(self):
         """Round-trip primer through linkml preserves sequence and name."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -306,7 +306,7 @@ class TestPrimer(_MemoryDbTestCase):
 
     def test_from_pydantic_rejects_sequence_too_short(self):
         """``from_pydantic`` applies the same sequence rules as direct construction."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -328,7 +328,7 @@ class TestSource(_MemoryDbTestCase):
         ORM Source (without inputs) round-trips through linkml. With inputs is tested
         in cloning_strategy_to_db and test_source_input_to_pydantic_uses_input_entity_id
         """
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -351,7 +351,7 @@ class TestSource(_MemoryDbTestCase):
 
     def test_from_pydantic_stores_extra_fields_in_json(self):
         """Fields outside ``_ORM_FIELDS`` are persisted in ``extra_fields``."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -379,7 +379,7 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
 
     def test_source_input_to_pydantic_uses_input_entity_id(self):
         """``to_pydantic`` sets ``sequence`` from ``input_entity.id``."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -420,7 +420,7 @@ class TestSourceInputAndAssemblyFragment(_MemoryDbTestCase):
 
     def test_assembly_fragment_to_pydantic(self):
         """Pydantic output carries locations and ``reverse_complemented``."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -481,7 +481,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
         strategy = deepcopy(cs_pcr)
         expected_ids = {s.id for s in strategy.sequences} | {p.id for p in strategy.primers}
 
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -502,7 +502,7 @@ class TestCloningStrategyToDb(_MemoryDbTestCase):
         """Existing sequence IDs are reused while other entities are newly mapped."""
         strategy = deepcopy(cs_pcr)
 
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -572,7 +572,7 @@ class TestSequenceSample(_MemoryDbTestCase):
     """A sample's workspace is tied to its sequence's workspace by composite foreign keys."""
 
     def _seed(self) -> dict[str, int]:
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
@@ -589,7 +589,7 @@ class TestSequenceSample(_MemoryDbTestCase):
     def test_sequence_sample_workspace_mismatch_raises(self):
         """Re-pointing ``sequence_id`` to a sequence of another workspace is rejected by the database."""
         ids = self._seed()
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             session.get(SequenceSample, ids['sample']).sequence_id = ids['seq_w2']
             with self.assertRaises(IntegrityError):
                 session.flush()
@@ -597,12 +597,12 @@ class TestSequenceSample(_MemoryDbTestCase):
     def test_sample_workspace_must_match_sequence_workspace(self):
         """A sample's ``workspace_id`` cannot differ from its sequence's workspace."""
         ids = self._seed()
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             session.get(SequenceSample, ids['sample']).workspace_id = ids['w2']
             with self.assertRaises(IntegrityError):
                 session.flush()
         # Same when inserting a new sample
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             session.add(SequenceSample(sequence_id=ids['seq_w1'], workspace_id=ids['w2'], uid='U2'))
             with self.assertRaises(IntegrityError):
                 session.flush()
@@ -612,7 +612,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
     """Cross-workspace invariants enforced in before_flush hooks."""
 
     def test_sequence_in_line_workspace_mismatch_raises(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
@@ -626,7 +626,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
                 session.flush()
 
     def test_sequence_in_line_same_workspace_passes(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             session.add(w1)
             session.flush()
@@ -638,7 +638,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
             session.flush()
 
     def test_source_input_workspace_mismatch_raises(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
@@ -670,7 +670,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
                 session.flush()
 
     def test_line_tag_workspace_mismatch_raises(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
@@ -684,7 +684,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
                 session.flush()
 
     def test_input_entity_tag_workspace_mismatch_raises(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             w2 = Workspace(name='W2')
             session.add_all([w1, w2])
@@ -698,7 +698,7 @@ class TestCrossWorkspaceHooks(_MemoryDbTestCase):
                 session.flush()
 
     def test_line_and_entity_tag_same_workspace_pass(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             w1 = Workspace(name='W1')
             session.add(w1)
             session.flush()
@@ -717,7 +717,7 @@ class TestLine(_MemoryDbTestCase):
 
     def test_parent_ids_and_children_ids(self):
         """``parent_ids`` / ``children_ids`` mirror the graph edges."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -734,7 +734,7 @@ class TestLine(_MemoryDbTestCase):
 
     def test_alleles_and_plasmids_filter_by_sequence_type(self):
         """Alleles vs plasmids split on linked ``Sequence.sequence_type``."""
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -776,7 +776,7 @@ class TestRequireValueAndRow(_MemoryDbTestCase):
             _require_value(None, 'test message')
 
     def test_require_row_none_raises(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()
@@ -788,7 +788,7 @@ class TestForeignKeysApply(_MemoryDbTestCase):
     """Tests for foreign key constraints."""
 
     def test_foreign_keys_apply(self):
-        with Session(self.engine) as session:
+        with UnscopedSession(self.engine) as session:
             ws = Workspace(name='W')
             session.add(ws)
             session.flush()

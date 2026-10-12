@@ -7,7 +7,7 @@ description: "Use when adding, removing or changing SQLAlchemy models in openclo
 
 Every row of workspace data belongs to exactly one workspace. A request must never read or write rows of another workspace. Three layers enforce this:
 
-1. **Automatic ORM scoping** (`packages/opencloning-db/src/opencloning_db/workspace_scope.py`) filters every query in a request session.
+1. **Automatic ORM scoping** (`packages/opencloning-db/src/opencloning_db/workspace_scope.py`) filters every query of every session that is not an `UnscopedSession`, and makes viewer sessions read-only.
 2. **Database constraints** (composite foreign keys) keep the workspace copies used for UID uniqueness consistent.
 3. **Flush validators** (`_validate_cross_workspace_invariants` in `models.py`) reject links between rows of different workspaces that the database does not enforce.
 
@@ -15,19 +15,24 @@ Every row of workspace data belongs to exactly one workspace. A request must nev
 
 - Scoping module: `packages/opencloning-db/src/opencloning_db/workspace_scope.py`
 - Models and flush validators: `packages/opencloning-db/src/opencloning_db/models.py`
-- Session marking: `get_db` in `deps.py`, and `override_get_db` in `tests/conftest.py`
-- Session binding: `get_viewer_workspace_ctx` / `get_editor_workspace_ctx` in `workspace_deps.py`
+- Request sessions: `get_db` in `deps.py` (a `RequestSession`), and `override_get_db` in `tests/conftest.py`
+- Session binding: `get_viewer_workspace_ctx` (read-only) / `get_editor_workspace_ctx` in `workspace_deps.py`
 - Tests: `packages/opencloning-db/tests/test_workspace_scope.py`
 
 ## How scoping works
 
 **Session states.** The state lives in `session.info`, not in a ContextVar: FastAPI runs sync dependencies and endpoints in different threadpool contexts.
 
+Sessions are **fail-closed by default**: any `Session`, including a plain `Session(engine)`, is scoped. Only an explicit `UnscopedSession` is not.
+
 | Session | Created by | Behaviour |
 |---|---|---|
-| Unscoped | plain `Session(engine)`: CLI, `init_db`, seeding, tests | no filtering, no write guard |
-| Marked request session | `get_db` calls `require_workspace_scope(session)` | only `User`, `Workspace` and `WorkspaceMembership` may be queried; anything else raises `WorkspaceScopeError` |
-| Bound request session | workspace context dependency calls `bind_workspace(session, workspace_id)` after the membership check | every ORM SELECT is filtered to that workspace; writes to other workspaces are refused |
+| `UnscopedSession` | `init_db` seeding, tests that seed or inspect workspace data | no filtering, no write guard. Never in request code |
+| Unbound `RequestSession` / plain `Session` | `get_db` (`RequestSession`, same behaviour as `Session`; not SQLAlchemy's `scoped_session`), CLI admin commands, `combined.py` token check | only `User`, `Workspace` and `WorkspaceMembership` may be queried; anything else raises `WorkspaceScopeError` |
+| Bound | the workspace context dependency calls `bind_workspace(session, workspace_id)` after the membership check | every ORM SELECT is filtered to that workspace; writes to other workspaces are refused |
+| Bound read-only | `get_viewer_workspace_ctx` calls `bind_workspace(..., read_only=True)` | as bound, and every write is refused |
+
+**Read-only sessions.** Viewer routes only read, whatever the user's role. A read-only session rejects writes in two ways: the `before_flush` listener raises `WorkspaceScopeError` for new, modified or deleted objects, and Postgres rejects any statement (ORM, Core or raw SQL) through `SET TRANSACTION READ ONLY`. `bind_workspace` applies it to the transaction already open (authentication queries run first), and the `after_begin` listener `_make_new_transaction_read_only` applies it to every later transaction. User provisioning at authentication still writes, because it happens before the bind.
 
 **Reads.** The `do_orm_execute` listener `_scope_orm_statement` adds `with_loader_criteria` rules (`_workspace_criteria`) to every ORM SELECT, whatever its form:
 - `session.get`, `select`, and legacy `query()`;
@@ -40,7 +45,7 @@ Rows of other workspaces behave as if they did not exist. `session.get` returns 
 
 **Not covered:**
 - Core table queries (`select(table.c...)`) and raw SQL are not filtered. Don't use them for workspace data in request code.
-- There is no opt-out inside a request session. Code that must cross workspaces (admin tooling) uses a plain `Session(engine)`.
+- There is no opt-out inside a request session. `UnscopedSession` is only for seeding and tests, and `test_unscoped_session_is_only_used_for_seeding` fails if it appears anywhere else in the source. New code that must cross workspaces needs a deliberate decision, and an update of that test.
 
 ## Model classification
 
@@ -54,7 +59,7 @@ Every mapped class must fall under exactly one root. `test_every_model_is_classi
 
 A rule registered on a root also applies to its subclasses. For example, `InputEntity` covers `Sequence`, `TemplateSequence` and `Primer`, and `SequenceInstance` covers `SequenceSample` and `SequenceInLine`.
 
-`_belongs_to_workspace` is a correlated `EXISTS` on a private alias of `input_entity`. Keep the alias: without it, the subquery auto-correlates with an `input_entity` of the enclosing query and breaks.
+`_belongs_to_workspace` is a correlated `EXISTS` on a private alias of `input_entity`. Keep the alias: without it, the subquery auto-correlates with an `input_entity` of the enclosing query and breaks. `test_indirect_rule_inside_query_joining_input_entity` covers this.
 
 ## Workspace copies (UID uniqueness)
 
@@ -80,7 +85,7 @@ A rule registered on a root also applies to its subclasses. For example, `InputE
 4. **Links to other workspace rows** (a foreign key, or an association table to `Tag`, `Line`, an input entity)? Either enforce same-workspace in the database with a composite FK, or add a validator to `_validate_cross_workspace_invariants` in `models.py`.
 5. **Endpoints:**
    - depend on `get_viewer_workspace_ctx` / `get_editor_workspace_ctx`;
-   - resolve client-supplied IDs with the `get_*_in_workspace_for_user` helpers in `workspace_deps.py`;
+   - resolve client-supplied IDs with the `get_*_in_workspace_for_user` helpers in `workspace_deps.py`. They check membership of the *selected* workspace first (403, never dependent on the ID), then return the same 404 for a missing ID and an ID of another workspace, in any kind of session;
    - keep explicit `workspace_id` filters in shared helpers that can run in unscoped sessions.
 6. **Migration:** generate with Alembic autogenerate, then review it (see Migrations).
 
@@ -101,6 +106,9 @@ A rule registered on a root also applies to its subclasses. For example, `InputE
 - **Workspace copy:** add the model to `test_database_rejects_inconsistent_workspace_copy`.
 - **Cross-workspace validator:** add tests in `tests/test_models.py`, `TestCrossWorkspaceHooks`.
 - **Data migrations** (for example a new non-null column on an existing table): add a `TestMigration_<revision>` class in `tests/test_migrations.py`. It downgrades to the previous revision, seeds rows with raw SQL, upgrades, and asserts the backfilled values.
+- **Sessions in tests:** a test that seeds or inspects workspace data across workspaces opens an `UnscopedSession(engine)`. A plain `Session` is scoped and only sees global models, so such a test fails with `WorkspaceScopeError`.
+- **Viewer endpoints:** a new route on `get_viewer_workspace_ctx` must not write. Any attempt fails with `WorkspaceScopeError` or a Postgres `read-only transaction` error; if it must write, it belongs on `get_editor_workspace_ctx`.
+- **Session behaviour:** changes to `workspace_scope.py` itself are covered by `test_unbound_session_only_allows_global_models`, `test_read_only_*`, `test_viewer_context_is_read_only_and_editor_context_is_not` and `test_write_guard_rejects_rows_of_other_workspace`.
 - **Router tests that asserted 403** for an ID in a workspace the user doesn't belong to now get 404. 403 remains only for a header workspace the user isn't a member of, or an insufficient role.
 
 ## Migrations

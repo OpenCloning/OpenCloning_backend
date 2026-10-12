@@ -2,6 +2,7 @@
 
 import pytest
 from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.models import Tag, TemplateSequence
 
@@ -30,7 +31,7 @@ readonly_db = pytest.mark.readonly_db
 
 
 def _seed_template_sequences_context(engine):
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
         tag_w1 = Tag(name='template-tag-w1', workspace_id=ctx['w1'])
         tag_w2 = Tag(name='template-tag-w2', workspace_id=ctx['w2'])
@@ -112,7 +113,7 @@ def test_post_template_sequence_persists_template_subtype(template_sequences_cli
     )
     assert create.status_code == 200
 
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         stored = session.get(TemplateSequence, create.json()['id'])
 
     assert stored is not None

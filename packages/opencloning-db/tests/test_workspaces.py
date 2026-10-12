@@ -2,6 +2,7 @@
 
 import pytest
 from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from .helpers import (
     attach_standard_tokens,
@@ -28,7 +29,7 @@ readonly_db = pytest.mark.readonly_db
 
 
 def _seed_workspaces_context(engine, client):
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
         session.commit()
 

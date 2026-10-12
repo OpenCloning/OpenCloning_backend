@@ -14,7 +14,6 @@ from opencloning_db.models import (
     InputEntity,
     Line,
     Primer,
-    Sequence,
     SequenceSample,
     SequenceType,
     Tag,
@@ -42,7 +41,7 @@ def get_viewer_workspace_ctx(
 ) -> WorkspaceContext:
     """Workspace-scoped context for read-only endpoints."""
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.viewer)
-    bind_workspace(session, workspace_id)
+    bind_workspace(session, workspace_id, read_only=True)
     return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
 
 
@@ -55,29 +54,6 @@ def get_editor_workspace_ctx(
     assert_workspace_access(session, user.id, workspace_id, WorkspaceRole.editor)
     bind_workspace(session, workspace_id)
     return WorkspaceContext(user=user, workspace_id=workspace_id, session=session)
-
-
-def get_resource_for_user(
-    session: Session,
-    user: User,
-    resource_id: int,
-    min_role: WorkspaceRole,
-    resource_type: Primer | Sequence | Line | Tag | InputEntity,
-) -> Primer | Sequence | Line | Tag | InputEntity:
-    resource = session.get(resource_type, resource_id)
-    if resource is None:
-        raise HTTPException(status_code=404, detail=f"{resource_type.__name__} not found")
-    assert_workspace_access(session, user.id, resource.workspace_id, min_role)
-    return resource
-
-
-def _require_selected_workspace(
-    entity_workspace_id: int,
-    selected_workspace_id: int,
-    not_found_detail: str,
-) -> None:
-    if entity_workspace_id != selected_workspace_id:
-        raise HTTPException(status_code=404, detail=not_found_detail)
 
 
 def _require_sequence_type(
@@ -100,8 +76,15 @@ def get_resource_in_workspace_for_user(
     min_role: WorkspaceRole,
     resource_type: Primer | BaseSequence | Line | Tag | InputEntity,
 ) -> Primer | BaseSequence | Line | Tag | InputEntity:
-    resource = get_resource_for_user(session, user, resource_id, min_role, resource_type)
-    _require_selected_workspace(resource.workspace_id, workspace_id, f"{resource_type.__name__} not found")
+    """Load a resource of the selected workspace.
+
+    Membership is checked on the selected workspace first, so a 403 never depends on the resource id.
+    A resource that does not exist or belongs to another workspace is the same 404.
+    """
+    assert_workspace_access(session, user.id, workspace_id, min_role)
+    resource = session.get(resource_type, resource_id)
+    if resource is None or resource.workspace_id != workspace_id:
+        raise HTTPException(status_code=404, detail=f"{resource_type.__name__} not found")
     return resource
 
 

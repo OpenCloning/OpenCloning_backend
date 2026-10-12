@@ -1,7 +1,7 @@
 """Tags routes: workspace scoping and membership."""
 
 import pytest
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.models import Line, Primer, Tag
 
@@ -35,7 +35,7 @@ readonly_db = pytest.mark.readonly_db
 
 
 def _seed_tags_context(engine):
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
 
         primer_w1 = Primer(

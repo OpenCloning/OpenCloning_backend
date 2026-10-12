@@ -6,11 +6,12 @@ only exercise the highest-value pieces directly (404 vs 403 behavior).
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.models import InputEntity, Line, Primer, Sequence, SequenceType, Tag, User, WorkspaceRole
 from opencloning_db.workspace_deps import (
-    get_resource_for_user,
+    get_line_in_workspace_for_user,
+    get_resource_in_workspace_for_user,
     get_sequence_in_workspace_for_user,
     get_sequence_sample_in_workspace_for_user,
 )
@@ -29,7 +30,7 @@ def deps_session(request):
     )
     engine, _, _ = request.getfixturevalue(fixture_name)
 
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
 
         line = Line(workspace_id=ctx['w1'], uid='DEPS-LINE', created_by_id=ctx['owner_w1_id'])
@@ -54,42 +55,44 @@ def deps_session(request):
         }
 
 
-def test_get_line_for_user_enforces_membership(deps_session):
-    """Member in line workspace can load it; other workspace user gets 403."""
+def test_get_line_in_workspace_enforces_membership(deps_session):
+    """A member loads the line; a non-member of the selected workspace gets 403; a foreign line is 404."""
 
-    with Session(deps_session['engine']) as session:
+    with UnscopedSession(deps_session['engine']) as session:
 
         user = session.get(User, deps_session['user_id'])
         other_user = session.get(User, deps_session['other_user_id'])
+        line_id = deps_session['line_id']
 
-        # Owner in same workspace can access
-        line = get_resource_for_user(
-            session,
-            user,
-            deps_session['line_id'],
-            WorkspaceRole.viewer,
-            Line,
+        line = get_line_in_workspace_for_user(
+            session, user, deps_session['workspace_id'], line_id, WorkspaceRole.viewer
         )
-        assert line.id == deps_session['line_id']
+        assert line.id == line_id
 
-        # Owner in different workspace -> 403
-        with pytest.raises(HTTPException) as exc:
-            get_resource_for_user(
-                session,
-                other_user,
-                deps_session['line_id'],
-                WorkspaceRole.viewer,
-                Line,
-            )
-        assert exc.value.status_code == 403
-        assert 'Not allowed' in exc.value.detail
+        # Selecting a workspace the user is not a member of -> 403, whatever the id
+        for resource_id in (line_id, 999_999):
+            with pytest.raises(HTTPException) as exc:
+                get_line_in_workspace_for_user(
+                    session, other_user, deps_session['workspace_id'], resource_id, WorkspaceRole.viewer
+                )
+            assert exc.value.status_code == 403
+            assert 'Not allowed' in exc.value.detail
+
+        # From the user's own workspace, the line of another workspace is the same 404 as a missing one
+        for resource_id in (line_id, 999_999):
+            with pytest.raises(HTTPException) as exc:
+                get_line_in_workspace_for_user(
+                    session, other_user, deps_session['other_workspace_id'], resource_id, WorkspaceRole.viewer
+                )
+            assert exc.value.status_code == 404
+            assert exc.value.detail == 'Line not found'
 
 
 def test_get_sequence_in_workspace_for_user_checks_workspace_and_type(
     deps_session,
 ):
     """Resolve sequence when workspace and type match; else 404/400."""
-    with Session(deps_session['engine']) as session:
+    with UnscopedSession(deps_session['engine']) as session:
         user = session.get(User, deps_session['user_id'])
 
         seq = get_sequence_in_workspace_for_user(
@@ -102,11 +105,12 @@ def test_get_sequence_in_workspace_for_user_checks_workspace_and_type(
         )
         assert seq.id == deps_session['sequence_id']
 
-        # Wrong workspace -> 404
+        # Sequence of another workspace, requested by a member of the selected workspace -> 404
+        other_user = session.get(User, deps_session['other_user_id'])
         with pytest.raises(HTTPException) as exc:
             get_sequence_in_workspace_for_user(
                 session,
-                user,
+                other_user,
                 deps_session['other_workspace_id'],
                 deps_session['sequence_id'],
                 WorkspaceRole.viewer,
@@ -129,21 +133,23 @@ def test_get_sequence_in_workspace_for_user_checks_workspace_and_type(
         assert 'not of type' in exc2.value.detail
 
 
-def test_get_resource_for_user_missing_entity_404(deps_session):
-    """All get_*_for_user helpers return 404 with resource-specific detail."""
+def test_get_resource_in_workspace_missing_entity_404(deps_session):
+    """All get_*_in_workspace_for_user helpers return 404 with resource-specific detail."""
 
-    with Session(deps_session['engine']) as session:
+    with UnscopedSession(deps_session['engine']) as session:
         user = session.get(User, deps_session['user_id'])
         for resource_type in [Line, Sequence, Primer, Tag, InputEntity]:
             with pytest.raises(HTTPException) as exc:
-                get_resource_for_user(session, user, 999_999, WorkspaceRole.viewer, resource_type)
+                get_resource_in_workspace_for_user(
+                    session, user, deps_session['workspace_id'], 999_999, WorkspaceRole.viewer, resource_type
+                )
             assert exc.value.status_code == 404
             assert exc.value.detail == f"{resource_type.__name__} not found"
 
 
 def test_get_sequence_in_workspace_missing_id_404(deps_session):
     """Missing sequence id returns 404."""
-    with Session(deps_session['engine']) as session:
+    with UnscopedSession(deps_session['engine']) as session:
         user = session.get(User, deps_session['user_id'])
         with pytest.raises(HTTPException) as exc:
             get_sequence_in_workspace_for_user(
@@ -160,7 +166,7 @@ def test_get_sequence_in_workspace_missing_id_404(deps_session):
 
 def test_get_sequence_sample_in_workspace_for_user_missing_404(deps_session):
     """Unknown sample uid returns 404."""
-    with Session(deps_session['engine']) as session:
+    with UnscopedSession(deps_session['engine']) as session:
         user = session.get(User, deps_session['user_id'])
         with pytest.raises(HTTPException) as exc:
             get_sequence_sample_in_workspace_for_user(

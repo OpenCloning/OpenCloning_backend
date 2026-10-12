@@ -2,6 +2,7 @@
 
 import pytest
 from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.context import WriteContext
 from opencloning_db.models import AssemblyFragment, Primer, Sequence, SequenceType, Source, SourceType, Tag, User
@@ -37,7 +38,7 @@ readonly_db = pytest.mark.readonly_db
 
 
 def _seed_primers_context(engine):
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
 
         w1_ctx = WriteContext(user=User(id=ctx['owner_w1_id'], email='unused@test'), workspace_id=ctx['w1'])

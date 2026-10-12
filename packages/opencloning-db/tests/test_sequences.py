@@ -15,6 +15,7 @@ from pydna.opencloning_models import TextFileSequence
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.context import WriteContext
 from opencloning_db.db import (
@@ -79,7 +80,7 @@ readonly_db = pytest.mark.readonly_db
 
 def _seed_sequences_context(engine, config):
     """Build the shared seed payload for sequence route tests."""
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
         w1, w2 = ctx['w1'], ctx['w2']
 
@@ -508,7 +509,7 @@ def test_delete_sequence_owner_removes_sample_and_files(sequences_client):
 
     assert c.get(f"/sequences/{sid}", headers=headers).status_code == 404
     assert c.get(f"/sequences/by-uid/{sequences_client['uid_w1']}", headers=headers).status_code == 404
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         assert session.scalar(select(SequenceSample).where(SequenceSample.sequence_id == sid)) is None
         for sequencing_file_id in sequencing_file_ids:
             assert session.get(SequencingFile, sequencing_file_id) is None
@@ -580,7 +581,7 @@ def test_delete_sequence_allows_when_has_parents(sequences_client):
 def test_delete_sequence_session_delete_rejects_when_has_children(sequences_client):
     sid = sequences_client['pcr_template_id']
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         db_sequence = session.get(Sequence, sid)
         assert db_sequence is not None
 
@@ -589,21 +590,21 @@ def test_delete_sequence_session_delete_rejects_when_has_children(sequences_clie
             session.commit()
         session.rollback()
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         assert session.get(Sequence, sid) is not None
 
 
 def test_delete_sequence_session_delete_allows_when_has_parents(sequences_client):
     sid = sequences_client['pcr_product_id']
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         db_sequence = session.get(Sequence, sid)
         assert db_sequence is not None
 
         session.delete(db_sequence)
         session.commit()
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         assert session.get(Sequence, sid) is None
         assert session.get(Sequence, sequences_client['pcr_template_id']) is not None
 
@@ -612,7 +613,7 @@ def test_delete_sequence_rejects_when_in_strain(sequences_client):
     """Sequences linked to a strain via SequenceInLine cannot be deleted (409)."""
     c = sequences_client['client']
     sid = sequences_client['seq_patch_linear_id']
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         line = Line.from_create(
             uid='line-blocking-delete',
             ctx=_write_ctx(sequences_client['w1'], sequences_client['owner_w1_id']),
@@ -662,7 +663,7 @@ def test_change_circularity_isolated_linear_to_circular(sequences_client):
     sid = sequences_client['seq_patch_linear_id']
     headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
         old_file_content = seq.file_content
 
@@ -682,7 +683,7 @@ def test_change_circularity_isolated_linear_to_circular(sequences_client):
     assert r1_db.status_code == 200
     assert r1_db.json()['sequence_type'] == 'plasmid'
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
         assert seq.file_content != old_file_content
 
@@ -692,7 +693,7 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
     sid = sequences_client['seq_circ_id']
     headers = workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1'])
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         old_file_content = session.get(Sequence, sid).file_content
 
     r0 = c.get(f'/sequences/{sid}/text_file_sequence', headers=headers)
@@ -708,7 +709,7 @@ def test_change_circularity_isolated_circular_to_linear(sequences_client):
     assert r1_db.status_code == 200
     assert r1_db.json()['sequence_type'] == 'linear_dna'
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
         assert seq.file_content != old_file_content
 
@@ -817,7 +818,7 @@ def test_change_annotation_success_replaces_file(sequences_client):
     workspace_id = sequences_client['w1']
     headers = workspace_headers(token, workspace_id)
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
         old_file_content = seq.file_content
 
@@ -828,7 +829,7 @@ def test_change_annotation_success_replaces_file(sequences_client):
     assert r1.status_code == 200
     assert len(_parse_dseqr(r1.json()).features) == 1
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         seq = session.get(Sequence, sid)
         assert seq.file_content != old_file_content
 
@@ -1829,7 +1830,7 @@ def test_post_cloning_strategy_foreign_and_missing_sequence_id_indistinguishable
 
 
 def _count_workspace_rows(sequences_client, workspace_id):
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         n_sequences = session.scalar(
             select(func.count()).select_from(BaseSequence).where(BaseSequence.workspace_id == workspace_id)
         )
@@ -1875,10 +1876,10 @@ def test_cloning_strategy_to_db_foreign_primer_404(sequences_client):
     for source in body['sources']:
         source['database_id'] = None
     strategy = opencloning_models.CloningStrategy.model_validate(body)
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         with pytest.raises(HTTPException) as exc:
             cloning_strategy_to_db(
-                strategy, session, ctx=_write_ctx(sequences_client['w2'], sequences_client['owner_w1_id'])
+                strategy, session, ctx=_write_ctx(sequences_client['w2'], sequences_client['owner_both_id'])
             )
     assert exc.value.status_code == 404
     assert exc.value.detail == 'Primer not found'

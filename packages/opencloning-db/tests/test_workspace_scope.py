@@ -1,10 +1,11 @@
 """Automatic workspace scoping of ORM queries and writes (opencloning_db.workspace_scope)."""
 
 from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
-from sqlalchemy import func, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, select, text, update
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from opencloning_db.context import WriteContext
@@ -29,10 +30,12 @@ from opencloning_db.workspace_scope import (
     DIRECT_WORKSPACE_MODELS,
     GLOBAL_MODELS,
     INDIRECT_WORKSPACE_MODELS,
+    RequestSession,
+    UnscopedSession,
     WorkspaceScopeError,
     bind_workspace,
-    require_workspace_scope,
 )
+from opencloning_db.workspace_deps import get_editor_workspace_ctx, get_viewer_workspace_ctx
 from tests.cloning_strategy_examples import cs_pcr
 from .helpers import attach_standard_tokens, seed_standard_users, workspace_headers
 
@@ -72,7 +75,7 @@ def _seed_workspace(session: Session, workspace_id: int, user_id: int, suffix: s
 
 
 def _seed(engine, client) -> dict:
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
         ctx['ids'] = {
             ctx['w1']: _seed_workspace(session, ctx['w1'], ctx['owner_w1_id'], 'w1'),
@@ -98,11 +101,10 @@ def scope_db(request):
 
 
 @contextmanager
-def _bound_session(engine, workspace_id: int):
+def _bound_session(engine, workspace_id: int, *, read_only: bool = False):
     """A session set up like an API request inside a workspace context."""
-    with Session(engine) as session:
-        require_workspace_scope(session)
-        bind_workspace(session, workspace_id)
+    with RequestSession(engine) as session:
+        bind_workspace(session, workspace_id, read_only=read_only)
         yield session
 
 
@@ -154,10 +156,20 @@ def _inputs_of(session: Session, source_id: int) -> list[SourceInput]:
 
 
 @readonly_db
+def test_indirect_rule_inside_query_joining_input_entity(scope_db):
+    """The EXISTS of the indirect rules uses a private alias of input_entity, so that it does not auto-correlate
+    with an input_entity that the query already contains (here through the join to Sequence)."""
+    w1 = scope_db['w1']
+    with _bound_session(scope_db['engine'], w1) as session:
+        statement = select(SequencingFile.id).join(Sequence, SequencingFile.sequence_id == Sequence.id)
+        assert set(session.scalars(statement)) == {scope_db['ids'][w1]['SequencingFile']}
+
+
+@readonly_db
 def test_bound_session_hides_other_workspace_source_inputs(scope_db):
     own_source_id = scope_db['ids'][scope_db['w1']]['Source']
     foreign_source_id = scope_db['ids'][scope_db['w2']]['Source']
-    with Session(scope_db['engine']) as session:
+    with UnscopedSession(scope_db['engine']) as session:
         # The foreign source has inputs, so an empty result below means hidden, not missing
         assert _inputs_of(session, foreign_source_id) != []
     with _bound_session(scope_db['engine'], scope_db['w1']) as session:
@@ -170,7 +182,7 @@ def test_bound_session_filters_relationship_loads(scope_db):
     w1, w2 = scope_db['w1'], scope_db['w2']
     own_tag_id = scope_db['ids'][w1]['Tag']
     foreign_primer_id = scope_db['ids'][w2]['Primer']
-    with Session(scope_db['engine']) as session:
+    with UnscopedSession(scope_db['engine']) as session:
         session.execute(input_entity_tag.insert().values(input_entity_id=foreign_primer_id, tag_id=own_tag_id))
         session.commit()
 
@@ -193,7 +205,7 @@ def test_bound_session_filters_relationship_loads(scope_db):
 def test_alternating_workspaces_use_the_right_workspace(scope_db):
     """The statement cache must never reuse the workspace id of a previous session."""
     w1, w2 = scope_db['w1'], scope_db['w2']
-    with Session(scope_db['engine']) as session:
+    with UnscopedSession(scope_db['engine']) as session:
         expected_primers = {
             w: set(session.scalars(select(Primer.id).where(Primer.workspace_id == w))) for w in (w1, w2)
         }
@@ -207,9 +219,10 @@ def test_alternating_workspaces_use_the_right_workspace(scope_db):
 
 
 @readonly_db
-def test_unbound_request_session_only_allows_global_models(scope_db):
-    with Session(scope_db['engine']) as session:
-        require_workspace_scope(session)
+@pytest.mark.parametrize('session_class', [Session, RequestSession], ids=lambda c: c.__name__)
+def test_unbound_session_only_allows_global_models(scope_db, session_class):
+    """Fail closed: a plain Session is scoped like a RequestSession, only UnscopedSession sees everything."""
+    with session_class(scope_db['engine']) as session:
         assert session.get(User, scope_db['owner_w1_id']) is not None
         with pytest.raises(WorkspaceScopeError):
             session.scalars(select(Primer)).all()
@@ -220,10 +233,77 @@ def test_unbound_request_session_only_allows_global_models(scope_db):
         assert session.scalars(select(User).join(InputEntity, InputEntity.created_by_id == User.id)).all() == []
 
 
+_RAW_TAG_INSERT = text("INSERT INTO tag (workspace_id, name) VALUES (:workspace_id, 'raw-write')")
+
+
+def _assert_raw_write_rejected(session: Session, workspace_id: int) -> None:
+    with pytest.raises(DBAPIError, match='read-only'):
+        session.execute(_RAW_TAG_INSERT, {'workspace_id': workspace_id})
+    session.rollback()
+
+
+@readonly_db
+def test_read_only_session_rejects_writes(scope_db):
+    w1 = scope_db['w1']
+    with _bound_session(scope_db['engine'], w1, read_only=True) as session:
+        # Reads work
+        assert session.get(Tag, scope_db['ids'][w1]['Tag']) is not None
+        # ORM writes are refused at flush
+        session.add(Tag(name='read-only-write', workspace_id=w1))
+        with pytest.raises(WorkspaceScopeError, match='read-only'):
+            session.flush()
+        session.rollback()
+        # Raw SQL is refused by Postgres
+        _assert_raw_write_rejected(session, w1)
+        # ... also in the transactions that follow
+        _assert_raw_write_rejected(session, w1)
+
+
+@readonly_db
+def test_read_only_applies_to_transaction_already_open(scope_db):
+    """Authentication queries run before the workspace is bound, so a transaction is usually open already."""
+    w1 = scope_db['w1']
+    with RequestSession(scope_db['engine']) as session:
+        assert session.get(User, scope_db['owner_w1_id']) is not None
+        bind_workspace(session, w1, read_only=True)
+        _assert_raw_write_rejected(session, w1)
+
+
+@readonly_db
+def test_viewer_context_is_read_only_and_editor_context_is_not(scope_db):
+    w1 = scope_db['w1']
+    with UnscopedSession(scope_db['engine']) as session:
+        user = session.get(User, scope_db['owner_w1_id'])
+        # Make the object detached so that it is not found by the viewer context
+        session.expunge(user)
+    with RequestSession(scope_db['engine']) as session:
+        get_viewer_workspace_ctx(user=user, session=session, workspace_id=w1)
+        _assert_raw_write_rejected(session, w1)
+    with RequestSession(scope_db['engine']) as session:
+        get_editor_workspace_ctx(user=user, session=session, workspace_id=w1)
+        session.execute(_RAW_TAG_INSERT, {'workspace_id': w1})
+        # Not persisted, so the test can be readonly
+        session.rollback()
+
+
+def test_unscoped_session_is_only_used_for_seeding():
+    """UnscopedSession bypasses the workspace scoping, so it must stay out of application code."""
+    packages = Path(__file__).resolve().parents[2]
+    users = {
+        path.relative_to(packages).as_posix()
+        for path in packages.glob('*/src/**/*.py')
+        if 'UnscopedSession' in path.read_text()
+    }
+    assert users == {
+        'opencloning-db/src/opencloning_db/workspace_scope.py',
+        'opencloning-db/src/opencloning_db/init_db.py',
+    }
+
+
 @readonly_db
 def test_unscoped_session_is_not_affected(scope_db):
     """Sessions created outside requests (CLI, seeding, tests) see everything."""
-    with Session(scope_db['engine']) as session:
+    with UnscopedSession(scope_db['engine']) as session:
         ids = set(session.scalars(select(Tag.id)))
         assert {scope_db['ids'][scope_db['w1']]['Tag'], scope_db['ids'][scope_db['w2']]['Tag']} <= ids
 
@@ -233,7 +313,7 @@ def test_database_rejects_inconsistent_workspace_copy(scope_db, model):
     """The workspace copy next to the uid cannot disagree with the real workspace, even through raw SQL."""
     table = model.__table__
     row_id = scope_db['ids'][scope_db['w1']][model.__name__]
-    with Session(scope_db['engine']) as session:
+    with UnscopedSession(scope_db['engine']) as session:
         with pytest.raises(IntegrityError):
             session.execute(update(table).where(table.c.id == row_id).values(workspace_id=scope_db['w2']))
 

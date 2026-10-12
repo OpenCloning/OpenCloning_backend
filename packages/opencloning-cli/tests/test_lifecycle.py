@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 from sqlalchemy import text
 
 import opencloning_db.db as db_module
@@ -58,7 +58,7 @@ def test_seed_recreate_schema_rebuilds_broken_schema(temp_workspace, monkeypatch
 
     seed(recreate_schema=True)
 
-    with Session(db_module.get_engine(config)) as session:
+    with UnscopedSession(db_module.get_engine(config)) as session:
         assert session.query(User).count() > 0
         assert session.query(SequencingFile).count() == 3
         assert session.query(Sequence).count() == 48
