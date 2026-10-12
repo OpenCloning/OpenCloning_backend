@@ -13,7 +13,7 @@ from pathlib import Path
 import opencloning_linkml.datamodel.models as opencloning_models
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, create_sequencing_file
@@ -43,7 +43,7 @@ def load_seed_data(engine: Engine) -> None:
             cloning_strategies.append(opencloning_models.CloningStrategy.model_validate(json.load(f)))
             file_names.append(os.path.basename(file))
 
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         last_seq = None
         sequencing_sequence = None
         # Dummy user and workspace for development purposes (without access)

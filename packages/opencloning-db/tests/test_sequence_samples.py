@@ -1,7 +1,7 @@
 """Sequence samples routes: workspace scoping and membership."""
 
 import pytest
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 from opencloning_db.models import Sequence, SequenceSample, SequenceType
 
@@ -35,7 +35,7 @@ readonly_db = pytest.mark.readonly_db
 
 
 def _seed_seq_samples_context(engine):
-    with Session(engine) as session:
+    with UnscopedSession(engine) as session:
         ctx = seed_standard_users(session)
 
         seq_w1 = Sequence(

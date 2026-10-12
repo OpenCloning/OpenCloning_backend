@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from jwt.algorithms import RSAAlgorithm
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 
 import opencloning_db.db as db_module
 from opencloning_db.auth.oidc import _identity_from_test_token, reset_oidc_clients, verify_oidc_bearer_token
@@ -204,7 +204,7 @@ def test_repeat_login_reuses_same_user(oidc_client):
 def test_legacy_email_links_existing_user_without_new_workspace(oidc_client, postgres_test_engine_write):
     email = f'legacy-{uuid4().hex}@example.com'
     subject = f'user-{uuid4().hex}'
-    with Session(postgres_test_engine_write) as session:
+    with UnscopedSession(postgres_test_engine_write) as session:
         legacy = User(
             email=email,
             display_name='Legacy User',
@@ -235,7 +235,7 @@ def test_legacy_email_links_existing_user_without_new_workspace(oidc_client, pos
     assert workspaces[0]['id'] == workspace_id
     assert workspaces[0]['name'] == 'Legacy Workspace'
 
-    with Session(postgres_test_engine_write) as session:
+    with UnscopedSession(postgres_test_engine_write) as session:
         user = session.get(User, legacy_id)
         assert user is not None
         assert user.auth_provider == TEST_AUTH_PROVIDER
@@ -408,7 +408,7 @@ def test_jwks_token_returns_me(
     assert body['email'] == 'alice@example.com'
     assert body['is_instance_admin'] is False
 
-    with Session(db_module.get_engine(jwks_config)) as session:
+    with UnscopedSession(db_module.get_engine(jwks_config)) as session:
         user = session.scalar(
             select(User).where(
                 User.auth_provider == MOCK_AUTH_PROVIDER,

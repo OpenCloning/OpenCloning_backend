@@ -5,7 +5,7 @@ from __future__ import annotations
 from opencloning_cli.stubs import RecordedStub
 import os
 import pytest
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 from typer.testing import CliRunner
 
 import opencloning_db.db as db_module
@@ -23,7 +23,7 @@ def _invoke(*args: str):
 
 
 def _count_users(config) -> int:
-    with Session(db_module.get_engine(config)) as session:
+    with UnscopedSession(db_module.get_engine(config)) as session:
         return session.query(User).count()
 
 
@@ -68,7 +68,7 @@ class TestMigrateCommand:
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''
         assert _count_users(config) == 0
-        with Session(db_module.get_engine(config)) as session:
+        with UnscopedSession(db_module.get_engine(config)) as session:
             assert session.query(SequencingFile).count() == 0
             assert session.query(Sequence).count() == 0
 
@@ -90,7 +90,7 @@ class TestSeedCommand:
         assert result.exit_code == 0, result.output
         assert result.output.strip() == ''
         assert _count_users(config) > 0
-        with Session(db_module.get_engine(config)) as session:
+        with UnscopedSession(db_module.get_engine(config)) as session:
             assert session.query(SequencingFile).count() == 3
             assert session.query(Sequence).count() == 48
 

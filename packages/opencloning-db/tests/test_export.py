@@ -1,7 +1,7 @@
 """Workspace export endpoint."""
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 import pytest
 from opencloning_db.models import Sequence, BaseSequence
 from opencloning_linkml.datamodel.models import CloningStrategy, DatabaseSource
@@ -57,7 +57,7 @@ def test_export_w1_payload(sequences_client):
     }
     sequence_ids = {seq['id'] for seq in payload['sequences']}
     base_sequence_ids_in_db = set()
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         base_sequence_ids_in_db = {
             seq.id for seq in session.scalars(select(BaseSequence).where(BaseSequence.workspace_id == w1))
         }
@@ -103,7 +103,7 @@ def test_export_w1_payload(sequences_client):
         assert strategy_r.status_code == 200, strategy_r.text
         _cloning_strategy_subset(exported, strategy_r.json())
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         sequence_ids_in_db = {seq.id for seq in session.scalars(select(Sequence).where(Sequence.workspace_id == w1))}
     assert len(exported['sequences']) == len(sequence_ids_in_db)
     assert len(exported['sources']) == len(sequence_ids_in_db)

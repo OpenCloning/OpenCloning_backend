@@ -12,7 +12,7 @@ from tests.helpers import workspace_headers
 from opencloning_db.db import sync_cloning_strategy_with_db
 from opencloning_db.context import ReadContext
 from opencloning_db.db import _sync_sequences_via_dseqrecords
-from sqlalchemy.orm import Session
+from opencloning_db.workspace_scope import UnscopedSession
 from pydna.dseqrecord import Dseqrecord
 import pydna.opencloning_models as pydna_opencloning_models
 from pydna.assembly2 import pcr_assembly
@@ -122,7 +122,7 @@ def test_sync_cloning_strategy_with_db_matches_primers_case_insensitively(sequen
         primer.database_id = None
         primer.sequence = primer.sequence.lower()
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -144,7 +144,7 @@ def test_sync_cloning_strategy_with_db_does_not_cross_workspaces(sequences_clien
     for primer in strategy.primers:
         primer.database_id = None
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -164,7 +164,7 @@ def test_sync_cloning_strategy_with_db_warns_and_rematches_on_stale_database_id(
     primer1 = next(p for p in strategy.primers if p.name == 'primer1')
     primer1.database_id = sequences_client['primer2_id']
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -191,7 +191,7 @@ def test_sync_cloning_strategy_with_db_warns_when_database_id_not_in_workspace(s
     strategy.sources[0].database_id = 999_999
     strategy.sources[1].database_id = 999_999
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -235,7 +235,7 @@ def test_sync_cloning_strategy_with_db_links_terminal_by_seguid(sequences_client
     for source in strategy.sources:
         source.database_id = None
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -258,7 +258,7 @@ def test_sync_cloning_strategy_with_db_sequence_stale_database_id(sequences_clie
     terminal_source = _source_for_sequence(strategy, terminal_id)
     terminal_source.database_id = sequences_client['pcr_template_id']
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -286,7 +286,7 @@ def test_sync_cloning_strategy_with_db_sequence_not_found_database_id(sequences_
     terminal_source = _source_for_sequence(strategy, terminal_id)
     terminal_source.database_id = 999_999
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -324,7 +324,7 @@ def test_sync_cloning_strategy_with_db_walks_to_parent_when_terminal_not_in_db(s
     product = pydna_strategy.to_dseqrecords()[0]
     children_of_product = product.cut(AfaI)
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
             pydna_opencloning_models.CloningStrategy.from_dseqrecords(children_of_product),
             session,
@@ -390,7 +390,7 @@ def test_sync_cloning_strategy_with_db_picks_lowest_id_for_ambiguous_seguid(sequ
     for source in strategy.sources:
         source.database_id = None
 
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         result = sync_cloning_strategy_with_db(
             strategy,
             session,
@@ -410,7 +410,7 @@ def test_sync_cloning_strategy_with_db_returns_rotated_or_oriented_sequences(
     wid = sequences_client['w1']
 
     pcr_template, new_template, _ = shifted_pcr_template_and_product
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
             pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_template]),
             session,
@@ -431,7 +431,7 @@ def test_sync_cloning_strategy_with_db_returns_normalized_cloning_strategy(
     wid = sequences_client['w1']
 
     pcr_template, new_template, new_product = shifted_pcr_template_and_product
-    with Session(sequences_client['engine']) as session:
+    with UnscopedSession(sequences_client['engine']) as session:
         pydna_out, sequence_mismatches = _sync_sequences_via_dseqrecords(
             pydna_opencloning_models.CloningStrategy.from_dseqrecords([new_product]),
             session,

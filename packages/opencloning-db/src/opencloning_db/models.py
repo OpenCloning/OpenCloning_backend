@@ -895,3 +895,7 @@ def require_real_sequence(
     if not isinstance(sequence, Sequence):
         raise HTTPException(status_code=status_code, detail=detail)
     return sequence
+
+
+# Registers the workspace scoping listeners on Session. Imported last: workspace_scope imports the models above.
+import opencloning_db.workspace_scope  # noqa: E402,F401
