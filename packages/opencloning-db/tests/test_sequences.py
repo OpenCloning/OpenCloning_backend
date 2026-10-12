@@ -7,6 +7,7 @@ import pytest
 from fastapi import HTTPException
 from unittest.mock import patch
 from opencloning_db.routers import sequences as sequences_router
+from opencloning_db import config as app_config
 from opencloning_db.config import get_config
 from pydna.dseqrecord import Dseqrecord
 from pydna.dseq import Dseq
@@ -2030,8 +2031,8 @@ def test_post_sequencing_files_too_large(sequences_client):
     tok = sequences_client['token_owner_w1']
     wid = sequences_client['w1']
     sid = sequences_client['seq_w1_id']
-    cfg = get_config()
-    with patch.object(cfg, 'max_sequencing_file_size_mb', 1):
+    small_limit_config = get_config().model_copy(update={'max_sequencing_file_size_mb': 1})
+    with patch.object(app_config, 'config', small_limit_config):
         up = post_sequencing_file_upload(c, sid, tok, wid, 'big.ab1', b'A' * (1024 * 1024 + 1))
     assert up.status_code == 413
     listed = c.get(f"/sequences/{sid}/sequencing_files", headers=workspace_headers(tok, wid))
