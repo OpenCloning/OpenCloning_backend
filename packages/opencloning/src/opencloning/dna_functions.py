@@ -174,10 +174,11 @@ async def get_sequences_from_file_url(
     elif math.floor(resp.status_code / 100) != 2:
         raise HTTPException(404, 'file requested from url not found')
     try:
+        # Parsing is CPU-bound, so it runs in a thread to avoid blocking the event loop
         if format == SequenceFileFormat('snapgene'):
-            return custom_file_parser(io.BytesIO(resp.content), format)
+            return await asyncio.to_thread(custom_file_parser, io.BytesIO(resp.content), format)
         else:
-            return custom_file_parser(io.StringIO(resp.text), format)
+            return await asyncio.to_thread(custom_file_parser, io.StringIO(resp.text), format)
     except ValueError as e:
         raise HTTPException(400, f'{e}') from e
 
@@ -222,7 +223,9 @@ async def request_from_addgene(repository_id: str) -> Dseqrecord:
         if file_response.status_code != 200:
             raise HTTPException(503, 'Failed to download sequence file from Addgene')
 
-    dseqr = custom_file_parser(io.StringIO(file_response.text), SequenceFileFormat('genbank'))[0]
+    dseqr = (
+        await asyncio.to_thread(custom_file_parser, io.StringIO(file_response.text), SequenceFileFormat('genbank'))
+    )[0]
 
     dseqr.name = plasmid_name
     dseqr.source = AddgeneIdSource(
@@ -376,7 +379,7 @@ async def annotate_with_plannotate(
                 detail = response.json().get('detail', 'plannotate server error')
                 raise HTTPException(response.status_code, detail)
             data = response.json()
-            dseqr = custom_file_parser(io.StringIO(data['gb_file']), 'genbank')[0]
+            dseqr = (await asyncio.to_thread(custom_file_parser, io.StringIO(data['gb_file']), 'genbank'))[0]
             report = [PlannotateAnnotationReport.model_validate(r) for r in data['report']]
             return dseqr, report, data['version']
         except TimeoutException as e:

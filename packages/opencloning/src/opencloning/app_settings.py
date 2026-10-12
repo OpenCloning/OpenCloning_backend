@@ -3,7 +3,7 @@ This module contains the settings for the app that can be set via environment va
 """
 
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 def parse_bool(value: str | bool) -> bool:
@@ -27,6 +27,14 @@ NCBI_MAX_SEQUENCE_LENGTH = (
     int(os.environ.get('NCBI_MAX_SEQUENCE_LENGTH'))
     if os.environ.get('NCBI_MAX_SEQUENCE_LENGTH') is not None
     else 500000
+)
+# Maximum size (in MB) of uploaded sequence files
+MAX_SEQUENCE_FILE_SIZE_MB = (
+    int(os.environ.get('MAX_SEQUENCE_FILE_SIZE_MB')) if os.environ.get('MAX_SEQUENCE_FILE_SIZE_MB') is not None else 10
+)
+# Maximum size (in MB) of any request body, enforced while it is received (see body_size_limit.py)
+MAX_REQUEST_BODY_SIZE_MB = (
+    int(os.environ.get('MAX_REQUEST_BODY_SIZE_MB')) if os.environ.get('MAX_REQUEST_BODY_SIZE_MB') is not None else 100
 )
 PLANNOTATE_URL = os.environ['PLANNOTATE_URL'] if 'PLANNOTATE_URL' in os.environ else None
 PLANNOTATE_TIMEOUT = int(os.environ['PLANNOTATE_TIMEOUT']) if 'PLANNOTATE_TIMEOUT' in os.environ else 20
@@ -68,6 +76,8 @@ class Settings(BaseModel):
     BATCH_CLONING: bool
     NCBI_API_KEY: str | None
     NCBI_MAX_SEQUENCE_LENGTH: int
+    MAX_SEQUENCE_FILE_SIZE_MB: int = Field(gt=0)
+    MAX_REQUEST_BODY_SIZE_MB: int = Field(gt=0)
     ALLOWED_ORIGINS: list[str]
     PLANNOTATE_URL: str | None
     PLANNOTATE_TIMEOUT: int
@@ -85,6 +95,8 @@ settings = Settings(
     BATCH_CLONING=BATCH_CLONING,
     NCBI_API_KEY=NCBI_API_KEY,
     NCBI_MAX_SEQUENCE_LENGTH=NCBI_MAX_SEQUENCE_LENGTH,
+    MAX_SEQUENCE_FILE_SIZE_MB=MAX_SEQUENCE_FILE_SIZE_MB,
+    MAX_REQUEST_BODY_SIZE_MB=MAX_REQUEST_BODY_SIZE_MB,
     ALLOWED_ORIGINS=ALLOWED_ORIGINS,
     PLANNOTATE_URL=PLANNOTATE_URL,
     PLANNOTATE_TIMEOUT=PLANNOTATE_TIMEOUT,

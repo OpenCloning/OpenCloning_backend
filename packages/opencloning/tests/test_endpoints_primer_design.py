@@ -11,7 +11,7 @@ from itertools import product
 from opencloning.dna_functions import format_sequence_genbank
 import opencloning.main as _main
 from opencloning_linkml.datamodel import Primer as PrimerModel
-from opencloning.pydantic_models import PrimerDesignQuery
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH, PrimerDesignQuery
 from pydna.opencloning_models import SequenceLocationStr
 from opencloning.endpoints.primer_design import (
     PrimerDetailsResponse,
@@ -490,6 +490,12 @@ class PrimerDesignTest(unittest.TestCase):
         response = client.post('/primer_details', json={'sequence': 'ATGCATGCATGCATGCX'})
         self.assertEqual(response.status_code, 422)
 
+        # Sequences up to MAX_PRIMER_LENGTH are accepted, longer ones are rejected with 422
+        response = client.post('/primer_details', json={'sequence': 'A' * MAX_PRIMER_LENGTH})
+        self.assertEqual(response.status_code, 200)
+        response = client.post('/primer_details', json={'sequence': 'A' * (MAX_PRIMER_LENGTH + 1)})
+        self.assertEqual(response.status_code, 422)
+
         # Handles the case where there is no hairpin / homodimer
         response = client.post('/primer_details', json={'sequence': 'AAAA'})
         self.assertEqual(response.status_code, 200)
@@ -532,6 +538,17 @@ class PrimerDesignTest(unittest.TestCase):
 
         # Error 422 if sequence is not DNA
         response = client.post('/primer_heterodimer', json={'sequence1': 'ATGCATGCATGCATGCX', 'sequence2': SEQUENCE2})
+        self.assertEqual(response.status_code, 422)
+
+        # Sequences up to MAX_PRIMER_LENGTH are accepted, longer ones are rejected with 422 (either primer)
+        response = client.post(
+            '/primer_heterodimer', json={'sequence1': 'A' * MAX_PRIMER_LENGTH, 'sequence2': SEQUENCE2}
+        )
+        self.assertEqual(response.status_code, 200)
+        too_long = 'A' * (MAX_PRIMER_LENGTH + 1)
+        response = client.post('/primer_heterodimer', json={'sequence1': too_long, 'sequence2': SEQUENCE2})
+        self.assertEqual(response.status_code, 422)
+        response = client.post('/primer_heterodimer', json={'sequence1': SEQUENCE1, 'sequence2': too_long})
         self.assertEqual(response.status_code, 422)
 
         # Handles long sequences

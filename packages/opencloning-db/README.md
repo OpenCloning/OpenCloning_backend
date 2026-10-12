@@ -47,6 +47,8 @@ Every database route requires `Authorization: Bearer ...`. When the cloning app 
 - `test:<subject>|<display_name>`
 - `test:<subject>|<email>|<display_name>`
 
+`OIDC_TEST_MODE=1` requires `OPENCLONING_TESTING=1` and only localhost/127.0.0.1 origins in `ALLOWED_ORIGINS` and `OIDC_AUTHORIZED_PARTIES`. The origin check is a config sanity check, not a network restriction: any client that can reach the server can authenticate as any user with a test token, so only expose a test-mode server on a trusted network.
+
 Seeded demo users (for example `bootstrap+clerk_test@example.com`) start with no OIDC identity. The first token whose email matches links that row and does not create another workspace.
 
 `OPENCLONING_TESTING=1` only enables `db seed`, `db stubs`, and `/__test/reset-db`. It does not accept or reject bearer tokens.
@@ -56,6 +58,16 @@ Seeded demo users (for example `bootstrap+clerk_test@example.com`) start with no
 Set `OIDC_TEST_MODE=0` and `OIDC_ISSUER_URL`. Optional claim names are `OIDC_SUBJECT_CLAIM`, `OIDC_EMAIL_CLAIM`, and `OIDC_NAME_CLAIM`. `OIDC_AUTHORIZED_PARTIES` lists allowed `azp` values; if unset, it falls back to `ALLOWED_ORIGINS`.
 
 The API loads the issuer discovery document, verifies RS256 session JWTs against JWKS, and requires a matching `azp`.
+
+## Upload limits
+
+Uploaded files are rejected with HTTP 413 when they exceed the configured size. Primer sequences are limited to 1000 bp (not configurable).
+
+| Variable | Default | Applies to |
+| --- | --- | --- |
+| `MAX_SEQUENCE_FILE_SIZE_MB` | `10` | Sequence files and cloning strategy files (`/sequences/validate-upload`, `/sequences/bulk`, `/sequences/cloning_strategy/bulk/validate`) |
+| `MAX_SEQUENCING_FILE_SIZE_MB` | `20` | Each file uploaded to `/sequences/{id}/sequencing_files` |
+| `MAX_REQUEST_BODY_SIZE_MB` | `100` | Whole request body of any endpoint, enforced while it is received (before uploads are written to temporary files) |
 
 ## Database migrations (Alembic)
 

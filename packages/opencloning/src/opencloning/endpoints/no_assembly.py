@@ -29,7 +29,7 @@ router = get_router()
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def restriction(
+def restriction(
     source: RestrictionEnzymeDigestionSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1, max_length=1)],
     restriction_enzymes: Annotated[list[str], Query(default_factory=list)],
@@ -75,7 +75,7 @@ async def restriction(
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def polymerase_extension(
+def polymerase_extension(
     source: PolymeraseExtensionSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1, max_length=1)],
 ):
@@ -102,7 +102,7 @@ async def polymerase_extension(
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def reverse_complement(
+def reverse_complement(
     source: ReverseComplementSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1, max_length=1)],
 ):

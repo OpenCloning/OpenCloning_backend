@@ -129,3 +129,32 @@ def test_set_user_instance_admin_revoke(admin_db_session):
 def test_set_user_instance_admin_not_found(admin_db_session):
     with pytest.raises(RuntimeError, match='User not found'):
         admin_db.set_user_instance_admin('missing@example.com', is_instance_admin=True)
+
+
+def test_user_lookup_does_not_match_substrings(admin_db_session):
+    # Safeguard for the future, in case by accident we setup
+    # ilike, or similar in a query.
+    session, alice, workspace = admin_db_session
+    session.delete(alice)
+    attacker = User(
+        email='alice@example.com.attacker.com',
+        display_name='Attacker',
+        auth_provider='test',
+        external_subject='attacker',
+    )
+    session.add(attacker)
+    session.commit()
+
+    with pytest.raises(RuntimeError, match='User not found'):
+        admin_db.set_user_instance_admin('alice@example.com', is_instance_admin=True)
+    with pytest.raises(RuntimeError, match='User not found'):
+        admin_db.assign_user_to_workspace('alice@example.com', workspace.id, 'owner')
+
+    session.expire(attacker)
+    assert attacker.is_instance_admin is False
+
+
+def test_user_lookup_is_case_insensitive(admin_db_session):
+    session, user, _ = admin_db_session
+    result = admin_db.set_user_instance_admin('  Alice@Example.COM ', is_instance_admin=True)
+    assert result['user_id'] == user.id

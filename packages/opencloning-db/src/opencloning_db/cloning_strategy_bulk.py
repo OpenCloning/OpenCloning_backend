@@ -25,6 +25,7 @@ def validate_and_sync_cloning_strategy_dict(
     ctx: ReadContext,
     *,
     file_name: str | None = None,
+    match_by_sequence: bool = True,
 ) -> CloningStrategySyncResult:
     parsing_warnings: list[str] = []
     try:
@@ -33,7 +34,7 @@ def validate_and_sync_cloning_strategy_dict(
         return CloningStrategySyncResult(file_name=file_name, parsing_errors=[e.detail])
 
     try:
-        sync_result = sync_cloning_strategy_with_db(cs, session, ctx=ctx)
+        sync_result = sync_cloning_strategy_with_db(cs, session, ctx=ctx, match_by_sequence=match_by_sequence)
     except ValueError as e:
         return CloningStrategySyncResult(
             file_name=file_name,

@@ -15,7 +15,7 @@ router = get_router()
 
 
 @router.post('/annotation/get_gateway_sites', response_model=dict[str, list[str]])
-async def get_gateway_sites(
+def get_gateway_sites(
     sequence: TextFileSequence, greedy: bool = Query(False, description='Whether to use the greedy algorithm.')
 ) -> dict[str, list[str]]:
     """

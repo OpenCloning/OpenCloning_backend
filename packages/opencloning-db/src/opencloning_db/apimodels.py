@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field, field_validator
 
 import opencloning_linkml.datamodel.models as opencloning_models
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH
 from opencloning_db.models import (
     BaseSequence,
     SequenceType,
@@ -214,7 +215,7 @@ class PrimerUpdate(ApiModel):
 class PrimerCreate(ApiModel):
     name: StrippedStr
     uid: StrippedStr | None = None
-    sequence: str = Field(min_length=2, pattern=r'^[ACGTacgt]+$')
+    sequence: str = Field(min_length=2, max_length=MAX_PRIMER_LENGTH, pattern=r'^[ACGTacgt]+$')
 
 
 class PrimerBulkSubmission(ApiModel):

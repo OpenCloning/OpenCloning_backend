@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import opencloning_db.db as db_module
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from opencloning_db.utils import normalize_email
@@ -20,6 +20,16 @@ def _parse_workspace_role(role: str) -> WorkspaceRole:
         return WorkspaceRole(role)
     except ValueError as exc:
         raise RuntimeError(f'Invalid role: {role}') from exc
+
+
+def _get_user_by_email(session: Session, email: str) -> User:
+    # Exact (case-insensitive) match
+    users = session.scalars(select(User).where(func.lower(User.email) == normalize_email(email))).all()
+    if not users:
+        raise RuntimeError('User not found')
+    if len(users) > 1:
+        raise RuntimeError(f'Multiple users match email {email}')
+    return users[0]
 
 
 def list_user_emails() -> list[str]:
@@ -37,7 +47,6 @@ def list_workspaces() -> list[dict[str, Any]]:
 
 def assign_user_to_workspace(email: str, workspace_id: int, role: str) -> dict[str, Any]:
     config = get_config()
-    normalized_email = normalize_email(email)
     workspace_role = _parse_workspace_role(role)
 
     with Session(db_module.get_engine(config)) as session:
@@ -46,9 +55,7 @@ def assign_user_to_workspace(email: str, workspace_id: int, role: str) -> dict[s
         except HTTPException as exc:
             raise RuntimeError('Workspace not found') from exc
 
-        user = session.scalar(select(User).where(User.email.ilike(f"%{normalized_email}%")))
-        if user is None:
-            raise RuntimeError('User not found')
+        user = _get_user_by_email(session, email)
 
         membership = session.scalar(
             select(WorkspaceMembership).where(
@@ -75,12 +82,9 @@ def assign_user_to_workspace(email: str, workspace_id: int, role: str) -> dict[s
 
 def set_user_instance_admin(email: str, *, is_instance_admin: bool) -> dict[str, Any]:
     config = get_config()
-    normalized_email = normalize_email(email)
 
     with Session(db_module.get_engine(config)) as session:
-        user = session.scalar(select(User).where(User.email.ilike(f"%{normalized_email}%")))
-        if user is None:
-            raise RuntimeError('User not found')
+        user = _get_user_by_email(session, email)
 
         user.is_instance_admin = is_instance_admin
         session.commit()

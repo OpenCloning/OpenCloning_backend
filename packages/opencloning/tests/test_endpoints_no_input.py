@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 import unittest
 from pydna.dseq import Dseq
@@ -163,3 +164,12 @@ class ManuallyTypedTest(unittest.TestCase):
 
         response = client.post('/manually_typed', json={'source': {'id': 0}, 'sequence': {'id': 0, 'sequence': ''}})
         self.assertEqual(response.status_code, 422)
+
+
+def test_primer_too_long_rejected():
+    from opencloning.pydantic_models import PrimerModel
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        PrimerModel(id=1, name='p', sequence='A' * 1001)
+    assert PrimerModel(id=1, name='p', sequence='A' * 1000).sequence == 'A' * 1000
