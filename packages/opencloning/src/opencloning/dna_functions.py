@@ -150,17 +150,21 @@ async def request_from_addgene(repository_id: str) -> Dseqrecord:
     return dseqr
 
 
+# WekWikGene's firewall blocks (403) requests with the default python-httpx User-Agent
+WEKWIKGENE_HEADERS = {'User-Agent': 'OpenCloning (+https://opencloning.org)'}
+
+
 async def request_from_wekwikgene(repository_id: str) -> Dseqrecord:
     url = f'https://wekwikgene.wllsb.edu.cn/plasmids/{repository_id}'
     async with get_http_client() as client:
-        resp = await client.get(url)
+        resp = await client.get(url, headers=WEKWIKGENE_HEADERS)
     if resp.status_code == 404:
         raise HTTPException(404, 'invalid wekwikgene id')
     soup = BeautifulSoup(resp.content, 'html.parser')
     # Get the sequence file URL from the page
     sequence_file_url = soup.find('a', text=lambda x: x and 'Download Sequence' in x).get('href')
     sequence_name = soup.find('h1', class_='plasmid__info__name').text.replace(' ', '_')
-    seq = (await get_sequences_from_file_url(sequence_file_url, 'snapgene'))[0]
+    seq = (await get_sequences_from_file_url(sequence_file_url, 'snapgene', headers=WEKWIKGENE_HEADERS))[0]
     seq.name = sequence_name
     seq.source = WekWikGeneIdSource(repository_id=repository_id, sequence_file_url=sequence_file_url)
     return seq
