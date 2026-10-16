@@ -463,13 +463,50 @@ class AddgeneTest(unittest.TestCase):
 
     @respx.mock
     def test_token_rejected(self):
-        respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
-            return_value=httpx.Response(401, json={'detail': 'Invalid token.'})
-        )
-        source = AddgeneIdSource(id=1, repository_id='39282')
-        response = client.post('/repository_id/addgene', json=source.model_dump())
-        self.assertEqual(response.status_code, 503)
-        self.assertIn('rejected the ADDGENE_TOKEN', response.json()['detail'])
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setenv('ADDGENE_TOKEN', 'dummy-token')
+        reload(app_settings)
+        try:
+            respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
+                return_value=httpx.Response(401, json={'detail': 'Invalid token.'})
+            )
+            source = AddgeneIdSource(id=1, repository_id='39282')
+            response = client.post('/repository_id/addgene', json=source.model_dump())
+            self.assertEqual(response.status_code, 503)
+            self.assertIn('rejected the ADDGENE_TOKEN', response.json()['detail'])
+        finally:
+            monkeypatch.undo()
+            reload(app_settings)
+
+    @respx.mock
+    def test_genbank_download_fails(self):
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setenv('ADDGENE_TOKEN', 'dummy-token')
+        reload(app_settings)
+        try:
+            respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        'name': 'pFA6a-kanMX6-P81nmt1',
+                        'sequences': {
+                            'public_user_full_sequences': [],
+                            'public_addgene_full_sequences': [{'sequence_id': 240599}],
+                        },
+                    },
+                )
+            )
+            download_route = respx.get('https://api.developers.addgene.org/download/genbank/240599/').mock(
+                return_value=httpx.Response(500)
+            )
+            source = AddgeneIdSource(id=1, repository_id='39282')
+            response = client.post('/repository_id/addgene', json=source.model_dump())
+            self.assertEqual(download_route.call_count, 1)
+            self.assertEqual(response.status_code, 503)
+            self.assertIn('Failed to download sequence file from Addgene', response.json()['detail'])
+        finally:
+            monkeypatch.undo()
+            reload(app_settings)
 
     @respx.mock
     def test_auth_header(self):
