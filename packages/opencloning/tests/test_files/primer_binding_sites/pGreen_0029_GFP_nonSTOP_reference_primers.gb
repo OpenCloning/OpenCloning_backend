@@ -1,0 +1,551 @@
+LOCUS       pGreen_0029_GFP_nonSTOP_primers_2        6425 bp    DNA     circular UNA 10-AUG-2026
+DEFINITION  A new nucleotide sequence entered manually.
+ACCESSION   urn.local...82-kyr2kw0
+VERSION     urn.local...82-kyr2kw0
+KEYWORDS    .
+SOURCE      
+  ORGANISM  .
+FEATURES             Location/Qualifiers
+     misc_feature    137..161
+                     /note="right border"
+                     /Transferred_From="right border"
+                     /Transferred_Similarity="100.00%"
+                     /label="right border"
+     Promoter        436..466
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="lac prom"
+                     /Transferred_Similarity="96.77%"
+                     /label="lac prom"
+     primer_bind     504..519
+                     /%GC="43.8"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="51.0"
+                     /annotation_group="23123618079726969d491a-0a3f-4834-8ea1-f
+                     ce38f4a100a"
+                     /created_by="primer3"
+                     /Sequence="AACAGCTATGACCATG"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="M13R"
+     Promoter        536..555
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="T3 prom"
+                     /Transferred_Similarity="100.00%"
+                     /label="T3 prom"
+     Promoter        596..1430
+                     /created_by="User"
+                     /label="35S Promoter"
+     primer_bind     930..950
+                     /%GC="47.6"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="61.7"
+                     /annotation_group="23123170198364d25b932e-1a82-48a3-af1f-c
+                     5db31c09114"
+                     /created_by="primer3"
+                     /Sequence="AACAGAACTCGCCGTAAAGAC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(7) 35S_Nuc1F "
+     primer_bind     complement(973..994)
+                     /%GC="40.9"
+                     /Hairpin_Tm="54.9"
+                     /Self_Dimer_Tm="None"
+                     /Tm="58.7"
+                     /annotation_group="2312321114466947bb45d9-901a-430b-ad7b-0
+                     10f63595bc8"
+                     /created_by="primer3"
+                     /Sequence="TCTTGTCATTGAGTCGTAAGAG"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(8) 35S_Nuc1R"
+     primer_bind     1019..1039
+                     /%GC="47.6"
+                     /Hairpin_Tm="49.1"
+                     /Self_Dimer_Tm="8.3"
+                     /Tm="62.5"
+                     /annotation_group="23122884302565ac755ac9-4cb1-4260-8fd2-9
+                     862f1011e61"
+                     /created_by="primer3"
+                     /Sequence="AGCACGACACACTTGTCTACT"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(1) 35S_Inter1F "
+     primer_bind     complement(1068..1088)
+                     /%GC="47.6"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="5.3"
+                     /Tm="61.7"
+                     /annotation_group="231230103271186aba5f91-8fea-4180-be77-0
+                     e96a8370289"
+                     /created_by="primer3"
+                     /Sequence="GTCTCAATTGCCCTTTGGTCT"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(2) 35S_Inter1R "
+     primer_bind     1099..1119
+                     /%GC="47.6"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="24.9"
+                     /Tm="59.8"
+                     /annotation_group="2312325213751722702670-2bdb-4667-8432-e
+                     62be8c77bd5"
+                     /created_by="primer3"
+                     /Sequence="AGGGTAATATCCGGAAACCTC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(9) 35S_Nuc2F "
+     primer_bind     complement(1178..1198)
+                     /%GC="52.4"
+                     /Hairpin_Tm="57.5"
+                     /Self_Dimer_Tm="13.0"
+                     /Tm="62.5"
+                     /annotation_group="231229180170684efbaff0-9fc8-4ed0-893c-8
+                     18634592a8b"
+                     /created_by="primer3"
+                     /Sequence="GATGGCATTTGTAGGAGCCAC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(10) 35S_Nuc2R "
+     primer_bind     1208..1228
+                     /%GC="47.6"
+                     /Hairpin_Tm="40.2"
+                     /Self_Dimer_Tm="12.5"
+                     /Tm="62.1"
+                     /annotation_group="23123039887899eeef3cb0-9987-4dc1-aa09-4
+                     c6300e3f461"
+                     /created_by="primer3"
+                     /Sequence="AAGGAAAGGCCATCGTTGAAG"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(3) 35S_Inter2F "
+     primer_bind     complement(1242..1261)
+                     /%GC="55.0"
+                     /Hairpin_Tm="47.6"
+                     /Self_Dimer_Tm="5.4"
+                     /Tm="61.5"
+                     /annotation_group="2312307043689446f473d7-ab2b-40e7-8cd2-a
+                     5baa8dc1f2a"
+                     /created_by="primer3"
+                     /Sequence="GTCCATCTTTGGGACCACTG"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(4) 35S_Inter2R "
+     primer_bind     1281..1301
+                     /%GC="47.6"
+                     /Hairpin_Tm="40.2"
+                     /Self_Dimer_Tm="None"
+                     /Tm="60.9"
+                     /annotation_group="231229501561706e81337c-fa67-4aab-bf46-9
+                     c619107aa2d"
+                     /created_by="primer3"
+                     /Sequence="CGTGGAAAAAGAAGACGTTCC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(11) 35S_Nuc3F "
+     primer_bind     complement(1320..1341)
+                     /%GC="40.9"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="11.3"
+                     /Tm="58.2"
+                     /annotation_group="23122980716424c4107c2d-b1bb-459a-9b2e-c
+                     99a65ca110c"
+                     /created_by="primer3"
+                     /Sequence="GGAGATATCACATCAATCCACT"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(12) 35S_Nuc3R "
+     primer_bind     1359..1379
+                     /%GC="52.4"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="62.0"
+                     /annotation_group="23123105298892e7087ff9-66f2-4e23-8e57-5
+                     40741135bec"
+                     /created_by="primer3"
+                     /Sequence="CGCACAATCCCACTATCCTTC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(5) 35S_Inter3F "
+     primer_bind     complement(1409..1430)
+                     /%GC="40.9"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="59.0"
+                     /annotation_group="23123134678859f3f9d640-fff7-4510-b492-5
+                     97ee17a98c7"
+                     /created_by="primer3"
+                     /Sequence="CGTGTTCTCTCCAAATGAAATG"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="(6) 35S_Inter3R "
+     ORF             1443..2159
+                     /created_by="User"
+                     /Transferred_From="RS-GFP"
+                     /Transferred_Similarity="99.72%"
+                     /label="RS-GFP"
+     primer_bind     1443..1466
+                     /created_by="primer3"
+                     /Tm_(binding_region)="57.7"
+                     /Tm_(with_extension)="64.2"
+                     /%GC_(binding_region)="33.3"
+                     /%GC_(with_extension)="40.0"
+                     /Hairpin_Tm_(with_extension)="40.3"
+                     /Self_Dimer_Tm_(with_extension)="13.9"
+                     /annotation_group="231235138730193f277587-285f-4a41-8d22-a
+                     905aa7a2ddc"
+                     /Sequence="ATGAGTAAAGGAGAAGAACTTTTC"
+                     /Mismatches=0
+                     /Extension="CTCGAG"
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="GFPsense_F"
+     primer_bind     1443..1466
+                     /created_by="primer3"
+                     /Tm_(binding_region)="57.7"
+                     /Tm_(with_extension)="61.7"
+                     /%GC_(binding_region)="33.3"
+                     /%GC_(with_extension)="33.3"
+                     /Hairpin_Tm_(with_extension)="38.2"
+                     /Self_Dimer_Tm_(with_extension)="None"
+                     /annotation_group="231232978524323fe05ff8-8278-45f7-b0e9-d
+                     9e1a71b3cbe"
+                     /Sequence="ATGAGTAAAGGAGAAGAACTTTTC"
+                     /Mismatches=0
+                     /Extension="ACTAGT"
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="antiGFP_R"
+     primer_bind     1446..1469
+                     /created_by="primer3"
+                     /Tm_(binding_region)="58.8"
+                     /Tm_(with_extension)="65.2"
+                     /%GC_(binding_region)="33.3"
+                     /%GC_(with_extension)="40.0"
+                     /Hairpin_Tm_(with_extension)="38.2"
+                     /Self_Dimer_Tm_(with_extension)="13.9"
+                     /annotation_group="23123433248121392d481b-e5ec-4793-83ce-3
+                     c240f03bd37"
+                     /Sequence="AGTAAAGGAGAAGAACTTTTCACT"
+                     /Mismatches=0
+                     /Extension="CTCGAG"
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="GFPs_NS_F"
+     primer_bind     1530..1549
+                     /%GC="55.0"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="63.3"
+                     /annotation_group="2312335985993795ee7464-e3e4-4b7c-bf4e-1
+                     e22a087a3a5"
+                     /created_by="primer3"
+                     /Sequence="AGTGGAGAGGGTGAAGGTGA"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="gfp-genomF"
+     primer_bind     complement(2045..2064)
+                     /%GC="50.0"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="None"
+                     /Tm="61.8"
+                     /annotation_group="231233960336484ed21144-1179-4419-a298-2
+                     089959d6af2"
+                     /created_by="primer3"
+                     /Sequence="AAAGGGCAGATTGTGTGGAC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="gfp-genomR"
+     Terminator      2213..2462
+                     /created_by="User"
+                     /label="NosT"
+     primer_bind     2214..2232
+                     /created_by="primer3"
+                     /Tm_(binding_region)="57.2"
+                     /Tm_(with_extension)="65.1"
+                     /%GC_(binding_region)="36.8"
+                     /%GC_(with_extension)="44.0"
+                     /Hairpin_Tm_(with_extension)="40.9"
+                     /Self_Dimer_Tm_(with_extension)="13.9"
+                     /annotation_group="2312369519407807d12d06-1576-4ac4-9111-d
+                     5ee98809863"
+                     /Sequence="ATCGTTCAAACATTTGGCA"
+                     /Mismatches=0
+                     /Extension="CTCGAG"
+                     /#_Local_Off-target_Sites=1
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2<br>"
+                     /Local_Off-target_#1="<html>ATCGTTCAAACATTTGGCA</html>"
+                     /Location_#1="<html>3,812 -&gt; 3,830 (pGreen 0029 GFP
+                     nonSTOP primers 2)</html>"
+                     /label="pAF"
+     primer_bind     complement(2442..2461)
+                     /created_by="primer3"
+                     /Tm_(binding_region)="54.9"
+                     /Tm_(with_extension)="63.0"
+                     /%GC_(binding_region)="40.0"
+                     /%GC_(with_extension)="46.2"
+                     /Hairpin_Tm_(with_extension)="None"
+                     /Self_Dimer_Tm_(with_extension)="10.8"
+                     /annotation_group="23123846819421f9acdbf2-adb1-49dd-b902-9
+                     981ac6627e7"
+                     /Sequence="TAGTAACATAGATGACACCG"
+                     /Mismatches=0
+                     /Extension="GGTACC"
+                     /#_Local_Off-target_Sites=1
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2<br>"
+                     /Local_Off-target_#1="<html>TAGTAACATAGATGACACCG</html>"
+                     /Location_#1="<html>4,039 &lt;- 4,058 (pGreen 0029 GFP
+                     nonSTOP primers 2)</html>"
+                     /label="pAR"
+     Promoter        complement(2476..2494)
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="T7 prom"
+                     /Transferred_Similarity="100.00%"
+                     /label="T7 prom"
+     Reporter        2498..2658
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="lacZ_a reporter"
+                     /Transferred_Similarity="99.38%"
+                     /label="lacZ_a reporter"
+     primer_bind     complement(2501..2517)
+                     /%GC="52.9"
+                     /Hairpin_Tm="None"
+                     /Self_Dimer_Tm="9.5"
+                     /Tm="58.4"
+                     /annotation_group="23123581905241bbe4d240-3b20-43da-8252-6
+                     d8732c26782"
+                     /created_by="primer3"
+                     /Sequence="GTAAAACGACGGCCAGT"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="M13F"
+     Promoter        2691..2964
+                     /created_by="User"
+                     /label="Pnos"
+     primer_bind     2699..2718
+                     /%GC="50.0"
+                     /Hairpin_Tm="57.0"
+                     /Self_Dimer_Tm="8.6"
+                     /Tm="60.3"
+                     /annotation_group="2312399226940088f9a99e-21f1-4d69-9b6b-a
+                     0ee7c086d03"
+                     /created_by="primer3"
+                     /Sequence="AAGGGAGTCACGTTATGACC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="PnosF"
+     Marker          2968..3768
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="NTP_II marker"
+                     /Transferred_Similarity="95.56%"
+                     /label="NTP_II marker"
+     primer_bind     complement(3313..3332)
+                     /%GC="50.0"
+                     /Hairpin_Tm="55.4"
+                     /Self_Dimer_Tm="23.6"
+                     /Tm="59.7"
+                     /annotation_group="231236546427428cd7dde5-2f89-4899-8046-9
+                     8277c4d84b6"
+                     /created_by="primer3"
+                     /Sequence="GCATCAGCCATGATGGATAC"
+                     /Mismatches=0
+                     /#_Local_Off-target_Sites=0
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2"
+                     /label="NPTRgenom"
+     Terminator      3798..4028
+                     /created_by="User"
+                     /label="NosT"
+     primer_bind     3812..3830
+                     /created_by="primer3"
+                     /Tm_(binding_region)="57.2"
+                     /Tm_(with_extension)="65.1"
+                     /%GC_(binding_region)="36.8"
+                     /%GC_(with_extension)="44.0"
+                     /Hairpin_Tm_(with_extension)="40.9"
+                     /Self_Dimer_Tm_(with_extension)="13.9"
+                     /annotation_group="231237726631381a7b8f39-60b7-40dc-b8a2-1
+                     5fa0d35cf36"
+                     /Sequence="ATCGTTCAAACATTTGGCA"
+                     /Mismatches=0
+                     /Extension="CTCGAG"
+                     /#_Local_Off-target_Sites=1
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2<br>"
+                     /Local_Off-target_#1="<html>ATCGTTCAAACATTTGGCA</html>"
+                     /Location_#1="<html>2,214 -&gt; 2,232 (pGreen 0029 GFP
+                     nonSTOP primers 2)</html>"
+                     /label="pAF"
+     primer_bind     complement(4039..4058)
+                     /created_by="primer3"
+                     /Tm_(binding_region)="54.9"
+                     /Tm_(with_extension)="63.0"
+                     /%GC_(binding_region)="40.0"
+                     /%GC_(with_extension)="46.2"
+                     /Hairpin_Tm_(with_extension)="None"
+                     /Self_Dimer_Tm_(with_extension)="10.8"
+                     /annotation_group="2312391964475282d4cf7d-610d-4c7e-8dbc-2
+                     5a8639c04ab"
+                     /Sequence="TAGTAACATAGATGACACCG"
+                     /Mismatches=0
+                     /Extension="GGTACC"
+                     /#_Local_Off-target_Sites=1
+                     /Local_Off-target="pGreen 0029 GFP nonSTOP primers 2<br>"
+                     /Local_Off-target_#1="<html>TAGTAACATAGATGACACCG</html>"
+                     /Location_#1="<html>2,442 &lt;- 2,461 (pGreen 0029 GFP
+                     nonSTOP primers 2)</html>"
+                     /label="pAR"
+     misc_feature    4085..4108
+                     /created_by="User"
+                     /label="Left Border"
+     Marker          4967..5782
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="kan2 marker"
+                     /Transferred_Similarity="99.51%"
+                     /label="kan2 marker"
+     misc_feature    5867..61
+                     /Imported_from="<a
+                     href=""http://wishart.biology.ualberta.ca/PlasMapper"">Pla
+                     sMapper</a>"
+                     /Transferred_From="pBR322 origin"
+                     /Transferred_Similarity="99.68%"
+                     /label="pBR322 origin"
+                     /note="Geneious type: Origin of Replication"
+ORIGIN      
+        1 gcgtcgattt ttgtgatgct cgtcaggggg gcggagccta tggaaaaacg ccagcaacgc
+       61 ggccttttta cggttcctgg ccttttgctg gccttttgct cacatgagat ctcaaacaaa
+      121 cacatacagc gacttagttt acccgccaat atatcctgtc aaggccttca tgttctttcc
+      181 tgcgttatcc cctgattctg tggataaccg tattaccgcc tttgagtgag ctgataccgc
+      241 tcgccgcagc cgaacgaccg agcgcagcga gtcagtgagc gaggaagcgg aagagcgccc
+      301 aatacgcaaa ccgcctctcc ccgcgcgttg gccgattcat taatgcagct ggcacgacag
+      361 gtttcccgac tggaaagcgg gcagtgagcg caacgcaatt aatgtgagtt agctcactca
+      421 ttaggcaccc caggctttac actttatgnc ttccggctcg tatgttgtgt ggaattgtga
+      481 gcggataaca atttcacaca ggaaacagct atgaccatga ttacgccaag ctcggaatta
+      541 accctcacta aagggaacaa aagctggagc tccaccgcgg tggcggccgg tccccagatt
+      601 agccttttca atttcagaaa gaatgctaac ccacagatgg ttagagaggc ttacgcagca
+      661 ggtctcatca agacgatcta cccgagcaat aatctccagg aaatcaaata ccttcccaag
+      721 aaggttaaag atgcagtcaa aagattcagg actaactgca tcaagaacac agagaaagat
+      781 atatttctca agatcagaag tactattcca gtatggacga ttcaaggctt gcttcacaaa
+      841 ccaaggcaag taatagagat tggagtctct aaaaaggtag ttcccactga atcaaaggcc
+      901 atggagtcaa agattcaaat agaggaccta acagaactcg ccgtaaagac tggcgaacag
+      961 ttcatacaga gtctcttacg actcaatgac aagaagaaaa tcttcgtcaa catggtggag
+     1021 cacgacacac ttgtctactc caaaaatatc aaagatacag tctcagaaga ccaaagggca
+     1081 attgagactt ttcaacaaag ggtaatatcc ggaaacctcc tcggattcca ttgcccagct
+     1141 atctgtcact ttattgtgaa gatagtggaa aaggaaggtg gctcctacaa atgccatcat
+     1201 tgcgataaag gaaaggccat cgttgaagat gcctctgccg acagtggtcc caaagatgga
+     1261 cccccaccca cgaggagcat cgtggaaaaa gaagacgttc caaccacgtc ttcaaagcaa
+     1321 gtggattgat gtgatatctc cactgacgta agggatgacg cacaatccca ctatccttcg
+     1381 caagaccctt cctctatata aggaagttca tttcatttgg agagaacacg ggggactcta
+     1441 gaatgagtaa aggagaagaa cttttcactg gagttgtccc aattcttgtt gaattagatg
+     1501 gtgatgttaa tgggcacaaa ttttctgtca gtggagaggg tgaaggtgat gcaacatacg
+     1561 gaaaacttac ccttaaattt atttgcacta ctggaaaact acctgttcca tggccaacac
+     1621 ttgtcactac tttcacttat ggtgttcaat gcttttcaag atacccagat catatgaagc
+     1681 ggcacgactt cttcaagagc gccatgcctg agggatacgt gcaggagagg accatctctt
+     1741 tcaaggacga cgggaactac aagacacgtg ctgaagtcaa gtttgaggga gacaccctcg
+     1801 tcaacaggat cgagcttaag ggaatcgatt tcaaggagga cggaaacatc ctcggccaca
+     1861 agttggaata caactacaac tcccacaacg tatacatcac ggcagacaaa caaaagaatg
+     1921 gaatcaaagc taacttcaaa attagacaca acattgaaga tggaagcgtt caactagcag
+     1981 accattatca acaaaatact ccaattggcg atggccctgt ccttttacca gacaaccatt
+     2041 acctgtccac acaatctgcc ctttcgaaag atcccaacga aaagagagac cacatggtcc
+     2101 ttcttgagtt tgtaacagct gctgggatta cacatggcat ggatgaacta tacaaaggat
+     2161 cccccgggct gcaggaattc gatatcaagc ttatcgatac cgtcgacctc gagatcgttc
+     2221 aaacatttgg caataaagtt tcttaagatt gaatcctgtt gccggtcttg cgatgattat
+     2281 catataattt ctgttgaatt acgttaagca tgtaataatt aacatgtaat gcatgacgtt
+     2341 atttatgaga tgggttttta tgattagagt cccgcaatta tacatttaat acgcgataga
+     2401 aaacaaaata tagcgcgcaa actaggataa attatcgcgc gcggtgtcat ctatgttact
+     2461 aggtacccaa ttcgccctat agtgagtcgt attacaattc actggccgtc gttttacaac
+     2521 gtcgtgactg ggaaaaccct ggcgttaccc aacttaatcg ccttgcagca catccccctt
+     2581 tcgccagctg gcgtaatagc gaagaggccc gcaccgatcg cccttcccaa cagttgcgca
+     2641 gcctgaatgg cgaatggcgc gaaattgtaa acgttaatgt tatcgataca tgagaattaa
+     2701 gggagtcacg ttatgacccc cgccgatgac gcgggacaag ccgttttacg tttggaactg
+     2761 acagaaccgc aacgttgaag gagccactca gccgcgggtt tctggagttt aatgagctaa
+     2821 gcacatacgt cagaaaccat tattgcgcgt tcaaaagtcg cctaaggtca ctatcagcta
+     2881 gcaaatattt cttgtcaaaa atgctccact gacgttccat aaattcccct cggtatccaa
+     2941 ttagagtctc atattcactc tcaactcgat cgaggcatga ttgaacaaga tggattgcac
+     3001 gcaggttctc cggccgcttg ggtggagagg ctattcggct atgactgggc acaacagaca
+     3061 atcggctgct ctgatgccgc cgtgttccgg ctgtcagcgc aggggcgccc ggttcttttt
+     3121 gtcaagaccg acctgtccgg tgccctgaat gaactccaag acgaggcagc gcggctatcg
+     3181 tggctggcca cgacgggcgt tccttgcgca gctgtgctcg acgttgtcac tgaagcggga
+     3241 agggactggc tgctattggg cgaagtgccg gggcaggatc tcctgtcatc tcaccttgct
+     3301 cctgccgaga aagtatccat catggctgat gcaatgcggc ggctgcatac gcttgatccg
+     3361 gctacctgcc cattcgacca ccaagcgaaa catcgcatcg agcgaggacg tactcggatg
+     3421 gaagccggtc ttgtcgatca ggatgatctg gacgaagagc atcaggggct cgcgccagcc
+     3481 gaactgttcg ccaggctcaa ggcgcggatg cccgacggcg aggatctcgt cgtgacccag
+     3541 ggcgatgcct gcttgccgaa tatcatggtg gaaaatggcc gcttttctgg attcatcgac
+     3601 tgtggccggc tgggtgtggc ggaccgctat caggacatag cgttggctac ccgtgatatt
+     3661 gctgaagagc ttggcggcga atgggctgac cgcttcctcg tgctttacgg tatcgccgct
+     3721 cccgattcgc agcgcatcgc cttctatcgc cttcttgacg agttcttctg agcgggactc
+     3781 tggggttcgg actctagcta gagtcaagca gatcgttcaa acatttggca ataaagtttc
+     3841 ttaagattga atcctgttgc cggtcttgcg atgattatca tataatttct gttgaattac
+     3901 gttaagcatg taataattaa catgtaatgc atgacgttat ttatgagatg ggttttttga
+     3961 ttagagtccc gcaattatac atttaatacg cgatagaaaa caaaatatag cgcgcaaact
+     4021 aggataaatt atcgcgcgcg gtgtcatcta tgttactaga tcgaccggca tgcaagctga
+     4081 taacgttaca ccacaatata tcctgccaag atctaattcc ggggatcgga aatccagaag
+     4141 cccgagaggt tgccgccttt cgggcttttt ctttttcaaa aaaaaaaatt tataaaacga
+     4201 tctgttgcgg ccggccgccg ggttgtgggc aaaggcgctg gcgctcgacg gtgggcaacc
+     4261 gcttgcggtt gtccacgggc ggagccggtg cgcgtagcgc attgtccaca agccaagggc
+     4321 gaccaataat tgatatatat attcataatt gaaaagctaa ttgaacatac tacttgctgt
+     4381 aactacttgc cggagcgagg ggtgtttgca agctgttgat ctgaaagggc tattagcgtt
+     4441 ctcacgtgcc tttttgatta gcgatttcac gtgaccttat tagcgatttc acgtactccg
+     4501 attagcgatt tcacgtaccc tgattagcga tttcacgtgg atagtttttg gagcgggccg
+     4561 gaaagccccg tgaatcaagg ctttgcgggg cattagcggt ttcacgtgga taactaccct
+     4621 ctatccacag gcttccgggg ataaaaaagc ccgctcgacg gcgggctgtt ggatggggat
+     4681 cgcctgaatc gccccatcat ccagccagaa agtgagggag ccacggttga tgagagcttt
+     4741 gttgtaggtg gaccagttgg tgattttgaa cttttgcttt gccacggaac ggtctgcgtt
+     4801 gtcgggaaga tgcgtgatct gatccttcaa ctcagcaaaa gttcgattta ttcaacaaag
+     4861 ccacgttgtg tctcaaaatc tctgatgtta cattgcacaa gataaaaata tatcatcatg
+     4921 aacaataaaa ctgtctgctt acataaacag taatacaagg ggtgttatga gccatattca
+     4981 acgggaaacg tcttgctcca ggccgcgatt aaattccaac atggatgctg atttatatgg
+     5041 gtataaatgg gctcgcgata atgtcgggca atcaggtgcg acaatctatg gattgtatgg
+     5101 gaagcccgat gcgccagagt tgtttctgaa acatggcaaa ggtagcgttg ccaatgatgt
+     5161 tacagatgag atggtcagac taaactggct gacggaattt atgcctcttc cgaccatcaa
+     5221 gcattttatc cgtactcctg atgatgcatg gttactcacc actgcgatcc cagggaaaac
+     5281 agcattccag gtattagaag aatatcctga ttcaggtgaa aatattgttg atgcgctggc
+     5341 agtgttcctg cgccggttgc attcgattcc tgtttgtaat tgtcctttta acagcgatcg
+     5401 cgtatttcgt ctcgctcagg cgcaatcacg aatgaataac ggtttggttg atgcgagtga
+     5461 ttttgatgac gagcgtaatg gctggcctgt tgaacaagtc tggaaagaaa tgcataaact
+     5521 tttgccattc tcaccggatt cagtcgtcac tcatggtgat ttctcacttg ataaccttat
+     5581 ttttgacgag gggaaattaa taggttgtat tgatgttgga cgagtcggaa tcgcagaccg
+     5641 ataccaggat cttgccatcc tatggaactg cctcggtgag ttttctcctt cattacagaa
+     5701 acggcttttt caaaaatatg gtattgataa tcctgatatg aataaattgc agtttcattt
+     5761 gatgctcgat gagtttttct aatcagaatt ggttaattgg ttgtaaccat gaccaaaatc
+     5821 ccttaacgtg agttttcgtt ccactgagcg tcagaccccg tagaaaagat caaaggatct
+     5881 tcttgagatc ctttttttct gcgcgtaatc tgctgcttgc aaacaaaaaa accaccgcta
+     5941 ccagcggtgg tttgtttgcc ggatcaagag ctaccaactc tttttccgaa ggtaactggc
+     6001 ttcagcagag cgcagatacc aaatactgtc cttctagtgt agccgtagtt aggccaccac
+     6061 ttcaagaact ctgtagcacc gcctacatac ctcgctctgc taatcctgtt accagtggct
+     6121 gctgccagtg gcgataagtc gtgtcttacc gggttggact caagacgata gttaccggat
+     6181 aaggcgcagc ggtcgggctg aacggggggt tcgtgcacac agcccagctt ggagcgaacg
+     6241 acctacaccg aactgagata cctacagcgt gagctatgag aaagcgccac gcttcccgaa
+     6301 gggagaaagg cggacaggta tccggtaagc ggcagggtcg gaacaggaga gcgcacgagg
+     6361 gagcttccag ggggaaacgc ctggtatctt tatagtcctg tcgggtttcg ccacctctga
+     6421 cttga
+//
