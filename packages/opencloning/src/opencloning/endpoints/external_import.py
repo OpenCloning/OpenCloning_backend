@@ -329,19 +329,9 @@ async def get_from_repository_id_addgene(source: AddgeneIdSource):
     except Exception as exception:
         handle_repository_errors(exception, 'Addgene')
 
-    return format_products(
-        source.id,
-        [dseq],
-        source if source.sequence_file_url is not None else None,
-        source.output_name,
-        wrong_completed_source_error_message=f'''
-        The provided source is not valid.
-        We found the following:
-          - repository_id: {dseq.source.repository_id}
-          - sequence_file_url: {dseq.source.sequence_file_url}
-          - addgene_sequence_type: {dseq.source.addgene_sequence_type}
-        ''',
-    )
+    # sequence_file_url and addgene_sequence_type in the request are not validated (the urls served by
+    # Addgene have changed over time), the returned source always contains the current values.
+    return format_products(source.id, [dseq], None, source.output_name)
 
 
 @router.post(

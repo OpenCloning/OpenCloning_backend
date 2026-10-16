@@ -61,8 +61,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
           OPENCLONING_TEST_DATABASE_URL: postgresql+psycopg://dbuser:dbpassword@localhost:5432/opencloning_test
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
-          ADDGENE_USERNAME: ${{ secrets.ADDGENE_USERNAME }}
-          ADDGENE_PASSWORD: ${{ secrets.ADDGENE_PASSWORD }}
+          ADDGENE_TOKEN: ${{ secrets.ADDGENE_TOKEN }}
         run: |
           uv run pytest --tb=short -v --capture=no --cov=packages/opencloning/src --cov=packages/opencloning-db/src --cov-report term --cov-report xml:coverage.xml
 
@@ -119,8 +118,7 @@ jobs:
       - name: Run tests in container (Compose)
         env:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
-          ADDGENE_USERNAME: ${{ secrets.ADDGENE_USERNAME }}
-          ADDGENE_PASSWORD: ${{ secrets.ADDGENE_PASSWORD }}
+          ADDGENE_TOKEN: ${{ secrets.ADDGENE_TOKEN }}
         run: |
           docker compose \
             -f docker/docker-compose.postgres.yml \

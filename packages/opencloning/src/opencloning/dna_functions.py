@@ -1,7 +1,6 @@
 from fastapi import HTTPException
-from urllib.parse import quote, urljoin
+from urllib.parse import quote
 import math
-import asyncio
 from Bio.Restriction.Restriction import RestrictionBatch
 from Bio.Seq import reverse_complement
 from pydna.dseqrecord import Dseqrecord
@@ -29,83 +28,10 @@ from pydna.parsers import parse as pydna_parse
 import io
 
 from opencloning.catalogs import iGEM2024_catalog, openDNA_collections_catalog, seva_catalog, snapgene_catalog
-from . import app_settings
+from . import addgene_api
 from .http_client import get_http_client, ConnectError, TimeoutException
 from .ncbi_requests import get_genbank_sequence
 from typing import Callable
-
-
-class AddgeneClientManager:
-    def __init__(self):
-        self._client = None
-        self._client_loop = None
-        self._login_lock = asyncio.Lock()
-        self._base_url = 'https://www.addgene.org'
-        self._login_url = 'https://www.addgene.org/users/login/'
-
-    async def get_client(self):
-        running_loop = asyncio.get_running_loop()
-        if self._client is None or self._client_loop is not running_loop:
-            self._client = get_http_client()
-            self._client_loop = running_loop
-        return self._client
-
-    async def get_page(self, addgene_id: str) -> BeautifulSoup:
-        url = f'{self._base_url}/{addgene_id}/sequences/'
-        resp = await (await self.get_client()).get(url)
-        if resp.status_code == 404:
-            raise HTTPException(404, 'wrong addgene id')
-        bs = BeautifulSoup(resp.content, 'html.parser')
-        if _has_addgene_anonymous_sequence_alert(bs):
-            resp = await self.login_and_get(f'/{addgene_id}/sequences/')
-            bs = BeautifulSoup(resp.content, 'html.parser')
-            if not _has_addgene_anonymous_sequence_alert(bs):
-                return bs
-            raise HTTPException(  # pragma: no cover
-                503,
-                'could not access Addgene sequences with the current session. Check ADDGENE_USERNAME/ADDGENE_PASSWORD and ensure your access complies with Addgene Terms of Use. For more information, see README.md.',
-            )
-        else:  # pragma: no cover
-            # This cannot be reached in the tests because it re-logs every time
-            return bs
-
-    async def login_and_get(self, redirect_url: str):
-        addgene_username = app_settings.settings.ADDGENE_USERNAME
-        addgene_password = app_settings.settings.ADDGENE_PASSWORD
-        if addgene_username is None or addgene_password is None:
-            raise HTTPException(
-                503,
-                'Addgene access requires credentials. Please set ADDGENE_USERNAME and ADDGENE_PASSWORD environment '
-                'variables and ensure your use complies with Addgene Terms of Use. For more information, see README.md.',
-            )
-
-        async with self._login_lock:
-            addgene_client = await self.get_client()
-            login_page_response = await addgene_client.get(self._login_url)
-            login_page_soup = BeautifulSoup(login_page_response.content, 'html.parser')
-            csrf_input = login_page_soup.find('input', attrs={'name': 'csrfmiddlewaretoken'})
-            if csrf_input is None or csrf_input.get('value') is None:  # pragma: no cover
-                raise HTTPException(503, 'could not retrieve Addgene login token')
-
-            login_payload = {
-                'username': addgene_username,
-                'password': addgene_password,
-                'csrfmiddlewaretoken': csrf_input['value'],
-                'next': redirect_url,
-            }
-            login_response = await addgene_client.post(
-                self._login_url, data=login_payload, headers={'Referer': self._login_url}, follow_redirects=True
-            )
-            if login_response.status_code >= 400:  # pragma: no cover
-                raise HTTPException(503, 'could not log in to Addgene')
-            return login_response
-
-
-_addgene_manager = AddgeneClientManager()
-
-
-def _has_addgene_anonymous_sequence_alert(soup: BeautifulSoup) -> bool:
-    return soup.find(class_='anonymous-user-sequence-alert') is not None
 
 
 def format_sequence_genbank(seq: Dseqrecord, seq_name: str = None) -> TextFileSequence:
@@ -196,17 +122,15 @@ async def request_from_snapgene(plasmid_set: dict, plasmid_name: str) -> Dseqrec
 
 
 async def request_from_addgene(repository_id: str) -> Dseqrecord:
-    bs = await _addgene_manager.get_page(repository_id)
-    addgene_client = await _addgene_manager.get_client()
-    # Get a span.material-name from the soup, see https://github.com/OpenCloning/OpenCloning_backend/issues/182
-    plasmid_name = bs.find('span', class_='material-name').text.replace(' ', '_')
+    plasmid = await addgene_api.get_plasmid_with_sequences(repository_id)
 
-    # Find the link to either the addgene-full (preferred) or depositor-full (secondary)
-    for addgene_sequence_type in ['depositor-full', 'addgene-full']:
-        if bs.find(id=addgene_sequence_type) is not None:
-            sequence_links = bs.find(id=addgene_sequence_type).find_all(class_='genbank-file-download')
-            sequence_file_url = sequence_links[0].get('href')
-            sequence_file_url = urljoin('https://www.addgene.org', sequence_file_url)
+    # Prefer the depositor full sequence, then the addgene full sequence
+    for addgene_sequence_type, key in [
+        ('depositor-full', 'public_user_full_sequences'),
+        ('addgene-full', 'public_addgene_full_sequences'),
+    ]:
+        if plasmid['sequences'][key]:
+            sequence_id = plasmid['sequences'][key][0]['sequence_id']
             break
     else:
         raise HTTPException(
@@ -214,36 +138,33 @@ async def request_from_addgene(repository_id: str) -> Dseqrecord:
             f'The requested plasmid does not have full sequences, see https://www.addgene.org/{repository_id}/sequences/',
         )
 
-    try:
-        file_response = await addgene_client.get(sequence_file_url, follow_redirects=True)
-    except HTTPException:  # pragma: no cover
-        await _addgene_manager.login_and_get('')
-        file_response = await addgene_client.get(sequence_file_url, follow_redirects=True)
-        if file_response.status_code != 200:
-            raise HTTPException(503, 'Failed to download sequence file from Addgene')
+    genbank_text = await addgene_api.download_genbank(sequence_id)
+    dseqr = custom_file_parser(io.StringIO(genbank_text), SequenceFileFormat('genbank'))[0]
 
-    dseqr = custom_file_parser(io.StringIO(file_response.text), SequenceFileFormat('genbank'))[0]
-
-    dseqr.name = plasmid_name
+    dseqr.name = plasmid['name'].replace(' ', '_')
     dseqr.source = AddgeneIdSource(
         repository_id=repository_id,
-        sequence_file_url=sequence_file_url,
+        sequence_file_url=addgene_api.genbank_api_url(sequence_id),
         addgene_sequence_type=addgene_sequence_type,
     )
     return dseqr
 
 
+# WekWikGene's firewall blocks (403) requests with the default python-httpx User-Agent
+WEKWIKGENE_HEADERS = {'User-Agent': 'OpenCloning (+https://opencloning.org)'}
+
+
 async def request_from_wekwikgene(repository_id: str) -> Dseqrecord:
     url = f'https://wekwikgene.wllsb.edu.cn/plasmids/{repository_id}'
     async with get_http_client() as client:
-        resp = await client.get(url)
+        resp = await client.get(url, headers=WEKWIKGENE_HEADERS)
     if resp.status_code == 404:
         raise HTTPException(404, 'invalid wekwikgene id')
     soup = BeautifulSoup(resp.content, 'html.parser')
     # Get the sequence file URL from the page
     sequence_file_url = soup.find('a', text=lambda x: x and 'Download Sequence' in x).get('href')
     sequence_name = soup.find('h1', class_='plasmid__info__name').text.replace(' ', '_')
-    seq = (await get_sequences_from_file_url(sequence_file_url, 'snapgene'))[0]
+    seq = (await get_sequences_from_file_url(sequence_file_url, 'snapgene', headers=WEKWIKGENE_HEADERS))[0]
     seq.name = sequence_name
     seq.source = WekWikGeneIdSource(repository_id=repository_id, sequence_file_url=sequence_file_url)
     return seq

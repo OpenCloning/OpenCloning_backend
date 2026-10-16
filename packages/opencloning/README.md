@@ -132,7 +132,7 @@ You can see how this is done in this [docker image](https://github.com/OpenCloni
 
 From the repository root (after `uv sync`):
 
-> This will require setting the `ADDGENE_USERNAME` and `ADDGENE_PASSWORD` environment variables, see [Addgene authenticated access](#addgene-authenticated-access) for more details.
+> This will require setting the `ADDGENE_TOKEN` environment variable, see [Addgene authenticated access](#addgene-authenticated-access) for more details.
 
 ```bash
 uv run pytest packages/opencloning/tests -v -ks
@@ -153,26 +153,25 @@ docker compose \
 
 ## Addgene authenticated access
 
-Addgene now requires authenticated access to retrieve sequence files.
-
-To be able to access AddGene sequences, create an account on AddGene and set these environment variables to enable Addgene imports:
+Addgene sequences are retrieved through the [Addgene Developers API](https://developers.addgene.org), which requires an API token with the `catalog:retrieve-with-sequences` scope. Request one from Addgene, and set it as an environment variable to enable Addgene imports:
 
 ```bash
-export ADDGENE_USERNAME="your_addgene_username"
-export ADDGENE_PASSWORD="your_addgene_password"
+export ADDGENE_TOKEN="your_addgene_api_token"
 ```
 
 For one-off local runs you can also prefix commands:
 
 ```bash
-ADDGENE_USERNAME="your_addgene_username" ADDGENE_PASSWORD="your_addgene_password" uv run pytest packages/opencloning/tests -v -ks
+ADDGENE_TOKEN="your_addgene_api_token" uv run pytest packages/opencloning/tests -v -ks
 ```
 
-If these variables are not set, Addgene import endpoints return an informative error explaining that credentials are required.
+If the variable is not set, Addgene import endpoints return an informative error explaining that a token is required.
 
-Use of Addgene credentials and data must comply with Addgene Terms of Use.
+Genbank files are downloaded from `https://api.developers.addgene.org/download/genbank/{sequence_id}/`, which redirects to a presigned storage URL. Both hosts are in the default `ALLOWED_EXTERNAL_URLS`; if you override that variable, include them.
 
-For CI, configure repository secrets named `ADDGENE_USERNAME` and `ADDGENE_PASSWORD` so Addgene-dependent tests can run.
+Use of the Addgene API and data must comply with Addgene Terms of Use.
+
+For CI, configure a repository secret named `ADDGENE_TOKEN` so Addgene-dependent tests can run.
 
 ## Catalogs
 
