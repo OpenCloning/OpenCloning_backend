@@ -8,8 +8,7 @@ from opencloning import app_settings
 class TestAppSettings(unittest.TestCase):
     def setUp(self):
         self.monkeypatch = pytest.MonkeyPatch()
-        self.monkeypatch.delenv('ADDGENE_USERNAME', raising=False)
-        self.monkeypatch.delenv('ADDGENE_PASSWORD', raising=False)
+        self.monkeypatch.delenv('ADDGENE_TOKEN', raising=False)
         self.monkeypatch2 = pytest.MonkeyPatch()
         reload(app_settings)
 
@@ -30,8 +29,7 @@ class TestAppSettings(unittest.TestCase):
         self.assertEqual(app_settings.settings.PLANNOTATE_TIMEOUT, 20)
         self.assertEqual(app_settings.settings.PROXY_URL, None)
         self.assertEqual(app_settings.settings.PROXY_CERT_FILE, None)
-        self.assertEqual(app_settings.settings.ADDGENE_USERNAME, None)
-        self.assertEqual(app_settings.settings.ADDGENE_PASSWORD, None)
+        self.assertEqual(app_settings.settings.ADDGENE_TOKEN, None)
 
     def test_settings_from_env(self):
         self.monkeypatch2.setenv('SERVE_FRONTEND', '1')
@@ -42,8 +40,7 @@ class TestAppSettings(unittest.TestCase):
         self.monkeypatch2.setenv('PLANNOTATE_TIMEOUT', '30')
         self.monkeypatch2.setenv('PROXY_URL', 'http://dummy/url')
         self.monkeypatch2.setenv('PROXY_CERT_FILE', 'dummy/cert.pem')
-        self.monkeypatch2.setenv('ADDGENE_USERNAME', 'dummy-user')
-        self.monkeypatch2.setenv('ADDGENE_PASSWORD', 'dummy-password')
+        self.monkeypatch2.setenv('ADDGENE_TOKEN', 'dummy-token')
 
         reload(app_settings)
 
@@ -55,8 +52,7 @@ class TestAppSettings(unittest.TestCase):
         self.assertEqual(app_settings.settings.PLANNOTATE_TIMEOUT, 30)
         self.assertEqual(app_settings.settings.PROXY_URL, 'http://dummy/url')
         self.assertEqual(app_settings.settings.PROXY_CERT_FILE, 'dummy/cert.pem')
-        self.assertEqual(app_settings.settings.ADDGENE_USERNAME, 'dummy-user')
-        self.assertEqual(app_settings.settings.ADDGENE_PASSWORD, 'dummy-password')
+        self.assertEqual(app_settings.settings.ADDGENE_TOKEN, 'dummy-token')
 
         # Test boolean inputs
         self.monkeypatch2.setenv('SERVE_FRONTEND', 'True')

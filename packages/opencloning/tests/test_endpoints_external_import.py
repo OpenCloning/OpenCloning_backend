@@ -406,13 +406,13 @@ class AddgeneTest(unittest.TestCase):
         examples = [
             {
                 'id': '39282',
-                'url': 'https://sequences.addgene.org/snapgene-media/v3.101.0/sequences/240599/4936a6ae-6b4d-4d24-b7ac-2339fad5755d/addgene-plasmid-39282-sequence-240599.gbk',
+                'url': 'https://api.developers.addgene.org/download/genbank/240599/',
                 'type': 'addgene-full',
                 'name': 'pFA6a-kanMX6-P81nmt1',
             },
             {
                 'id': '39289',
-                'url': 'https://sequences.addgene.org/snapgene-media/v3.101.0/sequences/49640/4fa9f18b-d5ca-4ac6-a50c-76a6cd15cbab/addgene-plasmid-39289-sequence-49640.gbk',
+                'url': 'https://api.developers.addgene.org/download/genbank/49640/',
                 'type': 'depositor-full',
                 'name': 'pFA6a-kanMX6-P3nmt1-GFP',
             },
@@ -437,35 +437,57 @@ class AddgeneTest(unittest.TestCase):
             self.assertEqual(sources[0].sequence_file_url, example['url'])
             self.assertEqual(resulting_sequences[0].name, example['name'])
 
-            # We get the same response when making the response with the url
+            # We get the same response when sending the returned source back
             response2 = client.post('/repository_id/addgene', json=payload['sources'][0])
             self.assertEqual(response.json(), response2.json())
 
-    @pytest.mark.xfail(reason='This file was removed from Addgene, not sure what the ideal behavior should be')
-    def test_old_url(self):
-        """Works for an Addgene url that has now been replaced by a newer one"""
-        source = AddgeneIdSource(
-            id=1,
-            repository_id='65109',
-            addgene_sequence_type='addgene-full',
-            sequence_file_url='https://media.addgene.org/snapgene-media/v1.7.9-0-g88a3305/sequences/110162/c1c98803-c8ba-44a6-95b8-d6a94097e36f/addgene-plasmid-65109-sequence-110162.gbk',
-        )
-        response = client.post('/repository_id/addgene', json=source.model_dump())
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        resulting_sequences = [
-            read_dsrecord_from_json(TextFileSequence.model_validate(s)) for s in payload['sequences']
-        ]
-        sources = [AddgeneIdSource.model_validate(s) for s in payload['sources']]
+    def test_source_url_not_validated(self):
+        """sequence_file_url / addgene_sequence_type in the request are ignored, e.g. for old saved sources"""
+        legacy_url = 'https://sequences.addgene.org/snapgene-media/v3.101.0/sequences/240599/4936a6ae-6b4d-4d24-b7ac-2339fad5755d/addgene-plasmid-39282-sequence-240599.gbk'
+        for sequence_file_url in [legacy_url, 'https://media.addgene.org/snapgene-media/wrongggggggg.gbk']:
+            source = AddgeneIdSource(
+                id=1,
+                repository_id='39282',
+                addgene_sequence_type='depositor-full',
+                sequence_file_url=sequence_file_url,
+            )
+            response = client.post('/repository_id/addgene', json=source.model_dump())
+            self.assertEqual(response.status_code, 200)
+            sources = [AddgeneIdSource.model_validate(s) for s in response.json()['sources']]
+            self.assertEqual(len(sources), 1)
+            # The returned source has the current values
+            self.assertEqual(
+                sources[0].sequence_file_url, 'https://api.developers.addgene.org/download/genbank/240599/'
+            )
+            self.assertEqual(sources[0].addgene_sequence_type, 'addgene-full')
 
-        self.assertEqual(len(resulting_sequences), 1)
-        self.assertEqual(len(sources), 1)
-        self.assertEqual(sources[0].addgene_sequence_type, 'addgene-full')
-        self.assertEqual(
-            sources[0].sequence_file_url,
-            'https://media.addgene.org/snapgene-media/v1.7.9-0-g88a3305/sequences/110162/c1c98803-c8ba-44a6-95b8-d6a94097e36f/addgene-plasmid-65109-sequence-110162.gbk',
+    @respx.mock
+    def test_token_rejected(self):
+        respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
+            return_value=httpx.Response(401, json={'detail': 'Invalid token.'})
         )
-        self.assertEqual(resulting_sequences[0].name, 'pYTK002')
+        source = AddgeneIdSource(id=1, repository_id='39282')
+        response = client.post('/repository_id/addgene', json=source.model_dump())
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('rejected the ADDGENE_TOKEN', response.json()['detail'])
+
+    @respx.mock
+    def test_auth_header(self):
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setenv('ADDGENE_TOKEN', 'dummy-token')
+        reload(app_settings)
+        try:
+            plasmid_route = respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/1/').mock(
+                return_value=httpx.Response(404)
+            )
+            response = client.post(
+                '/repository_id/addgene', json=AddgeneIdSource(id=1, repository_id='1').model_dump()
+            )
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(plasmid_route.calls.last.request.headers['Authorization'], 'Token dummy-token')
+        finally:
+            monkeypatch.undo()
+            reload(app_settings)
 
     def test_missing_sequences(self):
         # Non-existing id
@@ -487,15 +509,6 @@ class AddgeneTest(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn('The requested plasmid does not have full sequences', response.json()['detail'])
 
-        # url does not exist
-        source = AddgeneIdSource(
-            id=1,
-            repository_id='39282',
-            sequence_file_url='https://media.addgene.org/snapgene-media/wrongggggggg.gbk',
-        )
-        response = client.post('/repository_id/addgene', json=source.model_dump())
-        self.assertEqual(response.status_code, 400)
-
     def test_redirect(self):
         """Test repository_id endpoint should redirect based on repository_name value"""
         source = AddgeneIdSource(
@@ -510,7 +523,9 @@ class AddgeneTest(unittest.TestCase):
 
     @respx.mock
     def test_addgene_down(self):
-        respx.get('https://www.addgene.org/39282/sequences/').mock(side_effect=httpx.ConnectError('Connection error'))
+        respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
+            side_effect=httpx.ConnectError('Connection error')
+        )
         source = AddgeneIdSource(
             id=1,
             repository_id='39282',
@@ -522,23 +537,16 @@ class AddgeneTest(unittest.TestCase):
     @respx.mock
     def test_missing_addgene_credentials_error(self):
         monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.delenv('ADDGENE_USERNAME', raising=False)
-        monkeypatch.delenv('ADDGENE_PASSWORD', raising=False)
+        monkeypatch.delenv('ADDGENE_TOKEN', raising=False)
         reload(app_settings)
         try:
-            respx.get('https://www.addgene.org/39282/sequences/').mock(
-                return_value=httpx.Response(
-                    200, text='<html><div class="anonymous-user-sequence-alert">login required</div></html>'
-                )
-            )
             source = AddgeneIdSource(
                 id=1,
                 repository_id='39282',
             )
             response = client.post('/repository_id/addgene', json=source.model_dump())
             self.assertEqual(response.status_code, 503)
-            self.assertIn('ADDGENE_USERNAME', response.json()['detail'])
-            self.assertIn('ADDGENE_PASSWORD', response.json()['detail'])
+            self.assertIn('ADDGENE_TOKEN', response.json()['detail'])
             self.assertIn('Addgene Terms of Use', response.json()['detail'])
         finally:
             monkeypatch.undo()
