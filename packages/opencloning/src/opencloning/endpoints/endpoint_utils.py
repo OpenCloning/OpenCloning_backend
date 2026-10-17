@@ -50,3 +50,24 @@ def parse_restriction_enzymes(enzymes: list[str]) -> RestrictionBatch:
     if len(invalid_enzymes):
         raise HTTPException(404, 'These enzymes do not exist: ' + ', '.join(invalid_enzymes))
     return RestrictionBatch(first=[e for e in enzymes if e is not None])
+
+
+def check_unambiguous_overhangs(
+    sequences: list[TextFileSequence], fragments: list[Dseqrecord], enzymes: RestrictionBatch
+) -> None:
+    """Raise a 400 error if any of the enzymes would leave an overhang containing ambiguous bases (e.g. N).
+
+    pydna cannot represent ambiguous bases in single-stranded regions, so these overhangs cannot be ligated.
+    """
+    errors = []
+    for sequence, fragment in zip(sequences, fragments):
+        full_sequence = str(fragment.seq)
+        for (watson, ovhg), enzyme in fragment.seq.get_cutsites(*enzymes):
+            start = watson if ovhg < 0 else watson - ovhg
+            overhang = ''.join(full_sequence[(start + i) % len(full_sequence)] for i in range(abs(ovhg)))
+            if set(overhang.upper()) - set('ACGTU'):
+                errors.append(f'{enzyme} overhang {overhang} in sequence {sequence.id}')
+    if errors:
+        raise HTTPException(
+            400, 'Overhangs containing ambiguous bases (e.g. N) cannot be ligated: ' + ', '.join(errors) + '.'
+        )

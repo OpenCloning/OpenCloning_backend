@@ -827,6 +827,46 @@ class RestrictionAndLigationTest(unittest.TestCase):
         self.assertEqual(len(payload['sequences']), 1)
         self.assertEqual(len(payload['sources']), 1)
 
+    def test_ambiguous_bases_in_overhang(self):
+        # See https://github.com/OpenCloning/OpenCloning/issues/67
+        source = RestrictionAndLigationSource(
+            id=0,
+            restriction_enzymes=['BsaI'],
+        )
+        cases = [
+            # Matching overhangs that contain an N (used to raise an internal server error)
+            [Dseqrecord('GGTCTCAatNaAAAAAttaaAGAGACC'), Dseqrecord('GGTCTCAttaaCCCCCatNaAGAGACC')],
+            # Only one of the overhangs contains an N
+            [Dseqrecord('GGTCTCAattaAAAAAttaaAGAGACC'), Dseqrecord('GGTCTCAttaaCCCCCatNaAGAGACC')],
+            # Overhangs made only of Ns
+            [Dseqrecord('GGTCTCANNNNAAAAAttaaAGAGACC'), Dseqrecord('GGTCTCAttaaCCCCCNNNNAGAGACC')],
+            # Overhang spanning the origin of a circular sequence
+            [Dseqrecord('tNaaTTTTTTTTGGTCTCAa', circular=True), Dseqrecord('GGTCTCAttaaCCCCCatNaAGAGACC')],
+        ]
+        for fragments in cases:
+            json_fragments = [format_sequence_genbank(f) for f in fragments]
+            for i, f in enumerate(json_fragments):
+                f.id = i + 1
+            data = {'source': source.model_dump(), 'sequences': [f.model_dump() for f in json_fragments]}
+            for circular_only in [True, False]:
+                response = client.post('/restriction_and_ligation', json=data, params={'circular_only': circular_only})
+                self.assertEqual(response.status_code, 400)
+                self.assertIn('ambiguous bases', response.json()['detail'])
+                self.assertIn('in sequence 2', response.json()['detail'])
+
+        # The enzyme, the overhang and the sequence id are reported
+        fragments = [Dseqrecord('tNaaTTTTTTTTGGTCTCAa', circular=True), Dseqrecord('GGTCTCAttaaCCCCCattaAGAGACC')]
+        json_fragments = [format_sequence_genbank(f) for f in fragments]
+        for i, f in enumerate(json_fragments):
+            f.id = i + 1
+        data = {'source': source.model_dump(), 'sequences': [f.model_dump() for f in json_fragments]}
+        response = client.post('/restriction_and_ligation', json=data)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()['detail'],
+            'Overhangs containing ambiguous bases (e.g. N) cannot be ligated: BsaI overhang ATNA in sequence 1.',
+        )
+
     def test_single_input(self):
         fragments = [Dseqrecord('AAAGAATTCAAAGAATTCAAAA')]
         json_fragments = [format_sequence_genbank(f) for f in fragments]
