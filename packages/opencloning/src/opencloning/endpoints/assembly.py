@@ -323,7 +323,7 @@ def restriction_and_ligation(
 
     fragments = [read_dsrecord_from_json(seq) for seq in sequences]
     enzymes = parse_restriction_enzymes(source.restriction_enzymes)
-    check_unambiguous_overhangs(sequences, fragments, enzymes)
+    check_unambiguous_overhangs(fragments, enzymes)
     completed_source = source if is_assembly_complete(source) else None
 
     try:
