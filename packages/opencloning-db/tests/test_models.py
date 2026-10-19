@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH
 from opencloning_db.context import WriteContext
 from opencloning_db.db import cloning_strategy_to_db, dseqrecord_to_db
 from opencloning_db.models import (
@@ -314,6 +315,16 @@ class TestPrimer(_MemoryDbTestCase):
         """Primer sequence must be at least two bases."""
         with self.assertRaisesRegex(ValueError, 'at least 2 characters'):
             Primer(workspace_id=1, uid_workspace_id=1, name='p', sequence='A')
+
+    def test_sequence_too_long_rejected_on_instantiation(self):
+        """Primer sequence cannot exceed MAX_PRIMER_LENGTH."""
+        with self.assertRaisesRegex(ValueError, f'cannot be longer than {MAX_PRIMER_LENGTH}'):
+            Primer(
+                workspace_id=1,
+                uid_workspace_id=1,
+                name='p',
+                sequence='A' * (MAX_PRIMER_LENGTH + 1),
+            )
 
     def test_from_pydantic_rejects_sequence_too_short(self):
         """``from_pydantic`` applies the same sequence rules as direct construction."""
