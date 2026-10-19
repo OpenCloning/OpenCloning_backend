@@ -3,7 +3,11 @@ from pydna.dseqrecord import Dseqrecord
 from pydantic import create_model, Field
 from typing import Annotated
 
-from opencloning.endpoints.endpoint_utils import format_products, parse_restriction_enzymes
+from opencloning.endpoints.endpoint_utils import (
+    check_unambiguous_overhangs,
+    format_products,
+    parse_restriction_enzymes,
+)
 from opencloning.temp_functions import get_enzymes_from_source
 
 from ..dna_functions import (
@@ -46,6 +50,7 @@ def restriction(
         enzymes = parse_restriction_enzymes(get_enzymes_from_source(completed_source))
 
     seqr = read_dsrecord_from_json(sequences[0])
+    check_unambiguous_overhangs([seqr], enzymes)
 
     cutsites = seqr.seq.get_cutsites(*enzymes)
     cutting_enzymes = set(e for _, e in cutsites if e is not None)

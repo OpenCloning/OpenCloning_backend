@@ -63,3 +63,21 @@ def read_upload_with_limit(file: UploadFile, max_size_mb: int) -> bytes:
     if len(content) > max_bytes:
         raise error
     return content
+
+
+def check_unambiguous_overhangs(fragments: list[Dseqrecord], enzymes: RestrictionBatch) -> None:
+    """Raise a 400 error if any of the enzymes would leave an overhang containing ambiguous bases (e.g. N).
+
+    pydna cannot represent ambiguous bases in single-stranded regions, so these overhangs cannot be ligated.
+    """
+    errors = []
+    for fragment in fragments:
+        for (watson, ovhg), enzyme in fragment.seq.get_cutsites(*enzymes):
+            start = watson if ovhg < 0 else watson - ovhg
+            overhang = ''.join(str(fragment.seq[(start + i)]) for i in range(abs(ovhg)))
+            if set(overhang.upper()) - set('ACGTU'):
+                errors.append(f'{enzyme} overhang {overhang} in sequence {fragment.id}')
+    if errors:
+        raise HTTPException(
+            400, 'Overhangs containing ambiguous bases (e.g. N) cannot be ligated: ' + ', '.join(errors) + '.'
+        )
