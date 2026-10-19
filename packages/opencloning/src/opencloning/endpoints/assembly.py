@@ -8,6 +8,7 @@ from pydantic import create_model, Field
 from typing import Annotated
 from opencloning.endpoints.endpoint_utils import format_products, parse_restriction_enzymes
 from opencloning.temp_functions import is_assembly_complete, minimal_assembly_overlap
+from opencloning.pydantic_models import PrimerModel
 from ..dna_functions import (
     read_dsrecord_from_json,
 )
@@ -25,7 +26,6 @@ from opencloning_linkml.datamodel import (
     HomologousRecombinationSource,
     RestrictionAndLigationSource,
     GatewaySource,
-    Primer as PrimerModel,
     TextFileSequence,
     RecombinaseSource,
 )
@@ -64,7 +64,7 @@ router = get_router()
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def crispr(
+def crispr(
     source: CRISPRSource,
     guides: Annotated[list[PrimerModel], Field(min_length=1)],
     sequences: Annotated[list[TextFileSequence], Field(min_length=2, max_length=2)],
@@ -101,7 +101,7 @@ async def crispr(
         'LigationResponse', sources=(list[LigationSource], ...), sequences=(list[TextFileSequence], ...)
     ),
 )
-async def ligation(
+def ligation(
     source: LigationSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1)],
     blunt: bool = Query(False, description='Use blunt ligation as well as sticky ends.'),
@@ -136,7 +136,7 @@ async def ligation(
         'PCRResponse', sources=(list[PCRSource], ...), sequences=(list[TextFileSequence], ...)
     ),
 )
-async def pcr(
+def pcr(
     source: PCRSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1, max_length=1)],
     primers: Annotated[list[PrimerModel], Field(min_length=2, max_length=2)],
@@ -194,7 +194,7 @@ async def pcr(
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def homologous_recombination(
+def homologous_recombination(
     source: HomologousRecombinationSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=2, max_length=2)],
     minimal_homology: int = Query(40, description='The minimum homology between the template and the insert.', ge=5),
@@ -235,7 +235,7 @@ async def homologous_recombination(
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def gibson_assembly(
+def gibson_assembly(
     sequences: Annotated[list[TextFileSequence], Field(min_length=1)],
     source: Union[GibsonAssemblySource, OverlapExtensionPCRLigationSource, InFusionSource, InVivoAssemblySource],
     minimal_homology: int = Query(
@@ -302,7 +302,7 @@ async def gibson_assembly(
         },
     },
 )
-async def restriction_and_ligation(
+def restriction_and_ligation(
     response: Response,
     source: RestrictionAndLigationSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1)],
@@ -358,7 +358,7 @@ async def restriction_and_ligation(
         'GatewayResponse', sources=(list[GatewaySource], ...), sequences=(list[TextFileSequence], ...)
     ),
 )
-async def gateway(
+def gateway(
     source: GatewaySource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1)],
     circular_only: bool = Query(False, description='Only return circular assemblies.'),
@@ -394,7 +394,7 @@ async def gateway(
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def cre_lox_recombination(
+def cre_lox_recombination(
     source: CreLoxRecombinationSource, sequences: Annotated[list[TextFileSequence], Field(min_length=1)]
 ):
     fragments = [read_dsrecord_from_json(seq) for seq in sequences]
@@ -428,7 +428,7 @@ async def cre_lox_recombination(
         sequences=(list[TextFileSequence], ...),
     ),
 )
-async def recombinase(
+def recombinase(
     source: RecombinaseSource,
     sequences: Annotated[list[TextFileSequence], Field(min_length=1)],
     reverse_recombinase: bool = Query(False, description='Whether to use the reverse reaction of the recombinase.'),

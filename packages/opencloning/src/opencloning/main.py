@@ -14,6 +14,7 @@ from .endpoints.assembly import router as assembly_router
 from .endpoints.no_assembly import router as no_assembly_router
 from .endpoints.no_input import router as no_input_router
 from .app_settings import settings
+from .body_size_limit import MaxBodySizeMiddleware
 from .observability.middleware import RequestContextMiddleware, register_error_handlers
 
 # =====================================================
@@ -22,6 +23,7 @@ from .observability.middleware import RequestContextMiddleware, register_error_h
 def create_fastapi_app() -> FastAPI:
     app = FastAPI()
     register_error_handlers(app)
+    app.add_middleware(MaxBodySizeMiddleware, max_size_mb=settings.MAX_REQUEST_BODY_SIZE_MB)
 
     router = get_router()
 

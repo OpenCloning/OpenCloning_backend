@@ -8,7 +8,7 @@ from opencloning.temp_functions import pydna_primer_to_primer_model
 
 from ..dna_functions import get_invalid_enzyme_names
 from opencloning_linkml.datamodel import Primer as PrimerModel
-from opencloning.pydantic_models import PrimerDesignQuery
+from opencloning.pydantic_models import MAX_PRIMER_LENGTH, PrimerDesignQuery
 from ..dna_functions import read_dsrecord_from_json
 from ..primer_design import (
     homologous_recombination_primers,
@@ -52,7 +52,7 @@ def validate_spacers(spacers: list[str] | None, nb_templates: int, circular: boo
 
 
 @router.post('/primer_design/homologous_recombination', response_model=PrimerDesignResponse)
-async def primer_design_homologous_recombination(
+def primer_design_homologous_recombination(
     pcr_template: PrimerDesignQuery,
     homologous_recombination_target: PrimerDesignQuery,
     settings: PrimerDesignSettings = Body(description='Primer design settings.', default_factory=PrimerDesignSettings),
@@ -103,7 +103,7 @@ async def primer_design_homologous_recombination(
 
 
 @router.post('/primer_design/gibson_assembly', response_model=PrimerDesignResponse)
-async def primer_design_gibson_assembly(
+def primer_design_gibson_assembly(
     pcr_templates: list[PrimerDesignQuery] = Body(
         ...,
         description='''The templates to design primers for. If the location is not
@@ -164,7 +164,7 @@ async def primer_design_gibson_assembly(
 
 
 @router.post('/primer_design/simple_pair', response_model=PrimerDesignResponse)
-async def primer_design_simple_pair(
+def primer_design_simple_pair(
     pcr_template: PrimerDesignQuery,
     spacers: list[str] | None = Body(
         None,
@@ -229,7 +229,7 @@ async def primer_design_simple_pair(
 
 
 @router.post('/primer_design/ebic', response_model=PrimerDesignResponse)
-async def primer_design_ebic(
+def primer_design_ebic(
     template: PrimerDesignQuery,
     settings: PrimerDesignSettings = Body(description='Primer design settings.', default_factory=PrimerDesignSettings),
     max_inside: int = Query(..., description='The maximum length of the inside edge of the EBIC primer.'),
@@ -304,8 +304,8 @@ class PrimerDetailsResponse(BaseModel):
 
 
 @router.post('/primer_details', response_model=PrimerDetailsResponse)
-async def primer_details(
-    sequence: str = Body(..., description='Primer sequence', pattern=r'^[ACGTacgt]+$'),
+def primer_details(
+    sequence: str = Body(..., description='Primer sequence', pattern=r'^[ACGTacgt]+$', max_length=MAX_PRIMER_LENGTH),
     settings: PrimerDesignSettings = Body(description='Primer design settings.', default_factory=PrimerDesignSettings),
 ):
     """Get information about a primer"""
@@ -325,9 +325,13 @@ async def primer_details(
 
 
 @router.post('/primer_heterodimer', response_model=ThermodynamicResult | None)
-async def primer_heterodimer(
-    sequence1: str = Body(..., description='First primer sequence', pattern=r'^[ACGTacgt]+$'),
-    sequence2: str = Body(..., description='Second primer sequence', pattern=r'^[ACGTacgt]+$'),
+def primer_heterodimer(
+    sequence1: str = Body(
+        ..., description='First primer sequence', pattern=r'^[ACGTacgt]+$', max_length=MAX_PRIMER_LENGTH
+    ),
+    sequence2: str = Body(
+        ..., description='Second primer sequence', pattern=r'^[ACGTacgt]+$', max_length=MAX_PRIMER_LENGTH
+    ),
     settings: PrimerDesignSettings = Body(description='Primer design settings.', default_factory=PrimerDesignSettings),
 ):
     """Get information about a primer pair"""

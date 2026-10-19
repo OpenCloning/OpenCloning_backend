@@ -7,10 +7,21 @@ from pydna.opencloning_models import SequenceLocationStr
 
 from opencloning_linkml.datamodel import (
     CloningStrategy as _CloningStrategy,
-    Primer as PrimerModel,
+    Primer as _PrimerModel,
     TextFileSequence as _TextFileSequence,
     Source as _Source,
 )
+
+# Maximum length of a primer sequence accepted by the API
+MAX_PRIMER_LENGTH = 1000
+
+
+class PrimerModel(_PrimerModel):
+    sequence: Optional[str] = Field(
+        default=None,
+        max_length=MAX_PRIMER_LENGTH,
+        json_schema_extra=_PrimerModel.model_fields['sequence'].json_schema_extra,
+    )
 
 
 class BaseCloningStrategy(_CloningStrategy):

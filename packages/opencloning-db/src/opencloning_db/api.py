@@ -7,6 +7,7 @@ import os
 from starlette.types import ASGIApp
 
 from opencloning.app_settings import settings as opencloning_settings
+from opencloning.body_size_limit import MaxBodySizeMiddleware
 from opencloning.observability.middleware import RequestContextMiddleware, register_error_handlers
 from opencloning_db.config import parse_bool
 from opencloning_db.routers import (
@@ -26,6 +27,7 @@ from opencloning_db.routers import (
 def create_fastapi_app() -> FastAPI:
     app = FastAPI(title='OpenCloningDB API')
     register_error_handlers(app)
+    app.add_middleware(MaxBodySizeMiddleware, max_size_mb=opencloning_settings.MAX_REQUEST_BODY_SIZE_MB)
 
     app.include_router(auth.router)
     app.include_router(workspaces.router)

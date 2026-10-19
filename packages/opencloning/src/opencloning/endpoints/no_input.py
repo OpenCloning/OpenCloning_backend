@@ -7,12 +7,12 @@ from pydantic import create_model, Field
 from typing import Annotated
 
 from opencloning.endpoints.endpoint_utils import format_products
+from opencloning.pydantic_models import PrimerModel
 
 from ..dna_functions import (
     format_sequence_genbank,
 )
 from opencloning_linkml.datamodel import (
-    Primer as PrimerModel,
     TextFileSequence,
     ManuallyTypedSource,
     OligoHybridizationSource,
@@ -31,7 +31,7 @@ router = get_router()
         'ManuallyTypedResponse', sources=(list[ManuallyTypedSource], ...), sequences=(list[TextFileSequence], ...)
     ),
 )
-async def manually_typed(source: ManuallyTypedSource, sequence: ManuallyTypedSequence):
+def manually_typed(source: ManuallyTypedSource, sequence: ManuallyTypedSequence):
     """Return the sequence from a manually typed sequence"""
     if sequence.circular:
         seq = Dseqrecord(sequence.sequence, circular=sequence.circular)
@@ -57,7 +57,7 @@ async def manually_typed(source: ManuallyTypedSource, sequence: ManuallyTypedSeq
         }
     },
 )
-async def oligonucleotide_hybridization(
+def oligonucleotide_hybridization(
     source: OligoHybridizationSource,
     primers: Annotated[list[PrimerModel], Field(min_length=1, max_length=2)],
     minimal_annealing: int = Query(20, description='The minimal annealing length for each primer.'),
