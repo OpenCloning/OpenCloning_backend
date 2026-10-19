@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v2.0.0...opencloning-db-v2.0.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* security fixes (email matching, safeguard OIDC test mode, size limit for files, async endpoints only when needed, database_id validation when posting cloning strategy) ([#538](https://github.com/OpenCloning/OpenCloning_backend/issues/538)) ([0681968](https://github.com/OpenCloning/OpenCloning_backend/commit/0681968aba1253fc618c33b6c2b505d8bb04f868))
+
 ## [2.0.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-db-v1.10.0...opencloning-db-v2.0.0) (2026-10-16)
 
 
