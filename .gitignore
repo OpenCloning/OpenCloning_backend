@@ -30,3 +30,6 @@ certs/
 
 # development database
 dev_database/
+
+# MCP server strategy store (opencloning-mcp)
+opencloning_mcp.sqlite
