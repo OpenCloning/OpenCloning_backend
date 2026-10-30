@@ -13,6 +13,7 @@ coverage.xml
 frontend/
 
 # Env secrets
+/secrets
 .env.secret
 .env.clerk
 
