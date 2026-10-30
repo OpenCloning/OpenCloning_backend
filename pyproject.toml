@@ -6,6 +6,7 @@ dependencies = [
     "opencloning",
     "opencloning-db",
     "opencloning-cli",
+    "opencloning-mcp",
 ]
 
 [tool.uv]
@@ -16,12 +17,14 @@ default-groups = ["dev", "test", "ipython"]
 opencloning = { workspace = true }
 opencloning-cli = { workspace = true }
 opencloning-db = { workspace = true }
+opencloning-mcp = { workspace = true }
 
 [tool.uv.workspace]
 members = [
     "packages/opencloning",
     "packages/opencloning-db",
     "packages/opencloning-cli",
+    "packages/opencloning-mcp",
 ]
 
 [dependency-groups]
