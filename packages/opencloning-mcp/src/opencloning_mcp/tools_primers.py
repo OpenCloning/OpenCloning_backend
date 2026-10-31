@@ -105,6 +105,28 @@ def locate_region(
 # Designing primers ===========================================================================
 
 
+def spacers_to_confirm(spacers: dict[str, str], approved: bool) -> dict | None:
+    """The answer that stops a design when it adds spacers, tails or linkers that nobody approved.
+
+    A linker or a tail changes the construct, so it is the user's decision: the model has to ask, and sets
+    `spacer_approved_by_user` to call the tool again. Nothing is saved until then.
+    """
+    given = {name: bases.upper() for name, bases in spacers.items() if bases}
+    if not given or approved:
+        return None
+    return {
+        'status': 'needs_confirmation',
+        'message': (
+            'Nothing was designed. These bases would be added to the construct: '
+            + ', '.join(f'{name} {bases}' for name, bases in given.items())
+            + '. Ask the user if they want them (say what they are for: e.g. a linker between a tag and a '
+            'protein). If they agree, or if they asked for them, call the same tool again with the same '
+            'arguments and spacer_approved_by_user=true. If not, call it without them.'
+        ),
+        'spacers': given,
+    }
+
+
 @mcp.tool()
 def design_pcr_primers(
     strategy_id: str,
@@ -119,6 +141,7 @@ def design_pcr_primers(
     minimal_annealing: int = 18,
     name_prefix: str | None = None,
     settings: PrimerDesignSettings | None = None,
+    spacer_approved_by_user: bool = False,
 ) -> dict:
     """Design a pair of primers that amplify a region of a sequence, and save them in the strategy.
 
@@ -131,6 +154,9 @@ def design_pcr_primers(
     front so that the enzyme can cut) and `left_tail` / `right_tail` (any extra bases: a Kozak sequence, a
     linker...). With an enzyme the tail goes between the site and the part of the primer that binds. `right_tail`
     is given as it reads in the product, after the region, on the top strand (don't reverse complement it).
+    A tail changes the construct: if the user did not ask for it, suggest it and ask first. Without
+    `spacer_approved_by_user=true` the tool refuses to design primers with a tail and asks you to check with
+    the user. Restriction sites (`left_enzyme` / `right_enzyme`) are not tails: say which ones you use.
 
     `target_tm` is the melting temperature of the part of the primers that binds the template, which is at
     least `minimal_annealing` bases long: the tails don't count. `settings` are the conditions of the Tm
@@ -140,6 +166,9 @@ def design_pcr_primers(
     Next run pcr with the primers, then pcr_primer_details for their Tm.
     """
     strategy = storage.load_strategy(strategy_id)
+    to_confirm = spacers_to_confirm({'left_tail': left_tail, 'right_tail': right_tail}, spacer_approved_by_user)
+    if to_confirm:
+        return to_confirm
     template, view = get_sequence(strategy, template_id)
     resolved = view.resolve_region(region)
 
@@ -189,6 +218,7 @@ def design_homology_primers(
     minimal_annealing: int = 18,
     name_prefix: str | None = None,
     settings: PrimerDesignSettings | None = None,
+    spacer_approved_by_user: bool = False,
 ) -> dict:
     """Design primers to put an insert into a target by homologous recombination, and save them in the strategy.
 
@@ -207,6 +237,9 @@ def design_homology_primers(
     gene on the - strand of a genome "forward" if the cassette is meant to read like the gene.
     `left_spacer` / `right_spacer` are extra bases (e.g. a linker or a tag in frame) between the left arm and
     the insert, and between the insert and the right arm; they read on the top strand of the target.
+    A spacer or linker changes the construct: if the user did not ask for one and you think it is needed (e.g. a
+    linker between a tag and a protein), suggest it and ask first. Without `spacer_approved_by_user=true` the
+    tool refuses to design primers with a spacer and asks you to check with the user.
 
     `target_tm` is the melting temperature of the part of the primers that binds the insert, which is at
     least `minimal_annealing` bases long: the arms don't count. `settings` are the conditions of the Tm
@@ -219,6 +252,11 @@ def design_homology_primers(
     if (replace is None) == (insert_at is None):
         raise ToolError('Give either replace (a region of the target to replace) or insert_at (a point to insert at).')
     strategy = storage.load_strategy(strategy_id)
+    to_confirm = spacers_to_confirm(
+        {'left_spacer': left_spacer, 'right_spacer': right_spacer}, spacer_approved_by_user
+    )
+    if to_confirm:
+        return to_confirm
     insert, insert_view = get_sequence(strategy, insert_id)
     target, target_view = get_sequence(strategy, target_id)
     resolved_insert = insert_view.resolve_region(insert_region)

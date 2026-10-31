@@ -245,6 +245,7 @@ async def test_pcr_primers_with_extra_bases_around_the_feature_and_restriction_s
         left_enzyme='BamHI',
         right_enzyme='SacI',
         right_tail='GGT',
+        spacer_approved_by_user=True,
         name_prefix='pcdc2',
     )
     forward, reverse = designed['primers']
@@ -481,11 +482,46 @@ async def test_c_terminal_tag_replacing_the_stop_codon_with_a_spacer(client: Cli
         target_id=genome,
         replace={'start': {'feature': 'cdc2', 'after_aa': 99}, 'end': {'feature': 'cdc2', 'edge': 'end'}},
         left_spacer='GGA',
+        spacer_approved_by_user=True,
         homology_length=30,
     )
     assert designed['replaces']['length'] == 3 and designed['replaces']['first_bases'] == 'TAA'
     result = await recombine(client, strategy_id, designed, tag_id, genome, homology_length=30)
     assert result == GENOME[: GENE_END - 3] + 'GGA' + tag + GENOME[GENE_END:]
+
+
+@pytest.mark.anyio
+async def test_spacers_and_tails_are_not_designed_until_the_user_approves_them(client: Client):
+    strategy_id = await new_strategy(client)
+    genome = await add_genome(client, strategy_id)
+    tag_id = (await call(client, 'add_typed_sequence', strategy_id=strategy_id, sequence=random_dna(60, 11)))[
+        'sequence'
+    ]['id']
+
+    homology = {
+        'strategy_id': strategy_id,
+        'insert_id': tag_id,
+        'target_id': genome,
+        'replace': {'feature': 'cdc2', 'downstream': 0},
+        'left_spacer': 'ggatct',
+        'homology_length': 30,
+    }
+    answer = await call(client, 'design_homology_primers', **homology)
+    assert answer['status'] == 'needs_confirmation' and answer['spacers'] == {'left_spacer': 'GGATCT'}
+    assert 'spacer_approved_by_user=true' in answer['message']
+
+    pcr = {'strategy_id': strategy_id, 'template_id': genome, 'right_tail': 'GGT'}
+    answer = await call(client, 'design_pcr_primers', **pcr)
+    assert answer['status'] == 'needs_confirmation' and answer['spacers'] == {'right_tail': 'GGT'}
+
+    # Nothing was saved, and no spacer means no question
+    assert (await call(client, 'describe_strategy', strategy_id=strategy_id))['primers'] == []
+    assert (await call(client, 'design_pcr_primers', strategy_id=strategy_id, template_id=genome))[
+        'status'
+    ] == 'designed'
+    assert (await call(client, 'design_homology_primers', **homology, spacer_approved_by_user=True))[
+        'status'
+    ] == 'designed'
 
 
 @pytest.mark.anyio

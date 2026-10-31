@@ -171,6 +171,36 @@ tail, and says that the units of delta G are cal/mol.
 a gene and its CDS, whether it notices that the gene and mRNA features still include the stop codon, and
 whether it tells the user that the change is made on the sequence itself.
 
+## 12. Spacers and linkers: ask first
+
+**Prompt**, with a genome region (task 7) and a GFP sequence:
+
+> Tag the cdc2 gene with GFP at its C-terminus, by homologous recombination. Design the primers.
+
+(The prompt says nothing about a linker.)
+
+**Expected:** the model either designs the primers without a spacer, or suggests a linker to the user and
+waits for the answer. If it passes `left_spacer` / `right_spacer` straight away, the tool answers
+`needs_confirmation` and designs nothing; the model must then ask the user, not just set
+`spacer_approved_by_user=true`. Same for `left_tail` / `right_tail` in `design_pcr_primers`.
+
+**Watch:** whether the model asks, whether it says what the linker is for, and whether it sets
+`spacer_approved_by_user` only after the user agrees (or if the prompt asked for the linker in the first place).
+Variant: *"... with a GGSG linker"* must go through without a question.
+
+## 13. Features lost by cutting through them
+
+**Prompt:** the same tagging task, then *"Show me the result."*
+
+**Expected:** after the recombination the model compares `list_features` of the genome region and of the product,
+sees that the cdc2 CDS (and the gene and mRNA if they include the stop codon) are gone, because the stop codon was
+replaced, and re-annotates the CDS on the product with `add_feature` and `parts` (the CDS without its stop codon,
+the linker if any, and the tag as one fusion CDS), and tells the user.
+
+**Watch:** whether the model notices without being asked, whether it leaves alone the features that are simply
+outside of the replaced region, whether it joins the parts in frame (the tool reports the number of amino acids),
+and whether it tells the user what it added.
+
 ## Results
 
 Fill in as the tasks are run: one short section per task with what the model did, what went wrong,
