@@ -1396,18 +1396,30 @@ name = "opencloning-mcp"
 version = "0.1.0"
 source = { editable = "packages/opencloning-mcp" }
 dependencies = [
+    { name = "biopython" },
+    { name = "fastapi" },
     { name = "mcp" },
     { name = "opencloning" },
+    { name = "opencloning-linkml" },
+    { name = "pydantic" },
+    { name = "pydna" },
     { name = "sqlalchemy" },
     { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "biopython", specifier = ">=1.87" },
+    { name = "fastapi", specifier = ">=0.135.3" },
     { name = "mcp", specifier = ">=2.3,<3" },
     { name = "opencloning", editable = "packages/opencloning" },
+    { name = "opencloning-linkml", specifier = ">=1.0.0" },
+    { name = "pydantic", specifier = ">=2.7.1" },
+    { name = "pydna", specifier = ">=5.5.16" },
     { name = "sqlalchemy", specifier = ">=2.0.41,<3" },
     { name = "starlette", specifier = ">=1.3.1" },
+    { name = "uvicorn" },
 ]
 
 [[package]]
