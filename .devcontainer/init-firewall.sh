@@ -106,6 +106,7 @@ add_domain() {
 }
 
 # Tooling: Claude Code, VS Code, Python packages
+echo adding domains for tooling
 for domain in \
     "registry.npmjs.org" \
     "api.anthropic.com" \
@@ -120,6 +121,7 @@ for domain in \
     add_domain "$domain" required
 done
 
+echo adding external sources
 # External sources the cloning API imports from (default_allowed_urls in opencloning/app_settings.py),
 # plus hosts used by tests
 for domain in \

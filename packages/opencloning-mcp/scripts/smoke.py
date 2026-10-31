@@ -66,18 +66,21 @@ async def main():
         )
         await call(client, 'add_sequence_from_genbank', strategy_id=strategy_id, accession='NM_001018957.2')
 
-        # Cloning: PCR a gene fragment adding BamHI / SacI sites, and ligate it into the vector
+        # Cloning: design primers that add BamHI / SacI sites to a gene fragment, PCR it, and ligate it into the vector
         # instead of its hphMX6 cassette
         gene = 'ATGAGCAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGG'
         result = await call(client, 'add_typed_sequence', strategy_id=strategy_id, sequence=gene, name='gene')
         template = result['sequence']['id']
-        reverse_complement = gene[-20:][::-1].translate(str.maketrans('ACGT', 'TGCA'))
-        fwd = await call(
-            client, 'add_primer', strategy_id=strategy_id, name='fwd_BamHI', sequence='AAAGGATCC' + gene[:20]
+        designed = await call(
+            client,
+            'design_pcr_primers',
+            strategy_id=strategy_id,
+            template_id=template,
+            left_enzyme='BamHI',
+            right_enzyme='SacI',
+            minimal_annealing=15,
         )
-        rvs = await call(
-            client, 'add_primer', strategy_id=strategy_id, name='rvs_SacI', sequence='AAAGAGCTC' + reverse_complement
-        )
+        fwd, rvs = designed['primers']
         result = await call(
             client,
             'pcr',
@@ -87,6 +90,7 @@ async def main():
             reverse_primer_id=rvs['id'],
             name='GFP_pcr',
         )
+        await call(client, 'pcr_primer_details', strategy_id=strategy_id, sequence_id=result['sequence']['id'])
         pcr_product = result['sequence']['id']
         await call(
             client, 'restriction_digest', strategy_id=strategy_id, sequence_id=vector, enzymes=['BamHI', 'SacI']

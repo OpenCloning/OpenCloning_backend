@@ -1,7 +1,7 @@
 """Tools to create a strategy, look at it, and export it."""
 
 from . import cloning_api, names, storage
-from .app import BASE_URL, FILE_TIP, mcp
+from .app import BASE_URL, FILE_TIP, FRONTEND_URL, mcp
 from .summaries import summarize_sequence
 
 
@@ -66,13 +66,18 @@ def rename_sequence(strategy_id: str, sequence_id: int, name: str) -> dict:
 
 @mcp.tool()
 def get_strategy_json(strategy_id: str) -> dict:
-    """Get a link to download the strategy as an OpenCloning JSON file.
+    """Get the links to open the strategy in OpenCloning, and to download it as a JSON file.
 
-    Give the link to the user: they can open the file in the OpenCloning web app, where every step
-    of the strategy can be inspected and edited.
+    Give the user `open_url` if present: it opens the strategy directly in the OpenCloning web app, where
+    every step can be inspected and edited. Otherwise (or as a fallback), give `download_url`: the file can
+    be loaded in the web app.
     """
     strategy = storage.load_strategy(strategy_id)
+    links = {}
+    if FRONTEND_URL:
+        links['open_url'] = f'{FRONTEND_URL}/?source=mcp&strategy={strategy_id}'
     return {
+        **links,
         'download_url': f'{BASE_URL}/strategies/{strategy_id}.json',
         'number_of_sequences': len(strategy['sequences']),
         'number_of_primers': len(strategy['primers']),

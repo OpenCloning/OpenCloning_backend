@@ -15,6 +15,9 @@ from . import db, storage
 PORT = int(os.environ.get('OPENCLONING_MCP_PORT', '8002'))
 # Used to build the download links given to the user
 BASE_URL = os.environ.get('OPENCLONING_MCP_BASE_URL', f'http://localhost:{PORT}').rstrip('/')
+# Public URL of the OpenCloning web app, used to build links that open a strategy in it. The web app
+# must have this server as its `mcpUrl` config, and it is the only origin allowed to fetch the strategies.
+FRONTEND_URL = os.environ.get('OPENCLONING_MCP_FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +34,8 @@ you never pass sequences around, you refer to sequences and primers by the integ
 
 Workflow:
 1. Call start_strategy once and keep the returned strategy_id. Pass it to every other tool.
-2. Add the starting sequences with the add_sequence_* tools, and primers with add_primer.
-   Each returns the id of the new sequence or primer.
+2. Add the starting sequences with the add_sequence_* tools, and the primers that the user gives you with
+   add_primer. Each returns the id of the new sequence or primer.
    To take a gene or a region from a genome: find_genome_assembly (species -> reference assembly), find_gene,
    then add_genome_region_from_gene (with flanking bases); or add_genome_region_from_coordinates. Never
    guess an assembly or a gene when several match: ask the user.
@@ -45,6 +48,20 @@ Workflow:
 5. Call describe_strategy to see every sequence in the strategy and how it was made.
 6. When the user is done, call get_strategy_json and give them the download link. The file opens in
    the OpenCloning web app.
+
+Primers: design them, don't write them by hand. design_pcr_primers amplifies a region (with restriction
+sites or other tails if wanted), and design_homology_primers makes primers with homology arms to replace a
+region of a target, or insert at a point of it, by homologous recombination. They save the primers and return
+their ids, to use in the pcr tool. Say where with a feature name, bases upstream or downstream of it, an amino
+acid, or coordinates: list_features shows all the features of a sequence, and locate_region checks a region or
+a point without changing anything. Tell the user what the region resolved to (the tools echo it), and check
+with them when it is not obvious, e.g. which amino acid. After a pcr, call pcr_primer_details and show the
+user the Tm of the part of each primer that binds the template, the tails, the Tm difference and the dimer.
+primer_details does the same for whole primers that were not used in a PCR yet.
+
+Annotations: add_feature, remove_features, resize_feature and remove_stop_codon change the features of a
+sequence in place, without changing its bases. Use list_features first, and tell the user what was changed.
+find_orfs lists the open reading frames of a sequence (read-only): use it to find or check a CDS to annotate.
 
 Files: users often drop or paste sequence files in the chat. Retyping a file as an argument is slow, uses up
 the user's usage, and is impossible for binary files (SnapGene .dna). So:
