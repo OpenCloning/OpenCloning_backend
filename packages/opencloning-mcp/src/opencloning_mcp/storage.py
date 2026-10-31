@@ -20,9 +20,9 @@ from .db import StoredStrategy, engine, utcnow
 INACTIVITY_MINUTES = int(os.environ.get('OPENCLONING_MCP_INACTIVITY_MINUTES', '30'))
 
 # Parallel tool calls on the same strategy must not overwrite each other's steps, so writes
-# (read row -> append -> save) happen one at a time. A thread lock is enough because the server
-# runs as a single process. With several processes (e.g. on Postgres), lock the row instead with
-# select(StoredStrategy).where(...).with_for_update().
+# (read row -> append -> save) happen one at a time. The thread lock covers the threads of one process
+# (and SQLite, which ignores row locks); with several processes (e.g. gunicorn workers on Postgres) the
+# writers also lock the row, see _get_active_row.
 _write_lock = threading.Lock()
 
 
@@ -40,8 +40,9 @@ def create_strategy(description: str = '') -> str:
     return strategy_id
 
 
-def _get_active_row(session: Session, strategy_id: str) -> StoredStrategy:
-    row = session.get(StoredStrategy, strategy_id)
+def _get_active_row(session: Session, strategy_id: str, for_update: bool = False) -> StoredStrategy:
+    # for_update: SELECT ... FOR UPDATE, other transactions wait for this one to commit (ignored by SQLite)
+    row = session.get(StoredStrategy, strategy_id, with_for_update=for_update)
     # Rows past the cutoff may still be in the table until the next cleanup, they count as deleted
     if row is None or row.last_used_at < inactivity_cutoff():
         raise ToolError(
@@ -86,7 +87,7 @@ def _append_with_new_id(strategy_id: str, new_items: dict[str, dict]) -> int:
     """
     with _write_lock, Session(engine) as session:
         # Read the latest version here, inside the lock, not the one the caller loaded before
-        row = _get_active_row(session, strategy_id)
+        row = _get_active_row(session, strategy_id, for_update=True)
         strategy = copy.deepcopy(row.strategy)
         new_id = next_id(strategy)
         for list_name, item in new_items.items():
@@ -116,7 +117,7 @@ def add_primer(strategy_id: str, name: str, sequence: str) -> int:
 def rename_sequence(strategy_id: str, sequence_id: int, name: str, renamed_sequence: dict) -> None:
     """Replace a sequence of the strategy with its renamed version (see the rename_sequence tool)."""
     with _write_lock, Session(engine) as session:
-        row = _get_active_row(session, strategy_id)
+        row = _get_active_row(session, strategy_id, for_update=True)
         strategy = copy.deepcopy(row.strategy)
         for sequence in strategy['sequences']:
             if sequence['id'] == sequence_id:
@@ -133,7 +134,7 @@ def rename_sequence(strategy_id: str, sequence_id: int, name: str, renamed_seque
 def replace_sequence(strategy_id: str, sequence_id: int, new_fields: dict) -> None:
     """Change a sequence of the strategy in place, e.g. its annotations (see tools_annotations.py)."""
     with _write_lock, Session(engine) as session:
-        row = _get_active_row(session, strategy_id)
+        row = _get_active_row(session, strategy_id, for_update=True)
         strategy = copy.deepcopy(row.strategy)
         for sequence in strategy['sequences']:
             if sequence['id'] == sequence_id:

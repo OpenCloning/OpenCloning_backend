@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 # Returned by start_strategy for the model to pass on to the user
 FILE_TIP = (
-    "Tip: don't paste sequence files into the chat, it is slow and uses up your usage. Tell me where the file "
-    'is on your computer (or drag it into Claude Code, which gives me its path), or ask for an upload link.'
+    "Tip: don't paste sequence files into the chat, it is slow and uses up your usage. Ask me for an upload link "
+    'and upload the files there.'
 )
 
 # Sent to the model when it connects: how to use the tools together
@@ -85,8 +85,7 @@ e.g. the CDS without its stop codon plus the tag), and tell the user what you ad
 
 Files: users often drop or paste sequence files in the chat. Retyping a file as an argument is slow, uses up
 the user's usage, and is impossible for binary files (SnapGene .dna). So:
-- If you have the path of a file on the user's computer, use add_sequence_from_path.
-- Otherwise, for a short text file (GenBank, FASTA, EMBL) use add_sequence_from_file.
+- For a short text file (GenBank, FASTA, EMBL) use add_sequence_from_file.
 - For binary files, or any long file you only have as text, call get_upload_link and tell the user plainly:
   "I can't read files dropped in the chat, please upload them here", then wait for them to say it is done.
 - When you start a strategy, pass on the tip returned in `tell_the_user` to the user, in your own words.

@@ -6,7 +6,7 @@ There are no migrations: the table is created at startup if it does not exist.
 import os
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, create_engine
+from sqlalchemy import JSON, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -34,5 +34,15 @@ class StoredStrategy(Base):
 engine = create_engine(os.environ.get('OPENCLONING_MCP_DB_URL', 'sqlite:///opencloning_mcp.sqlite'))
 
 
+# Arbitrary number that identifies our lock in Postgres
+INIT_LOCK_KEY = 7_345_001
+
+
 def init_db():
-    Base.metadata.create_all(engine)
+    # Every gunicorn worker runs this at startup. On Postgres, two workers creating the table at the same
+    # time make one of them fail, so they take turns: the lock is released when the transaction ends, and
+    # then create_all sees the table made by the first worker.
+    with engine.begin() as connection:
+        if engine.dialect.name == 'postgresql':
+            connection.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': INIT_LOCK_KEY})
+        Base.metadata.create_all(connection)

@@ -89,7 +89,6 @@ Adding sequences and primers:
 
 | Tool | What it does |
 |---|---|
-| `add_sequence_from_path` | Read a sequence file (including SnapGene `.dna`) from a path on the computer where the server runs. Nothing goes through the model. |
 | `add_sequence_from_file` | Read the text of a GenBank, FASTA or EMBL file, retyped by the model. |
 | `add_typed_sequence` | A sequence typed as DNA letters. |
 | `add_sequence_from_genbank` | Import from NCBI by accession. |
@@ -169,12 +168,12 @@ The code is short and flat. Every cloning tool is a call to `run_operation()` in
 
 This is a proof of concept for localhost use:
 
-- `add_sequence_from_path` only works when the server runs on the same computer as the assistant, and it can read any sequence file the server can. With `add_sequence_from_file`, the model retypes the file contents as a string argument: fine for small text files, impossible for binary ones. For those, `get_upload_link` gives the user an upload page instead. That page only adds the first sequence of each file, has no error handling, and the user has to tell the model when the upload is done.
+- With `add_sequence_from_file`, the model retypes the file contents as a string argument: fine for small text files, impossible for binary ones. For those, `get_upload_link` gives the user an upload page instead. That page only adds the first sequence of each file, has no error handling, and the user has to tell the model when the upload is done.
 - The `strategy_id` appears in the transcript and works as a bearer secret: anyone who has it can read and modify the strategy. There is no authentication.
 - A strategy is deleted after 30 minutes without use, so unexported work is lost. The model is told to offer the download link at the end of each task.
 - Choosing a product re-runs the operation, which assumes the cloning API returns candidates in a stable order.
 - Names longer than 16 characters widen the GenBank LOCUS line. This is harmless (round-trip verified).
-- Only one server process: the store uses SQLite and a process-local lock.
+- Several server processes (e.g. gunicorn workers) need Postgres (`OPENCLONING_MCP_DB_URL=postgresql+psycopg://...`): SQLite ignores the row locks that keep parallel writes from overwriting each other.
 - The download link needs the server to be reachable from the browser (forward the port in a dev container).
 - No stdio transport: the download links are served by the HTTP app.
 - The genome tools need network access to NCBI, and a gene search only returns the first page of NCBI results.
