@@ -19,6 +19,10 @@ BASE_URL = os.environ.get('OPENCLONING_MCP_BASE_URL', f'http://localhost:{PORT}'
 # must have this server as its `mcpUrl` config, and it is the only origin allowed to fetch the strategies.
 FRONTEND_URL = os.environ.get('OPENCLONING_MCP_FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
+# How many plasmids a strategy can import from Addgene, to protect the API token of the server (there is no
+# authentication, and a strategy is the closest thing to a session: the server is stateless)
+MAX_ADDGENE_PER_STRATEGY = int(os.environ.get('OPENCLONING_MCP_MAX_ADDGENE_PER_STRATEGY', '20'))
+
 logger = logging.getLogger(__name__)
 
 # Returned by start_strategy for the model to pass on to the user
