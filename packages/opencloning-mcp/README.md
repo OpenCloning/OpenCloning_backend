@@ -64,6 +64,7 @@ Then ask, for example: *"Start a cloning strategy. Import pFA6a-hphMX6 from this
 |---|---|---|
 | `OPENCLONING_MCP_PORT` | `8002` | Port of the server. |
 | `OPENCLONING_MCP_BASE_URL` | `http://localhost:<port>` | Public URL of the server, used in the download links. |
+| `OPENCLONING_MCP_FRONTEND_URL` | `http://localhost:3000` | Public URL of the OpenCloning web app. If not empty, `get_strategy_json` also returns a link that opens the strategy in it (the web app needs this server as its `MCP_URL` / `mcpUrl` config). |
 | `OPENCLONING_MCP_DB_URL` | `sqlite:///opencloning_mcp.sqlite` | SQLAlchemy URL of the strategy store. |
 | `OPENCLONING_MCP_INACTIVITY_MINUTES` | `30` | Strategies unused for this long are deleted. |
 | `ADDGENE_TOKEN` | – | Needed by `add_sequence_from_addgene` (a setting of the cloning API). |
@@ -103,6 +104,27 @@ Genome regions from NCBI (the "Genome region" source of the web app). The first 
 | `list_assembly_chromosomes` | List the sequence accessions of an assembly. |
 | `add_genome_region_from_gene` | Add a gene with upstream / downstream flanking bases (relative to the gene's strand, oriented as the gene). |
 | `add_genome_region_from_coordinates` | Add a region by sequence accession and coordinates. |
+
+Primers. The model says where in terms of features (with bases upstream or downstream), amino acids or coordinates, and the server does the strand-aware arithmetic (see `regions.py`). The designed primers are saved in the strategy, so their ids go straight to `pcr`. The Tm that matters is the one of the part of a primer that binds the template, which the PCR step records, so `pcr_primer_details` reads it there, like the PCR table of the web app:
+
+| Tool | What it does |
+|---|---|
+| `list_features` (read-only) | All the features of a sequence with exact locations, and the length in amino acids of CDSs. |
+| `locate_region` (read-only) | Check what a region or a point resolves to (coordinates, strand, bases, amino acids around it) before designing. |
+| `design_pcr_primers` | Primers that amplify a region, with optional restriction sites or other tails (`/primer_design/simple_pair`). |
+| `design_homology_primers` | Primers with homology arms to replace a region of a target, or insert at a point, by homologous recombination (`/primer_design/homologous_recombination`). |
+| `pcr_primer_details` (read-only) | After a PCR: tail, Tm, GC%, hairpin and self-dimer of the part of each primer that binds, the Tm difference and the dimer between the primers. |
+| `find_orfs` (read-only) | ORFs in the six frames (stop to stop, starting at the first Met or anywhere), longest first, with the annotated CDSs they overlap. To find or check a CDS before annotating it. |
+| `primer_details` (read-only) | Tm, GC%, hairpin and self-dimer of whole primers of the strategy or typed sequences, and the dimer between two of them. |
+
+Annotations. They change the features of a sequence in place (the bases never change, and the strategy records no step). Where a feature goes is described like a region for the primer tools, and the strand arithmetic is done by the server:
+
+| Tool | What it does |
+|---|---|
+| `add_feature` | Annotate a region (a feature with bases around it, coordinates, or between two points) with a name and a type, or several regions joined into one feature (`parts`, e.g. the exons of a CDS or a CDS fused to a tag). |
+| `remove_features` | Remove one feature by name or `#index`, or all the features of a type. |
+| `resize_feature` | Move the start and/or end of a feature, in its own direction, across exons. |
+| `remove_stop_codon` | Check that the last codon of a CDS is a stop codon (any strand, exons included) and shorten the CDS by 3 bases. |
 
 Cloning operations. When an operation has several possible products, the tool returns them as `"choose_product"` candidates and adds nothing. The model then calls it again with `product_index`.
 
@@ -155,4 +177,5 @@ This is a proof of concept for localhost use:
 - The download link needs the server to be reachable from the browser (forward the port in a dev container).
 - No stdio transport: the download links are served by the HTTP app.
 - The genome tools need network access to NCBI, and a gene search only returns the first page of NCBI results.
-- Not supported yet: primer design, `/recombinase`, the other repository importers, SnapGene history import, Sanger alignment and batch cloning.
+- Primer design covers PCR and homologous recombination only: not yet Gibson / In-Fusion / overlap extension primers (`/primer_design/gibson_assembly`), nor sequencing primers. Regions are found from the annotations of the sequence, with no search for ORFs or motifs.
+- Not supported yet: `/recombinase`, the other repository importers, SnapGene history import, Sanger alignment and batch cloning.

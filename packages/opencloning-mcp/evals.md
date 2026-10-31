@@ -27,7 +27,7 @@ intuition. That, rather than new tools, is what makes the server drivable.
 > Cut out the hphMX6 cassette from this plasmid with BamHI and SacI and put this gene in its place:
 > *(paste a few hundred bases of a gene)*. Design the primers you need.
 
-**Expected:** two primers with BamHI / SacI tails, a PCR of the gene, a digest of the plasmid keeping
+**Expected:** `design_pcr_primers` with `left_enzyme="BamHI"` and `right_enzyme="SacI"`, a PCR of the gene, a digest of the plasmid keeping
 the ~2.5 kb backbone, a digest of the PCR product, and a circular ligation of about 2.6 kb.
 
 **Watch:** whether it chooses the backbone fragment rather than the cassette, and whether it digests
@@ -98,11 +98,78 @@ valid ids, so note whether it recovers from that on its own.
 coding region."* (Then try *"now the gene cdc3"*, which is on the minus strand.)
 
 **Expected:** `find_genome_assembly` (reference assembly `GCF_000002945.2`), `find_gene`, then
-`add_genome_region_from_gene` with the default 1000 bp flanks, giving a 3888 bp sequence.
+`add_genome_region_from_gene` with the default 1000 bp flanks, giving a 3888 bp sequence, then
+`design_pcr_primers` with `region={"feature": "cdc2", "feature_type": "CDS"}` (see task 8).
 
 **Watch:** whether it asks when the species or the gene is ambiguous instead of guessing; whether it passes
 the locus tag; and whether it understands that the product of a minus-strand gene is already oriented as the
 gene, so upstream flank comes first.
+
+## 8. Primers for a region of a sequence
+
+Use the genome region of task 7 (or any annotated GenBank file).
+
+**Prompts**, each in a fresh strategy, checking the product after each `pcr`:
+
+> a. Amplify the coding region of cdc2. *(then)* Now cdc3, which is on the minus strand.
+> b. Amplify cdc2 with 500 bp of promoter, but without the stop codon, with BamHI and SacI sites.
+> c. Amplify the N-terminal 120 amino acids of cdc2.
+> d. Amplify the intergenic region between cdc2 and the gene next to it.
+> e. Amplify bases 1500 to 2400 of the minus strand.
+
+**Expected:** `list_features` or `locate_region` when the region is not a plain feature, then
+`design_pcr_primers` with `{"feature": ..., "upstream": 500, "downstream": -3}`, `{"start": ..., "end": ...}`
+and so on, then `pcr` and `pcr_primer_details`. For a minus-strand gene the forward primer is in the sense
+of the gene and the product is the gene as it reads.
+
+**Watch:** whether it gets the sign of `upstream` / `downstream` right on the minus strand (the server
+does the strand arithmetic, the model must only say upstream or downstream); whether `feature_type` is
+set when a gene and its CDS share a name; whether it checks "120 amino acids" with `locate_region`;
+whether it shows the user the Tm of the binding part, not of the whole primer.
+
+## 9. Primers for homologous recombination
+
+**Prompts**, with a plasmid that has a resistance cassette and a genome region with annotated genes:
+
+> a. Knock out cdc2 by replacing its coding region with the kanMX cassette, with 60 bp homology arms.
+> b. Add a GFP tag after amino acid 120 of cdc2, in frame. *(the GFP typed or from a file)*
+> c. Tag cdc2 at the C terminus: replace the stop codon with the GFP, with a GGSGG linker.
+
+**Expected:** `design_homology_primers` with `replace=` the CDS / `insert_at={"feature": ..., "after_aa": 120}` /
+`replace={"start": {"feature": ..., "after_aa": N-1}, "end": {"feature": ..., "edge": "end"}}`, then `pcr`,
+`pcr_primer_details`, and `homologous_recombination` with `minimal_homology` equal to the homology length.
+
+**Watch:** "after amino acid 120": does it check the amino acids on both sides with `locate_region`, and does it
+ask whether the user counts the Met as 1? Does it put the linker in a spacer with the right side? Does it
+understand `orientation`, or leave the default? Does it notice when the product is not the expected size
+(`expected_size_after_recombination`)?
+
+## 10. Questions about primers
+
+**Prompts:** *"What are the Tm and the hairpin of GCGGATCCATGGCTAGCAAAGGAGAAGAAC?"* (no strategy at all), and, after
+a PCR with tailed primers, *"Are these primers any good? Why is the annealing temperature not what I
+expected?"*
+
+**Expected:** `primer_details` with `sequences`, and `pcr_primer_details` on the PCR product.
+
+**Watch:** whether it explains that the Tm of the whole primer is not the one that counts when there is a
+tail, and says that the units of delta G are cal/mol.
+
+## 11. Annotations
+
+**Prompts**, on an annotated sequence (the genome region of task 7, or a plasmid):
+
+> a. Remove the stop codon from the cdc2 CDS annotation, so that I can fuse a tag. *(then, on a minus-strand gene)*
+> b. Remove all the misc_feature annotations. *(then)* Remove the annotation called "cdc2".
+> c. Annotate the first 120 amino acids of cdc2 as "N-term".
+
+**Expected:** `remove_stop_codon` (it refuses if the last codon is not a stop), `remove_features` with
+`feature_type` for b, then a name that needs `feature_type` because the gene and the CDS share it,
+`add_feature` with a `start` / `end` region for c.
+
+**Watch:** whether it lists the features before removing a whole type, whether it handles the name shared by
+a gene and its CDS, whether it notices that the gene and mRNA features still include the stop codon, and
+whether it tells the user that the change is made on the sequence itself.
 
 ## Results
 

@@ -9,11 +9,19 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 
 from . import cloning_api, names, storage
-from .app import PORT, mcp
+from .app import FRONTEND_URL, PORT, mcp
 from .products import add_product_to_strategy
 
 # Importing a tools module registers its tools on `mcp`
-from . import tools_genome, tools_import, tools_operations, tools_primers, tools_strategy  # noqa: F401
+from . import (  # noqa: F401
+    tools_annotations,
+    tools_genome,
+    tools_import,
+    tools_operations,
+    tools_orfs,
+    tools_primers,
+    tools_strategy,
+)
 
 
 @mcp.custom_route('/strategies/{strategy_id}.json', methods=['GET'])
@@ -23,7 +31,11 @@ async def download_strategy(request: Request) -> JSONResponse:
         strategy = storage.load_strategy(request.path_params['strategy_id'])
     except ToolError as error:
         return JSONResponse({'detail': str(error)}, status_code=404)
-    return JSONResponse(strategy, headers={'Content-Disposition': 'attachment; filename="cloning_strategy.json"'})
+    headers = {'Content-Disposition': 'attachment; filename="cloning_strategy.json"'}
+    if FRONTEND_URL:
+        # The web app fetches the strategy from the browser, see get_strategy_json
+        headers['Access-Control-Allow-Origin'] = FRONTEND_URL
+    return JSONResponse(strategy, headers=headers)
 
 
 UPLOAD_FORM = """<!doctype html>

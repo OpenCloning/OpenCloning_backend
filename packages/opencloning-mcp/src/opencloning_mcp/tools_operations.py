@@ -93,6 +93,7 @@ def pcr(
 
     minimal_annealing is the minimum number of bases at the 3' end of each primer that must match the
     template. The 5' end of the primers can have extra bases (tails), which are added to the product.
+    Afterwards, pcr_primer_details gives the Tm of the part of each primer that binds the template.
     """
     return run_operation(
         strategy_id,

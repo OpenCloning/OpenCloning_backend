@@ -130,6 +130,19 @@ def rename_sequence(strategy_id: str, sequence_id: int, name: str, renamed_seque
         session.commit()
 
 
+def replace_sequence(strategy_id: str, sequence_id: int, new_fields: dict) -> None:
+    """Change a sequence of the strategy in place, e.g. its annotations (see tools_annotations.py)."""
+    with _write_lock, Session(engine) as session:
+        row = _get_active_row(session, strategy_id)
+        strategy = copy.deepcopy(row.strategy)
+        for sequence in strategy['sequences']:
+            if sequence['id'] == sequence_id:
+                sequence.update(new_fields, id=sequence_id)
+        row.strategy = strategy
+        row.last_used_at = utcnow()
+        session.commit()
+
+
 def delete_inactive_strategies() -> int:
     """Delete strategies unused for INACTIVITY_MINUTES. Returns how many were deleted."""
     with Session(engine) as session:
