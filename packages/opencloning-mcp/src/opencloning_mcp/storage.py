@@ -61,6 +61,18 @@ def load_strategy(strategy_id: str) -> dict:
     return strategy
 
 
+def get_by_id(strategy: dict, list_name: str, ids: list[int]) -> list[dict]:
+    """Get items ('sequences' or 'primers') of the strategy by id, in the given order."""
+    items_by_id = {item['id']: item for item in strategy[list_name]}
+    for item_id in ids:
+        if item_id not in items_by_id:
+            raise ToolError(
+                f'There is no item with id {item_id} in the {list_name} of this strategy. '
+                f'The ids of {list_name} are: {sorted(items_by_id)}'
+            )
+    return [items_by_id[item_id] for item_id in ids]
+
+
 def next_id(strategy: dict) -> int:
     """Sources, sequences and primers share one id space (same rule as BaseCloningStrategy.next_id)."""
     ids = [item['id'] for key in ('sources', 'sequences', 'primers') for item in strategy[key]]
@@ -99,6 +111,23 @@ def append_step(strategy_id: str, source: dict, sequence: dict) -> int:
 def add_primer(strategy_id: str, name: str, sequence: str) -> int:
     """Add a primer to the strategy and return its id."""
     return _append_with_new_id(strategy_id, {'primers': {'type': 'Primer', 'name': name, 'sequence': sequence}})
+
+
+def rename_sequence(strategy_id: str, sequence_id: int, name: str, renamed_sequence: dict) -> None:
+    """Replace a sequence of the strategy with its renamed version (see the rename_sequence tool)."""
+    with _write_lock, Session(engine) as session:
+        row = _get_active_row(session, strategy_id)
+        strategy = copy.deepcopy(row.strategy)
+        for sequence in strategy['sequences']:
+            if sequence['id'] == sequence_id:
+                sequence.update(renamed_sequence, id=sequence_id)
+        # The source that produced the sequence records the name it was given
+        for source in strategy['sources']:
+            if source['id'] == sequence_id:
+                source['output_name'] = name
+        row.strategy = strategy
+        row.last_used_at = utcnow()
+        session.commit()
 
 
 def delete_inactive_strategies() -> int:
