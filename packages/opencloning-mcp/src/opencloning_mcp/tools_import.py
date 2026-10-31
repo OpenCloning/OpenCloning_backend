@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from opencloning.app_settings import settings
 
 from . import cloning_api, names, storage
-from .app import mcp
+from .app import MAX_ADDGENE_PER_STRATEGY, mcp
 from .products import add_product_to_strategy
 
 
@@ -107,8 +107,11 @@ def add_sequence_from_addgene(strategy_id: str, addgene_id: str, name: str | Non
     """Add a plasmid from Addgene by its catalog number, e.g. "39296" (the number in addgene.org/39296).
 
     Needs the server to be configured with an Addgene API token. By default the sequence keeps the
-    name of the plasmid in Addgene.
+    name of the plasmid in Addgene. A strategy can import a limited number of plasmids from Addgene.
     """
+    imported = sum(source['type'] == 'AddgeneIdSource' for source in storage.load_strategy(strategy_id)['sources'])
+    if imported >= MAX_ADDGENE_PER_STRATEGY:
+        raise ToolError('Too many AddGene requests')
     source = {'id': 0, 'type': 'AddgeneIdSource', 'repository_id': addgene_id, 'output_name': clean_or_none(name)}
     result = cloning_api.post('/repository_id/addgene', json=source)
     return add_product_to_strategy(strategy_id, result)

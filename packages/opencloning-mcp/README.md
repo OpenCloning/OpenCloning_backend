@@ -67,6 +67,7 @@ Then ask, for example: *"Start a cloning strategy. Import pFA6a-hphMX6 from this
 | `OPENCLONING_MCP_FRONTEND_URL` | `http://localhost:3000` | Public URL of the OpenCloning web app. If not empty, `get_strategy_json` also returns a link that opens the strategy in it (the web app needs this server as its `MCP_URL` / `mcpUrl` config). |
 | `OPENCLONING_MCP_DB_URL` | `sqlite:///opencloning_mcp.sqlite` | SQLAlchemy URL of the strategy store. |
 | `OPENCLONING_MCP_INACTIVITY_MINUTES` | `30` | Strategies unused for this long are deleted. |
+| `OPENCLONING_MCP_MAX_ADDGENE_PER_STRATEGY` | `20` | Most plasmids that one strategy can import with `add_sequence_from_addgene` (there is no authentication, this protects the Addgene token). |
 | `ADDGENE_TOKEN` | – | Needed by `add_sequence_from_addgene` (a setting of the cloning API). |
 | `NCBI_API_KEY` | – | Optional, raises the NCBI rate limit for `add_sequence_from_genbank`. |
 

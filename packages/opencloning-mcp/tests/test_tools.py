@@ -12,7 +12,7 @@ from opencloning import app_settings
 from opencloning.dna_functions import custom_file_parser
 from opencloning.pydantic_models import BaseCloningStrategy
 
-from opencloning_mcp import cloning_api
+from opencloning_mcp import cloning_api, storage, tools_import
 from opencloning_mcp.server import mcp
 
 
@@ -141,6 +141,25 @@ async def test_api_errors_reach_the_model(client: Client, monkeypatch):
     result = await client.call_tool('add_sequence_from_addgene', {'strategy_id': strategy_id, 'addgene_id': '39296'})
     assert result.is_error
     assert 'Addgene access requires an API token' in result.content[0].text
+
+
+@pytest.mark.anyio
+async def test_addgene_imports_are_limited_per_strategy(client: Client, monkeypatch):
+    monkeypatch.setattr(tools_import, 'MAX_ADDGENE_PER_STRATEGY', 1)
+    strategy_id = await new_strategy(client)
+    await call(client, 'add_typed_sequence', strategy_id=strategy_id, sequence='ACGTACGTAC')
+    sequence = storage.load_strategy(strategy_id)['sequences'][0]
+    # An import that already happened, without calling Addgene
+    storage.append_step(strategy_id, {'type': 'AddgeneIdSource', 'input': [], 'repository_id': '1'}, sequence)
+
+    result = await client.call_tool('add_sequence_from_addgene', {'strategy_id': strategy_id, 'addgene_id': '2'})
+    assert result.is_error and 'limit' in result.content[0].text
+
+    # Another strategy has its own count: it gets as far as the API, which needs a token
+    monkeypatch.setattr(app_settings.settings, 'ADDGENE_TOKEN', None)
+    other = await new_strategy(client)
+    result = await client.call_tool('add_sequence_from_addgene', {'strategy_id': other, 'addgene_id': '2'})
+    assert result.is_error and 'API token' in result.content[0].text
 
 
 @pytest.mark.flaky(reruns=2, reruns_delay=2)
