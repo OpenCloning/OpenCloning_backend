@@ -1,11 +1,8 @@
 """Tools to add starting sequences and primers to a strategy."""
 
 import re
-from pathlib import Path
 
 from mcp.server.mcpserver.exceptions import ToolError
-
-from opencloning.app_settings import settings
 
 from . import cloning_api, names, storage
 from .app import MAX_ADDGENE_PER_STRATEGY, mcp
@@ -28,9 +25,8 @@ def add_sequence_from_file(
     """Add a sequence from the text of a sequence file (GenBank, FASTA or EMBL).
 
     The format is guessed from the extension of file_name: .gb, .gbk, .ape, .fasta, .fa or .embl.
-    Pass the file text exactly as it is. This only suits short files you only have as text: if you know the
-    path of the file, use add_sequence_from_path; for binary files, use get_upload_link. If you only have the
-    DNA letters, use add_typed_sequence.
+    Pass the file text exactly as it is. This only suits short files you only have as text: for binary files
+    or long ones, use get_upload_link. If you only have the DNA letters, use add_typed_sequence.
     Set circularize=True to make the sequence circular (e.g. a plasmid in a FASTA file).
     If the file contains several sequences, the result has status "choose_product": call again
     with product_index to add one of them.
@@ -40,41 +36,6 @@ def add_sequence_from_file(
     if name is not None:
         params['output_name'] = names.clean(name)
     result = cloning_api.post('/read_from_file', files={'file': (file_name, file_content)}, params=params)
-    return add_product_to_strategy(strategy_id, result, product_index)
-
-
-SEQUENCE_FILE_EXTENSIONS = {'.gb', '.gbk', '.ape', '.fasta', '.fa', '.embl', '.dna'}
-
-
-@mcp.tool()
-def add_sequence_from_path(
-    strategy_id: str,
-    path: str,
-    name: str | None = None,
-    circularize: bool = False,
-    product_index: int | None = None,
-) -> dict:
-    """Add a sequence from a file on the computer where this server runs, given its path.
-
-    Prefer this to add_sequence_from_file when you know the path of the file (e.g. the user dragged it
-    into Claude Code): nothing has to be retyped, and it works for binary SnapGene .dna files too.
-    Supported extensions: .gb, .gbk, .ape, .fasta, .fa, .embl, .dna. If the file contains several sequences,
-    the result has status "choose_product": call again with product_index. The sequence is named after the
-    file unless you pass `name`.
-    """
-    file = Path(path).expanduser()
-    if file.suffix.lower() not in SEQUENCE_FILE_EXTENSIONS:
-        raise ToolError(
-            f'Only sequence files can be read, with one of these extensions: {sorted(SEQUENCE_FILE_EXTENSIONS)}'
-        )
-    if not file.is_file():
-        raise ToolError(f'There is no file at {path} on the computer where the server runs. Try get_upload_link.')
-    if file.stat().st_size > settings.MAX_SEQUENCE_FILE_SIZE_MB * 1024 * 1024:
-        raise ToolError(f'The file is larger than {settings.MAX_SEQUENCE_FILE_SIZE_MB} MB')
-
-    # Named after the file: SnapGene files often have no name inside
-    params = {'circularize': circularize, 'output_name': names.clean(name or file.stem)}
-    result = cloning_api.post('/read_from_file', files={'file': (file.name, file.read_bytes())}, params=params)
     return add_product_to_strategy(strategy_id, result, product_index)
 
 

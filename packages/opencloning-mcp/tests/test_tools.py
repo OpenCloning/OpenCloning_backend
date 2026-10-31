@@ -615,20 +615,6 @@ async def test_upload_binary_files_in_the_browser(client: Client):
 
 
 @pytest.mark.anyio
-async def test_add_sequence_from_path(client: Client):
-    strategy_id = await new_strategy(client)
-    path = TEST_FILES / 'gateway_manual_cloning' / 'pDONRtm221.dna'
-    result = await call(client, 'add_sequence_from_path', strategy_id=strategy_id, path=str(path))
-    assert (result['sequence']['name'], result['sequence']['length']) == ('pDONRtm221', 4761)
-
-    for wrong_path in (str(path) + 'x.dna', str(TEST_FILES / 'wrong.dna'), '/etc/passwd'):
-        assert (
-            await client.call_tool('add_sequence_from_path', {'strategy_id': strategy_id, 'path': wrong_path})
-        ).is_error
-    assert_strategy_is_valid(await download(strategy_id))
-
-
-@pytest.mark.anyio
 async def test_start_strategy_tells_the_user_about_files_and_has_a_prompt(client: Client):
     result = await call(client, 'start_strategy')
     assert 'upload link' in result['tell_the_user']
