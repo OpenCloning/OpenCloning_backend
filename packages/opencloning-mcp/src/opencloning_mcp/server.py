@@ -1,15 +1,18 @@
 """Entry point: registers all the tools, adds the download and upload routes, and runs the server over HTTP."""
 
+from html import escape
 from pathlib import Path
+from urllib.parse import urlparse
 
 import uvicorn
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.server.mcpserver.exceptions import ToolError
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 
 from . import cloning_api, names, storage
-from .app import FRONTEND_URL, PORT, mcp
+from .app import BASE_URL, FRONTEND_URL, PORT, mcp
 from .products import add_product_to_strategy
 
 # Importing a tools module registers its tools on `mcp`
@@ -22,6 +25,19 @@ from . import (  # noqa: F401
     tools_primers,
     tools_strategy,
 )
+
+
+# The page is a template: the placeholders are replaced with the public URLs of this deployment
+LANDING_PAGE = (Path(__file__).parent / 'static' / 'index.html').read_text()
+
+
+@mcp.custom_route('/', methods=['GET'])
+async def landing_page(request: Request) -> HTMLResponse:
+    """A page that tells whoever opens the server URL in a browser what this is and how to connect to it."""
+    page = LANDING_PAGE.replace('{{BASE_URL}}', escape(BASE_URL)).replace(
+        '{{FRONTEND_URL}}', escape(FRONTEND_URL or 'https://opencloning.org')
+    )
+    return HTMLResponse(page)
 
 
 @mcp.custom_route('/strategies/{strategy_id}.json', methods=['GET'])
@@ -82,7 +98,12 @@ async def upload_file(request: Request) -> HTMLResponse:
 
 def app():
     """Factory for uvicorn, which needs it to reload on code changes (see the README)."""
-    return mcp.streamable_http_app(stateless_http=True)
+    # The SDK only accepts localhost in the Host header unless told otherwise (DNS rebinding protection, which
+    # protects servers on the user's computer). Once the server has a public URL, the check would reject every
+    # request, and it protects nothing there: the server is already reachable by anyone.
+    is_local = urlparse(BASE_URL).hostname in ('localhost', '127.0.0.1', '::1')
+    security = TransportSecuritySettings(enable_dns_rebinding_protection=is_local)
+    return mcp.streamable_http_app(stateless_http=True, transport_security=security)
 
 
 def main():
