@@ -13,6 +13,7 @@ from opencloning.dna_functions import custom_file_parser
 from opencloning.pydantic_models import BaseCloningStrategy
 
 from opencloning_mcp import cloning_api, storage, tools_import
+from opencloning_mcp.app import BASE_URL
 from opencloning_mcp.server import mcp
 
 
@@ -612,6 +613,14 @@ async def test_upload_binary_files_in_the_browser(client: Client):
     sequences = (await call(client, 'describe_strategy', strategy_id=strategy_id))['sequences']
     assert [(s['id'], s['name']) for s in sequences] == [(1, 'pDONRtm221'), (2, 'pET-53-DESTtm')]
     assert_strategy_is_valid(await download(strategy_id))
+
+
+def test_landing_page_is_html_with_the_server_url():
+    response = TestClient(mcp.streamable_http_app()).get('/')
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/html')
+    assert f'{BASE_URL}/mcp' in response.text
+    assert '{{' not in response.text
 
 
 @pytest.mark.anyio
