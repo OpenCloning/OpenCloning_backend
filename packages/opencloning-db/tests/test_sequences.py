@@ -1273,6 +1273,95 @@ def test_get_text_file_sequence_ok(sequences_client):
     assert 'LOCUS' in r.json()['file_content']
 
 
+@readonly_db
+def test_get_text_file_sequences_by_ids(sequences_client):
+    c = sequences_client['client']
+    ids = [sequences_client['seq_circ_id'], sequences_client['pcr_product_id']]
+    r = c.get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(i)) for i in ids],
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert [item['sequence_ref']['id'] for item in data] == sorted(ids)
+    for item in data:
+        assert item['sequence']['type'] == 'TextFileSequence'
+        assert 'LOCUS' in item['sequence']['file_content']
+    pcr_item = next(item for item in data if item['sequence_ref']['id'] == sequences_client['pcr_product_id'])
+    assert pcr_item['sequence_ref']['tags'] == [{'id': sequences_client['filter_tag_id'], 'name': 'seq-filter-tag'}]
+    assert pcr_item['sequence_ref']['sample_uids'] == ['FILTER-UID-99']
+
+
+@readonly_db
+def test_get_text_file_sequences_by_tag(sequences_client):
+    c = sequences_client['client']
+    r = c.get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('tags', str(sequences_client['filter_tag_id']))],
+    )
+    assert r.status_code == 200, r.text
+    assert [item['sequence_ref']['id'] for item in r.json()] == [sequences_client['pcr_product_id']]
+
+    # Tag from another workspace matches nothing
+    r = c.get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('tags', str(sequences_client['filter_tag_w2_id']))],
+    )
+    assert r.status_code == 200, r.text
+    assert r.json() == []
+
+
+@readonly_db
+@pytest.mark.parametrize('params', [[], [('ids', '1'), ('tags', '1')]])
+def test_get_text_file_sequences_requires_ids_or_tags(sequences_client, params):
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=params,
+    )
+    assert r.status_code == 422, r.text
+
+
+@readonly_db
+@pytest.mark.parametrize('missing_key', ['seq_w2_id', 'template_sequence_id', None])
+def test_get_text_file_sequences_missing_ids_404(sequences_client, missing_key):
+    missing_id = sequences_client[missing_key] if missing_key else 999999
+    ids = [sequences_client['pcr_product_id'], missing_id]
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(i)) for i in ids],
+    )
+    assert r.status_code == 404, r.text
+    assert str(missing_id) in r.json()['detail']
+
+
+@readonly_db
+def test_get_text_file_sequences_over_limit_400(sequences_client, monkeypatch):
+    monkeypatch.setattr(sequences_router, 'MAX_BULK_SEQUENCES', 1)
+    ids = [sequences_client['seq_circ_id'], sequences_client['pcr_product_id']]
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(i)) for i in ids],
+    )
+    assert r.status_code == 400, r.text
+    assert 'maximum is 1' in r.json()['detail']
+
+
+@readonly_db
+def test_get_text_file_sequences_auth(sequences_client):
+    c = sequences_client['client']
+    path = f"/sequences/text_file_sequences?ids={sequences_client['seq_circ_id']}"
+    assert_get_missing_workspace_header_422(c, path, sequences_client['token_owner_w1'])
+    assert_get_invalid_workspace_id_422(c, path, sequences_client['token_owner_w1'])
+    assert_get_non_member_workspace_403(c, path, sequences_client['token_owner_w1'], sequences_client['w3'])
+    assert_get_unauthenticated_401(c, path, sequences_client['w1'])
+
+
 @pytest.mark.parametrize(
     'query_sequence, expected_shift, expected_reverse_complemented, result_count',
     [
