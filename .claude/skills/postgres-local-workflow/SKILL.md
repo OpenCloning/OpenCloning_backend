@@ -36,6 +36,8 @@ OPENCLONING_TESTING=1 uv run opencloning-cli db seed
 uv run uvicorn opencloning_db.api:app --port 8001 --reload --reload-exclude='.venv'
 ```
 
+Inside the dev container (`DEVCONTAINER=true`), Postgres already runs as a sidecar on `localhost:5432` migrations run on container creation, and `.env.dev` is already loaded into the environment: skip `docker compose` (not available there) and `source .env.dev`.
+
 `.env.dev` sets `OIDC_TEST_MODE=1` for local and test auth (`Authorization: Bearer test:<subject>|<email>|<display_name>`). Seeded users start unlinked; the first matching email attaches that identity. `OPENCLONING_TESTING=1` is only for seed, stubs, and `/__test/reset-db`.
 
 ## Required Runtime Environment
