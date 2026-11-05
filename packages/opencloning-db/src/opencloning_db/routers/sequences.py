@@ -442,8 +442,8 @@ def _sequence_validation_rows_with_flags(
     session,
     workspace_id: int,
 ) -> tuple[list[SequenceValidationRow], list[opencloning_models.TextFileSequence]]:
-    if len(submitted_files) > 100:
-        raise HTTPException(status_code=400, detail='A maximum of 100 sequence files can be submitted')
+    if len(submitted_files) > 500:
+        raise HTTPException(status_code=400, detail='A maximum of 500 sequence files can be submitted')
 
     rows: list[SequenceValidationRow] = []
     parsed_names: list[str] = []

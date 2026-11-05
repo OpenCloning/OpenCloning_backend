@@ -1037,16 +1037,16 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
 
 
 @readonly_db
-def test_validate_upload_sequences_limit_100(sequences_client):
+def test_validate_upload_sequences_limit_500(sequences_client):
     c = sequences_client['client']
     h_token = sequences_client['token_owner_w1']
     wid = sequences_client['w1']
     rec = Dseqrecord('ATGCATGC', name='bulk')
     body = rec.format('genbank').encode('utf-8')
-    files = [(f'seq_{i}.gb', body) for i in range(101)]
+    files = [(f'seq_{i}.gb', body) for i in range(501)]
     r = _post_validate_upload_sequences(c, h_token, wid, files)
     assert r.status_code == 400
-    assert 'maximum of 100' in r.json()['detail']
+    assert 'maximum of 500' in r.json()['detail']
 
 
 @readonly_db
