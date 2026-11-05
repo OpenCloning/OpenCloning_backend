@@ -11,6 +11,8 @@ import glob
 from pathlib import Path
 
 import opencloning_linkml.datamodel.models as opencloning_models
+import pydna.opencloning_models as pydna_opencloning_models
+from pydna.parsers import parse as pydna_parse
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -144,6 +146,22 @@ def load_seed_data(engine: Engine) -> None:
                 content = f.read()
             file_name = os.path.basename(file)
             session.add(create_sequencing_file(sequencing_sequence, content, file_name))
+
+        # Add golden braid plasmids from genbank files, tagged with 'golden-braid'
+        golden_braid_tag = Tag(name='golden-braid', workspace_id=workspace.id)
+        session.add(golden_braid_tag)
+        for file in sorted(glob.glob(str(data_dir / 'golden_braid' / '*.gb'))):
+            dseqr = pydna_parse(file)[0]
+            dseqr.source = pydna_opencloning_models.UploadedFileSource(
+                file_name=os.path.basename(file),
+                sequence_file_format='genbank',
+                index_in_file=0,
+            )
+            sequences, _ = cloning_strategy_to_db(
+                pydna_opencloning_models.CloningStrategy.from_dseqrecords([dseqr]), session, ctx=seed_ctx
+            )
+            for seq in sequences:
+                seq.tags.append(golden_braid_tag)
 
         # Add primer that is not linked to any source
         pydantic_primer = opencloning_models.Primer(id=0, name='no_source_primer', sequence='GGTTaaCCaaa')

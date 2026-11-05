@@ -92,7 +92,7 @@ class TestSeedCommand:
         assert _count_users(config) > 0
         with Session(db_module.get_engine(config)) as session:
             assert session.query(SequencingFile).count() == 3
-            assert session.query(Sequence).count() == 48
+            assert session.query(Sequence).count() == 56
 
 
 class TestStubCommand:

@@ -61,4 +61,4 @@ def test_seed_recreate_schema_rebuilds_broken_schema(temp_workspace, monkeypatch
     with Session(db_module.get_engine(config)) as session:
         assert session.query(User).count() > 0
         assert session.query(SequencingFile).count() == 3
-        assert session.query(Sequence).count() == 48
+        assert session.query(Sequence).count() == 56
