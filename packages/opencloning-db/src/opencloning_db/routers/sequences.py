@@ -147,7 +147,8 @@ def get_sequences(
     return paginate(session, query)
 
 
-MAX_BULK_SEQUENCES = 200
+# Shared by bulk submission and bulk retrieval, so that whatever can be submitted at once can be fetched at once
+MAX_BULK_SEQUENCES = 500
 
 
 # Declared before /sequences/{sequence_id}, otherwise that route would match this path
@@ -157,7 +158,7 @@ def get_text_file_sequences(
     ids: list[int] = Query(description='Sequence IDs to retrieve', default_factory=list),
     tags: list[int] = Query(description='Retrieve all sequences with any of these tag IDs', default_factory=list),
 ):
-    """Retrieve several sequences with their file content, either by ID or by tag.
+    """Retrieve several sequences with their file content, either by ID or by tag, sorted by ID.
     Template sequences are not included, since they have no file content."""
     if bool(ids) == bool(tags):
         raise HTTPException(status_code=422, detail='Provide either ids or tags, but not both.')
@@ -426,6 +427,11 @@ def _has_any_sequence_warning(rows: list[SequenceValidationRow], strict: bool) -
 
 
 def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str | bytes]]:
+    # Checked before reading, so that oversized requests are rejected without loading the files in memory
+    if len(files) > MAX_BULK_SEQUENCES:
+        raise HTTPException(
+            status_code=400, detail=f'A maximum of {MAX_BULK_SEQUENCES} sequence files can be submitted'
+        )
     loaded_files: list[tuple[str, str | bytes]] = []
     for file in files:
         file_name = file.filename or 'unnamed'
@@ -442,9 +448,6 @@ def _sequence_validation_rows_with_flags(
     session,
     workspace_id: int,
 ) -> tuple[list[SequenceValidationRow], list[opencloning_models.TextFileSequence]]:
-    if len(submitted_files) > 500:
-        raise HTTPException(status_code=400, detail='A maximum of 500 sequence files can be submitted')
-
     rows: list[SequenceValidationRow] = []
     parsed_names: list[str] = []
     parsed_seguids: list[str] = []

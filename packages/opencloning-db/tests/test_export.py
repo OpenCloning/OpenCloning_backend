@@ -62,7 +62,10 @@ def test_export_w1_payload(sequences_client):
             seq.id for seq in session.scalars(select(BaseSequence).where(BaseSequence.workspace_id == w1))
         }
     assert base_sequence_ids_in_db == sequence_ids
-    assert {tag['id'] for tag in payload['tags']} == {sequences_client['filter_tag_id']}
+    assert {tag['id'] for tag in payload['tags']} == {
+        sequences_client['filter_tag_id'],
+        sequences_client['bulk_tag_id'],
+    }
 
     assert len(payload['lines']) == 1
     line = payload['lines'][0]
