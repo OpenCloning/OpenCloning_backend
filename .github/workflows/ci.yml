@@ -63,7 +63,7 @@ jobs:
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           ADDGENE_TOKEN: ${{ secrets.ADDGENE_TOKEN }}
         run: |
-          uv run pytest --tb=short -v --capture=no --cov=packages/opencloning/src --cov=packages/opencloning-db/src --cov=packages/opencloning-mcp/src --cov-report term --cov-report xml:coverage.xml
+          uv run pytest --tb=short -v --capture=no --cov=packages/opencloning/src --cov=packages/opencloning-db/src --cov-report term --cov-report xml:coverage.xml
 
       - name: Stop Postgres (Compose)
         if: always()
