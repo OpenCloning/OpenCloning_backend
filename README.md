@@ -5,10 +5,11 @@
 
 This monorepo contains the backend API and the database API. Before going further, please check out the [project website](https://opencloning.org) and read the [main project readme](https://github.com/OpenCloning/OpenCloning).
 
-This repository contains two main packages and a CLI that are part of the OpenCloning project. Check out their respective readmes for more information on how to run them locally or using Docker:
+This repository contains two main packages, a CLI and an experimental MCP server that are part of the OpenCloning project. Check out their respective readmes for more information on how to run them locally or using Docker:
 - [opencloning](./packages/opencloning/README.md): the backend API for *in silico* cloning
 - [opencloning-db](./packages/opencloning-db/README.md): the database API to store a collection of plasmids, primers, and lines.
 - [opencloning-cli](./packages/opencloning-cli/README.md): useful CLI for development and testing.
+- [opencloning-mcp](./packages/opencloning-mcp): **experimental** MCP server. Its interface may change without notice, and it is excluded from test coverage.
 
 ## Running the cloning API locally - for the OpenCloning frontend
 

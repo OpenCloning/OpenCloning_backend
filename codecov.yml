@@ -2,3 +2,4 @@ ignore:
   - "packages/opencloning/tests/**"
   - "packages/opencloning/src/opencloning/batch_cloning/pombe"
   - "packages/opencloning/src/opencloning/batch_cloning/domesticate/__init__.py"
+  - "packages/opencloning-mcp/**"

@@ -3,6 +3,8 @@
 #
 # Production (cloning app): docker build -f docker/opencloning.Dockerfile .
 # Production (db combined): docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=db .
+# Production (MCP server): docker build -f docker/opencloning.Dockerfile --build-arg APP_TARGET=mcp .
+#   (the entrypoint does not support it, set the run command to: gunicorn -c python:opencloning.observability.gunicorn_conf "opencloning_mcp.server:app()")
 # CI tests:                docker build -f docker/opencloning.Dockerfile --target builder-test .
 
 ARG APP_TARGET="cloning"
@@ -45,6 +47,8 @@ COPY packages/opencloning-db/alembic.ini packages/opencloning-db/
 COPY packages/opencloning-db/alembic packages/opencloning-db/alembic
 COPY packages/opencloning-db/src packages/opencloning-db/src
 COPY packages/opencloning-cli packages/opencloning-cli
+COPY packages/opencloning-mcp/pyproject.toml packages/opencloning-mcp/README.md packages/opencloning-mcp/
+COPY packages/opencloning-mcp/src packages/opencloning-mcp/src
 
 FROM workspace-full AS builder-test
 
@@ -54,12 +58,19 @@ ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 
 COPY packages/opencloning-db/tests packages/opencloning-db/tests
 COPY packages/opencloning/tests packages/opencloning/tests
+COPY packages/opencloning-mcp/tests packages/opencloning-mcp/tests
 
 FROM workspace-full AS builder-prod-db
 
 ENV VIRTUAL_ENV="/home/backend/venv"
 ENV UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV
 RUN uv sync --frozen --package opencloning-db --package opencloning-cli --no-default-groups --no-editable
+
+FROM workspace-opencloning AS builder-prod-mcp
+
+COPY packages/opencloning-mcp/pyproject.toml packages/opencloning-mcp/README.md packages/opencloning-mcp/
+COPY packages/opencloning-mcp/src packages/opencloning-mcp/src
+RUN uv sync --frozen --package opencloning-mcp --no-default-groups --no-editable
 
 FROM builder-prod-${APP_TARGET} AS builder-selected
 

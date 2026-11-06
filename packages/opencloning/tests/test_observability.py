@@ -40,9 +40,10 @@ def log_output():
     root.addHandler(handler)
     root.setLevel(logging.INFO)
     # As in production (build_logging_config): the TestClient's httpx logs would contain full URLs
-    httpx_logger = logging.getLogger('httpx')
-    previous_httpx_level = httpx_logger.level
-    httpx_logger.setLevel(logging.WARNING)
+    httpx_loggers = [logging.getLogger(name) for name in ('httpx', 'httpx2')]
+    previous_httpx_levels = [lg.level for lg in httpx_loggers]
+    for lg in httpx_loggers:
+        lg.setLevel(logging.WARNING)
 
     class Output:
         @property
@@ -60,7 +61,8 @@ def log_output():
     yield Output()
     root.removeHandler(handler)
     root.setLevel(previous_level)
-    httpx_logger.setLevel(previous_httpx_level)
+    for lg, level in zip(httpx_loggers, previous_httpx_levels):
+        lg.setLevel(level)
 
 
 def _create_test_app() -> FastAPI:
@@ -270,6 +272,7 @@ def _run_logging_snippet(env_overrides: dict[str, str]) -> str:
         'logging.config.dictConfig(build_logging_config())\n'
         "logging.getLogger('some.library').debug('debug_event')\n"
         "logging.getLogger('httpx').info('HTTP Request: GET https://x.org/?api_key=SECRET')\n"
+        "logging.getLogger('httpx2').info('HTTP Request: GET https://x.org/?api_key=SECRET')\n"
         "logging.getLogger('gunicorn.error').info('Booting worker')\n"
     )
     env = {**os.environ, **env_overrides}
