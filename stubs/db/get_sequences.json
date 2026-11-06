@@ -17,7 +17,7 @@
             "display_name": "Bootstrap User",
             "id": 1
           },
-          "id": 72,
+          "id": 80,
           "name": "template_sequence_plasmid",
           "sample_uids": [],
           "seguid": null,
@@ -31,13 +31,165 @@
             "display_name": "Bootstrap User",
             "id": 1
           },
-          "id": 71,
+          "id": 79,
           "name": "template_sequence_allele",
           "sample_uids": [],
           "seguid": null,
           "sequence_type": "allele",
           "tags": [],
           "type": "template_sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 77,
+          "name": "pDGB3_omega2R",
+          "sample_uids": [],
+          "seguid": "cdseguid=GHXuFOjSxAth7YmWjbVpLOPNGqY",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 76,
+          "name": "pDGB3_alpha2",
+          "sample_uids": [],
+          "seguid": "cdseguid=o9i0KgJxZW6X78ubLg2oUeN0GRY",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 75,
+          "name": "pJOG587",
+          "sample_uids": [],
+          "seguid": "cdseguid=yTEDgvR4afgcVxOcYkMrDVGom6c",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 74,
+          "name": "pJOG351",
+          "sample_uids": [],
+          "seguid": "cdseguid=ljMbhA5V1un_kFepel_oN_1gaZA",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 73,
+          "name": "pJOG171",
+          "sample_uids": [],
+          "seguid": "cdseguid=3xtFY6XTYQMoyPjkisAJ6oKxeO0",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 72,
+          "name": "pJOG173",
+          "sample_uids": [],
+          "seguid": "cdseguid=-Yallf7ldmUi3NJGpPYJc_GfHjs",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 71,
+          "name": "pJOG684",
+          "sample_uids": [],
+          "seguid": "cdseguid=HYx14nyqju5yskhq2L4Tri27Oe0",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
+        },
+        {
+          "created_at": "2000-01-01T00:00:00Z",
+          "created_by": {
+            "display_name": "Bootstrap User",
+            "id": 1
+          },
+          "id": 70,
+          "name": "pUPD-ADH2t_(17-21)",
+          "sample_uids": [],
+          "seguid": "cdseguid=elPtSwjgKAQJsuX2r89VxYCvJks",
+          "sequence_type": "plasmid",
+          "tags": [
+            {
+              "id": 11,
+              "name": "golden-braid"
+            }
+          ],
+          "type": "sequence"
         },
         {
           "created_at": "2000-01-01T00:00:00Z",
@@ -814,168 +966,12 @@
             }
           ],
           "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 10,
-          "name": "ase1_CDS_PCR",
-          "sample_uids": [],
-          "seguid": "ldseguid=oMGruVpBiElY0ffP28XC_BlHXv8",
-          "sequence_type": "pcr_product",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 9,
-          "name": "CU329670",
-          "sample_uids": [],
-          "seguid": "ldseguid=aOmJm_g8bM_td-kzUAZlVUGzhWM",
-          "sequence_type": "locus",
-          "tags": [
-            {
-              "id": 3,
-              "name": "restriction_then_ligation"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 6,
-          "name": "reconstituted_locus",
-          "sample_uids": [
-            "cre_lox_recombination-sample"
-          ],
-          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 5,
-          "name": "excised_locus",
-          "sample_uids": [],
-          "seguid": "ldseguid=BNFaZgDMyb81kUvZmyYN6h8ZzRg",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 4,
-          "name": "excised_plasmid",
-          "sample_uids": [],
-          "seguid": "cdseguid=V-u6HU4ESjpj9VtuN-D7KkcPs4g",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 3,
-          "name": "initial_locus",
-          "sample_uids": [],
-          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 2,
-          "name": "initial_locus",
-          "sample_uids": [],
-          "seguid": "ldseguid=WEFoQ8fj8gn5E33LxtaUJyzMBeo",
-          "sequence_type": "linear_dna",
-          "tags": [
-            {
-              "id": 2,
-              "name": "cre_lox_recombination"
-            }
-          ],
-          "type": "sequence"
-        },
-        {
-          "created_at": "2000-01-01T00:00:00Z",
-          "created_by": {
-            "display_name": "Bootstrap User",
-            "id": 1
-          },
-          "id": 1,
-          "name": "pREX0008",
-          "sample_uids": [
-            "example_sequencing-sample"
-          ],
-          "seguid": "cdseguid=B1Hf10-i7VRt7sgFiDRwUj6K8xQ",
-          "sequence_type": "plasmid",
-          "tags": [
-            {
-              "id": 1,
-              "name": "example_sequencing"
-            }
-          ],
-          "type": "sequence"
         }
       ],
       "page": 1,
-      "pages": 1,
+      "pages": 2,
       "size": 50,
-      "total": 50
+      "total": 58
     },
     "headers": {
       "content-type": "application/json"

@@ -130,6 +130,10 @@ def _seed_sequences_context(engine, config):
         dseqr = Dseqrecord('atgcgatcgatac', circular=True, name='circ_plasmid')
         dseqr.add_feature(0, 4, type_='CDS')
         seq_circ = dseqrecord_to_db(dseqr, session, ctx=w1_ctx)
+        bulk_tag = Tag(name='seq-bulk-tag', workspace_id=w1)
+        session.add(bulk_tag)
+        session.flush()
+        seq_circ.tags.append(bulk_tag)
         seq_patch_linear = dseqrecord_to_db(Dseqrecord('atgcag', name='patch-linear-target'), session, ctx=w1_ctx)
 
         seq_with_overhangs = dseqrecord_to_db(
@@ -159,6 +163,7 @@ def _seed_sequences_context(engine, config):
         template_sequence = TemplateSequence.from_create(
             name='template_sequence', sequence_type=SequenceType.plasmid, ctx=w1_ctx
         )
+        template_sequence.tags.append(bulk_tag)
         session.add(template_sequence)
         session.flush()
         template_sequence_id = template_sequence.id
@@ -187,6 +192,7 @@ def _seed_sequences_context(engine, config):
                 'attp_input_id': attp.id,
                 'filter_tag_id': tag.id,
                 'filter_tag_w2_id': tag_w2.id,
+                'bulk_tag_id': bulk_tag.id,
                 'seq_circ_id': seq_circ.id,
                 'seq_patch_linear_id': seq_patch_linear.id,
                 'seq_with_overhangs_id': seq_with_overhangs.id,
@@ -1037,16 +1043,35 @@ def test_validate_upload_sequences_returns_flags(sequences_client):
 
 
 @readonly_db
-def test_validate_upload_sequences_limit_100(sequences_client):
+def test_validate_upload_sequences_limit_500(sequences_client):
     c = sequences_client['client']
     h_token = sequences_client['token_owner_w1']
     wid = sequences_client['w1']
     rec = Dseqrecord('ATGCATGC', name='bulk')
     body = rec.format('genbank').encode('utf-8')
-    files = [(f'seq_{i}.gb', body) for i in range(101)]
+    files = [(f'seq_{i}.gb', body) for i in range(501)]
     r = _post_validate_upload_sequences(c, h_token, wid, files)
     assert r.status_code == 400
-    assert 'maximum of 100' in r.json()['detail']
+    assert 'maximum of 500' in r.json()['detail']
+
+
+@readonly_db
+@pytest.mark.parametrize('endpoint', ['/sequences/validate-upload', '/sequences/bulk'])
+def test_upload_sequences_over_limit_rejected_before_reading(sequences_client, monkeypatch, endpoint):
+    monkeypatch.setattr(sequences_router, 'MAX_BULK_SEQUENCES', 1)
+
+    def fail_read(*args, **kwargs):
+        raise AssertionError('Files should not be read when over the limit')
+
+    monkeypatch.setattr(sequences_router, 'read_upload_with_limit', fail_read)
+    body = Dseqrecord('ATGCATGC', name='bulk').format('genbank').encode('utf-8')
+    r = sequences_client['client'].post(
+        endpoint,
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        files=[('files', (f'seq_{i}.gb', body, 'application/octet-stream')) for i in range(2)],
+    )
+    assert r.status_code == 400, r.text
+    assert 'maximum of 1' in r.json()['detail']
 
 
 @readonly_db
@@ -1271,6 +1296,121 @@ def test_get_text_file_sequence_ok(sequences_client):
     )
     assert r.status_code == 200
     assert 'LOCUS' in r.json()['file_content']
+
+
+@readonly_db
+def test_get_text_file_sequences_by_ids(sequences_client):
+    c = sequences_client['client']
+    ids = [sequences_client['seq_circ_id'], sequences_client['pcr_product_id']]
+    r = c.get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(i)) for i in ids],
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert [item['sequence_ref']['id'] for item in data] == sorted(ids)
+    for item in data:
+        assert item['sequence']['type'] == 'TextFileSequence'
+        assert 'LOCUS' in item['sequence']['file_content']
+    pcr_item = next(item for item in data if item['sequence_ref']['id'] == sequences_client['pcr_product_id'])
+    assert pcr_item['sequence_ref']['tags'] == [{'id': sequences_client['filter_tag_id'], 'name': 'seq-filter-tag'}]
+    assert pcr_item['sequence_ref']['sample_uids'] == ['FILTER-UID-99']
+
+
+@readonly_db
+def test_get_text_file_sequences_by_tag(sequences_client):
+    c = sequences_client['client']
+    r = c.get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('tags', str(sequences_client['filter_tag_id']))],
+    )
+    assert r.status_code == 200, r.text
+    assert [item['sequence_ref']['id'] for item in r.json()] == [sequences_client['pcr_product_id']]
+
+    # Tag from another workspace matches nothing
+    r = c.get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('tags', str(sequences_client['filter_tag_w2_id']))],
+    )
+    assert r.status_code == 200, r.text
+    assert r.json() == []
+
+
+@readonly_db
+def test_get_text_file_sequences_by_several_tags(sequences_client):
+    """Sequences with any of the tags are returned, and template sequences with the tag are left out."""
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('tags', str(sequences_client['filter_tag_id'])), ('tags', str(sequences_client['bulk_tag_id']))],
+    )
+    assert r.status_code == 200, r.text
+    ids = [item['sequence_ref']['id'] for item in r.json()]
+    assert ids == sorted([sequences_client['seq_circ_id'], sequences_client['pcr_product_id']])
+    assert sequences_client['template_sequence_id'] not in ids
+
+
+@readonly_db
+def test_get_text_file_sequences_duplicate_ids(sequences_client):
+    sid = sequences_client['seq_circ_id']
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(sid)), ('ids', str(sid))],
+    )
+    assert r.status_code == 200, r.text
+    assert [item['sequence_ref']['id'] for item in r.json()] == [sid]
+
+
+@readonly_db
+@pytest.mark.parametrize('params', [[], [('ids', '1'), ('tags', '1')]])
+def test_get_text_file_sequences_requires_ids_or_tags(sequences_client, params):
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=params,
+    )
+    assert r.status_code == 422, r.text
+
+
+@readonly_db
+@pytest.mark.parametrize('missing_key', ['seq_w2_id', 'template_sequence_id', None])
+def test_get_text_file_sequences_missing_ids_404(sequences_client, missing_key):
+    missing_id = sequences_client[missing_key] if missing_key else 999999
+    ids = [sequences_client['pcr_product_id'], missing_id]
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(i)) for i in ids],
+    )
+    assert r.status_code == 404, r.text
+    assert str(missing_id) in r.json()['detail']
+
+
+@readonly_db
+def test_get_text_file_sequences_over_limit_400(sequences_client, monkeypatch):
+    monkeypatch.setattr(sequences_router, 'MAX_BULK_SEQUENCES', 1)
+    ids = [sequences_client['seq_circ_id'], sequences_client['pcr_product_id']]
+    r = sequences_client['client'].get(
+        '/sequences/text_file_sequences',
+        headers=workspace_headers(sequences_client['token_owner_w1'], sequences_client['w1']),
+        params=[('ids', str(i)) for i in ids],
+    )
+    assert r.status_code == 400, r.text
+    assert 'maximum is 1' in r.json()['detail']
+
+
+@readonly_db
+def test_get_text_file_sequences_auth(sequences_client):
+    c = sequences_client['client']
+    path = f"/sequences/text_file_sequences?ids={sequences_client['seq_circ_id']}"
+    assert_get_missing_workspace_header_422(c, path, sequences_client['token_owner_w1'])
+    assert_get_invalid_workspace_id_422(c, path, sequences_client['token_owner_w1'])
+    assert_get_non_member_workspace_403(c, path, sequences_client['token_owner_w1'], sequences_client['w3'])
+    assert_get_unauthenticated_401(c, path, sequences_client['w1'])
 
 
 @pytest.mark.parametrize(

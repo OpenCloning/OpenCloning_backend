@@ -464,6 +464,11 @@ class SequenceSearchResult(ApiModel):
     reverse_complemented: bool = False
 
 
+class SequenceWithTextFile(ApiModel):
+    sequence_ref: SequenceRef
+    sequence: opencloning_models.TextFileSequence
+
+
 class SequenceValidationRow(ApiModel):
     file_name: str
     reading_error: bool

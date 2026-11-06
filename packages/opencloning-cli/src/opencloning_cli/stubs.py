@@ -58,6 +58,11 @@ def get_selected_sequence_id(dirname: str, stub_name: str) -> int:
     return next(item for item in stub.response.body['items'] if item['name'] == 'ase1_CDS_PCR')['id']
 
 
+def get_selected_tag_id(dirname: str, stub_name: str) -> int:
+    stub = get_stub(dirname, stub_name)
+    return next(item for item in stub.response.body if item['name'] == 'gibson_assembly')['id']
+
+
 def stubs(dirname: str) -> Generator[StubRequest, None, None]:
     yield StubRequest(
         name='get_primers',
@@ -118,7 +123,7 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
         method='GET',
         params={'name': 'example_sequencing-sample'},
     )
-    selected_sequence_id = get_selected_sequence_id(dirname, 'get_sequences')
+    selected_sequence_id = get_selected_sequence_id(dirname, 'get_sequences_search_by_name')
     yield StubRequest(
         name='get_sequence',
         endpoint=f'/db/sequences/{selected_sequence_id}',
@@ -145,6 +150,23 @@ def stubs(dirname: str) -> Generator[StubRequest, None, None]:
         name='get_text_file_sequence',
         endpoint=f'/db/sequences/{selected_sequence_id}/text_file_sequence',
         method='GET',
+    )
+    yield StubRequest(
+        name='get_text_file_sequences_by_ids',
+        endpoint='/db/sequences/text_file_sequences',
+        method='GET',
+        params={'ids': str(selected_sequence_id)},
+    )
+    yield StubRequest(
+        name='get_tags',
+        endpoint='/db/tags',
+        method='GET',
+    )
+    yield StubRequest(
+        name='get_text_file_sequences_by_tag',
+        endpoint='/db/sequences/text_file_sequences',
+        method='GET',
+        params={'tags': str(get_selected_tag_id(dirname, 'get_tags'))},
     )
     yield StubRequest(
         name='get_cloning_strategy',

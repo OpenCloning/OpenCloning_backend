@@ -39,6 +39,7 @@ from opencloning_db.apimodels import (
     SequenceValidationRow,
     SequenceSearchResult,
     SequenceUpdate,
+    SequenceWithTextFile,
     SequencingFileRef,
     PrimerRef,
     line_ref,
@@ -144,6 +145,57 @@ def get_sequences(
         )
     query = query.order_by(BaseSequence.id.desc())
     return paginate(session, query)
+
+
+# Shared by bulk submission and bulk retrieval, so that whatever can be submitted at once can be fetched at once
+MAX_BULK_SEQUENCES = 500
+
+
+# Declared before /sequences/{sequence_id}, otherwise that route would match this path
+@router.get('/sequences/text_file_sequences', response_model=list[SequenceWithTextFile])
+def get_text_file_sequences(
+    ctx: Annotated[WorkspaceContext, Depends(get_viewer_workspace_ctx)],
+    ids: list[int] = Query(description='Sequence IDs to retrieve', default_factory=list),
+    tags: list[int] = Query(description='Retrieve all sequences with any of these tag IDs', default_factory=list),
+):
+    """Retrieve several sequences with their file content, either by ID or by tag, sorted by ID.
+    Template sequences are not included, since they have no file content."""
+    if bool(ids) == bool(tags):
+        raise HTTPException(status_code=422, detail='Provide either ids or tags, but not both.')
+    _, session, workspace_id = ctx.destructure()
+
+    query = select(Sequence).where(Sequence.workspace_id == workspace_id)
+    if ids:
+        query = query.where(Sequence.id.in_(ids))
+    else:
+        query = query.where(Sequence.tags.any(and_(Tag.id.in_(tags), Tag.workspace_id == workspace_id)))
+
+    count = session.scalar(select(func.count()).select_from(query.subquery()))
+    if count > MAX_BULK_SEQUENCES:
+        raise HTTPException(
+            status_code=400,
+            detail=f'Too many sequences ({count}), the maximum is {MAX_BULK_SEQUENCES}.',
+        )
+
+    query = query.options(
+        selectinload(Sequence.tags),
+        selectinload(Sequence.instances),
+        selectinload(Sequence.created_by),
+        undefer(Sequence.file_content),
+    ).order_by(Sequence.id)
+    db_sequences = session.scalars(query).all()
+
+    if ids:
+        missing = sorted(set(ids) - {s.id for s in db_sequences})
+        if missing:
+            raise HTTPException(
+                status_code=404,
+                detail=f'Sequences not found (or template sequences): {", ".join(map(str, missing))}',
+            )
+
+    return [
+        SequenceWithTextFile(sequence_ref=sequence_ref(s), sequence=s.to_pydantic_sequence()) for s in db_sequences
+    ]
 
 
 @router.get('/sequences/{sequence_id}', response_model=SequenceRef)
@@ -375,6 +427,11 @@ def _has_any_sequence_warning(rows: list[SequenceValidationRow], strict: bool) -
 
 
 def _load_uploaded_files(files: List[UploadFile]) -> list[tuple[str, str | bytes]]:
+    # Checked before reading, so that oversized requests are rejected without loading the files in memory
+    if len(files) > MAX_BULK_SEQUENCES:
+        raise HTTPException(
+            status_code=400, detail=f'A maximum of {MAX_BULK_SEQUENCES} sequence files can be submitted'
+        )
     loaded_files: list[tuple[str, str | bytes]] = []
     for file in files:
         file_name = file.filename or 'unnamed'
@@ -391,9 +448,6 @@ def _sequence_validation_rows_with_flags(
     session,
     workspace_id: int,
 ) -> tuple[list[SequenceValidationRow], list[opencloning_models.TextFileSequence]]:
-    if len(submitted_files) > 100:
-        raise HTTPException(status_code=400, detail='A maximum of 100 sequence files can be submitted')
-
     rows: list[SequenceValidationRow] = []
     parsed_names: list[str] = []
     parsed_seguids: list[str] = []
