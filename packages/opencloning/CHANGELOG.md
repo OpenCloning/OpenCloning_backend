@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v2.0.1...opencloning-v2.1.0) (2026-11-06)
+
+
+### Features
+
+* Bulk request sequences endpoint - by ids or tag ([#545](https://github.com/OpenCloning/OpenCloning_backend/issues/545)) ([a8d1f30](https://github.com/OpenCloning/OpenCloning_backend/commit/a8d1f303306468ccb0d9399e4bb67cd95e318d3c))
+* mcp server mvp ([#547](https://github.com/OpenCloning/OpenCloning_backend/issues/547)) ([364df10](https://github.com/OpenCloning/OpenCloning_backend/commit/364df107e3af4b159564603198a6639d02694028))
+
 ## [2.0.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v2.0.0...opencloning-v2.0.1) (2026-10-19)
 
 
