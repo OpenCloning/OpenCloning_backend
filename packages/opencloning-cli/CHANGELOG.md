@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v2.0.1...opencloning-cli-v2.1.0) (2026-11-06)
+
+
+### Features
+
+* Bulk request sequences endpoint - by ids or tag ([#545](https://github.com/OpenCloning/OpenCloning_backend/issues/545)) ([a8d1f30](https://github.com/OpenCloning/OpenCloning_backend/commit/a8d1f303306468ccb0d9399e4bb67cd95e318d3c))
+
 ## [2.0.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-cli-v2.0.0...opencloning-cli-v2.0.1) (2026-10-19)
 
 
