@@ -44,9 +44,10 @@ def log_output():
     previous_level = root.level
     root.addHandler(handler)
     root.setLevel(logging.INFO)
-    httpx_logger = logging.getLogger('httpx')
-    previous_httpx_level = httpx_logger.level
-    httpx_logger.setLevel(logging.WARNING)
+    httpx_loggers = [logging.getLogger(name) for name in ('httpx', 'httpx2')]
+    previous_httpx_levels = [lg.level for lg in httpx_loggers]
+    for lg in httpx_loggers:
+        lg.setLevel(logging.WARNING)
 
     class Output:
         @property
@@ -60,7 +61,8 @@ def log_output():
     yield Output()
     root.removeHandler(handler)
     root.setLevel(previous_level)
-    httpx_logger.setLevel(previous_httpx_level)
+    for lg, level in zip(httpx_loggers, previous_httpx_levels):
+        lg.setLevel(level)
 
 
 @pytest.fixture

@@ -71,6 +71,7 @@ def build_logging_config(level: str | None = None) -> dict[str, Any]:
             'uvicorn.access': {'level': 'WARNING', 'handlers': [], 'propagate': False},
             # httpx logs full outbound URLs at INFO, which may contain user input or credentials.
             'httpx': {'level': 'WARNING'},
+            'httpx2': {'level': 'WARNING'},  # the fork used by recent Starlette TestClient / MCP
             'httpcore': {'level': 'WARNING'},
             'sqlalchemy.engine': {'level': 'WARNING'},
         },
