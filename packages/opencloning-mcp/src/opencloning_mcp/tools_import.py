@@ -72,7 +72,7 @@ def add_sequence_from_addgene(strategy_id: str, addgene_id: str, name: str | Non
     """
     imported = sum(source['type'] == 'AddgeneIdSource' for source in storage.load_strategy(strategy_id)['sources'])
     if imported >= MAX_ADDGENE_PER_STRATEGY:
-        raise ToolError('Too many AddGene requests')
+        raise ToolError(f'AddGene import limit reached: at most {MAX_ADDGENE_PER_STRATEGY} per strategy')
     source = {'id': 0, 'type': 'AddgeneIdSource', 'repository_id': addgene_id, 'output_name': clean_or_none(name)}
     result = cloning_api.post('/repository_id/addgene', json=source)
     return add_product_to_strategy(strategy_id, result)

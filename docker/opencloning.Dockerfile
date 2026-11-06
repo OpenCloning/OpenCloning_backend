@@ -47,6 +47,8 @@ COPY packages/opencloning-db/alembic.ini packages/opencloning-db/
 COPY packages/opencloning-db/alembic packages/opencloning-db/alembic
 COPY packages/opencloning-db/src packages/opencloning-db/src
 COPY packages/opencloning-cli packages/opencloning-cli
+COPY packages/opencloning-mcp/pyproject.toml packages/opencloning-mcp/README.md packages/opencloning-mcp/
+COPY packages/opencloning-mcp/src packages/opencloning-mcp/src
 
 FROM workspace-full AS builder-test
 
@@ -56,6 +58,7 @@ ENV PATH="/usr/local/bin/mafft/bin:$VIRTUAL_ENV/bin:$PATH"
 
 COPY packages/opencloning-db/tests packages/opencloning-db/tests
 COPY packages/opencloning/tests packages/opencloning/tests
+COPY packages/opencloning-mcp/tests packages/opencloning-mcp/tests
 
 FROM workspace-full AS builder-prod-db
 
