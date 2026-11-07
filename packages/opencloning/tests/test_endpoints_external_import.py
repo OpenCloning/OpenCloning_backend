@@ -5,7 +5,7 @@ import tempfile
 import pytest
 import os
 import respx
-import httpx
+import httpx2
 from importlib import reload
 import time
 from unittest.mock import patch
@@ -341,8 +341,8 @@ class GenBankTest(unittest.TestCase):
     # succeeds, but the request that gets the sequence fails
     @respx.mock
     def test_request_wrong_id2(self):
-        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
-            return_value=httpx.Response(200, json={'result': {'uids': ['1'], '1': {'slen': 1000}}})
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').respond(
+            200, json={'result': {'uids': ['1'], '1': {'slen': 1000}}}
         )
         # 400 is the error code for a wrong sequence accession :_)
         respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi').respond(400, text='')
@@ -359,7 +359,7 @@ class GenBankTest(unittest.TestCase):
 
         # First request fails
         respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
-            side_effect=httpx.ConnectError('Connection error')
+            side_effect=httpx2.ConnectError('Connection error')
         )
         source = NCBISequenceSource(
             id=1,
@@ -369,11 +369,11 @@ class GenBankTest(unittest.TestCase):
         self.assertEqual(response.status_code, 504)
 
         # Second request fails
-        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').mock(
-            return_value=httpx.Response(200, json={'result': {'uids': ['1'], '1': {'slen': 1000}}})
+        respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi').respond(
+            200, json={'result': {'uids': ['1'], '1': {'slen': 1000}}}
         )
         respx.post('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi').mock(
-            side_effect=httpx.ConnectError('Connection error')
+            side_effect=httpx2.ConnectError('Connection error')
         )
         response = client.post('/repository_id/genbank', json=source.model_dump())
         self.assertEqual(response.status_code, 504)
@@ -483,8 +483,8 @@ class AddgeneTest(unittest.TestCase):
         monkeypatch.setenv('ADDGENE_TOKEN', 'dummy-token')
         reload(app_settings)
         try:
-            respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
-                return_value=httpx.Response(401, json={'detail': 'Invalid token.'})
+            respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').respond(
+                401, json={'detail': 'Invalid token.'}
             )
             source = AddgeneIdSource(id=1, repository_id='39282')
             response = client.post('/repository_id/addgene', json=source.model_dump())
@@ -500,21 +500,17 @@ class AddgeneTest(unittest.TestCase):
         monkeypatch.setenv('ADDGENE_TOKEN', 'dummy-token')
         reload(app_settings)
         try:
-            respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
-                return_value=httpx.Response(
-                    200,
-                    json={
-                        'name': 'pFA6a-kanMX6-P81nmt1',
-                        'sequences': {
-                            'public_user_full_sequences': [],
-                            'public_addgene_full_sequences': [{'sequence_id': 240599}],
-                        },
+            respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').respond(
+                200,
+                json={
+                    'name': 'pFA6a-kanMX6-P81nmt1',
+                    'sequences': {
+                        'public_user_full_sequences': [],
+                        'public_addgene_full_sequences': [{'sequence_id': 240599}],
                     },
-                )
+                },
             )
-            download_route = respx.get('https://api.developers.addgene.org/download/genbank/240599/').mock(
-                return_value=httpx.Response(500)
-            )
+            download_route = respx.get('https://api.developers.addgene.org/download/genbank/240599/').respond(500)
             source = AddgeneIdSource(id=1, repository_id='39282')
             response = client.post('/repository_id/addgene', json=source.model_dump())
             self.assertEqual(download_route.call_count, 1)
@@ -530,8 +526,8 @@ class AddgeneTest(unittest.TestCase):
         monkeypatch.setenv('ADDGENE_TOKEN', 'dummy-token')
         reload(app_settings)
         try:
-            plasmid_route = respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/1/').mock(
-                return_value=httpx.Response(404)
+            plasmid_route = respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/1/').respond(
+                404
             )
             response = client.post(
                 '/repository_id/addgene', json=AddgeneIdSource(id=1, repository_id='1').model_dump()
@@ -577,7 +573,7 @@ class AddgeneTest(unittest.TestCase):
     @respx.mock
     def test_addgene_down(self):
         respx.get('https://api.developers.addgene.org/catalog/plasmid-with-sequences/39282/').mock(
-            side_effect=httpx.ConnectError('Connection error')
+            side_effect=httpx2.ConnectError('Connection error')
         )
         source = AddgeneIdSource(
             id=1,
@@ -641,7 +637,7 @@ class WekWikGeneSourceTest(unittest.TestCase):
         )
 
         respx.get('https://wekwikgene.wllsb.edu.cn/plasmids/0000304').mock(
-            side_effect=httpx.ConnectError('Connection error')
+            side_effect=httpx2.ConnectError('Connection error')
         )
         response = client.post('/repository_id/wekwikgene', json=source.model_dump())
         self.assertEqual(response.status_code, 504)
@@ -940,7 +936,7 @@ class GenomeRegionTest(unittest.TestCase):
         with respx.mock:
             respx.get(
                 'https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCF_000146045.1/sequence_reports'
-            ).mock(return_value=httpx.Response(200, json={'total_count': 0}))
+            ).respond(200, json={'total_count': 0})
 
             response = client.post('/genome_coordinates', json=s.model_dump())
             self.assertStatusCode(response.status_code, 400)
@@ -999,7 +995,7 @@ class GenomeRegionTest(unittest.TestCase):
         with respx.mock:
             respx.get(
                 'https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCF_000002945.2/annotation_report'
-            ).mock(return_value=httpx.Response(500, text='NCBI is down'))
+            ).respond(500, text='NCBI is down')
             response = client.post('/genome_coordinates', json=correct_source.model_dump())
             self.assertEqual(response.status_code, 503)
             self.assertIn('NCBI is down', response.json()['detail'])
@@ -1102,7 +1098,7 @@ class SEVASourceTest(unittest.TestCase):
         source = SEVASource(id=0, repository_id='pSEVA261')
 
         with respx.mock:
-            respx.get(source.sequence_file_url).mock(side_effect=httpx.ConnectError('Mock Error'))
+            respx.get(source.sequence_file_url).mock(side_effect=httpx2.ConnectError('Mock Error'))
             response = client.post('/repository_id/seva', json=source.model_dump())
             self.assertEqual(response.status_code, 504)
             payload = response.json()
@@ -1110,7 +1106,7 @@ class SEVASourceTest(unittest.TestCase):
 
         # Mock incorrect file
         with respx.mock:
-            respx.get(source.sequence_file_url).mock(return_value=httpx.Response(200, text='dummy test'))
+            respx.get(source.sequence_file_url).respond(200, text='dummy test')
             response = client.post('/repository_id/seva', json=source.model_dump())
             self.assertEqual(response.status_code, 400)
             payload = response.json()
@@ -1119,7 +1115,7 @@ class SEVASourceTest(unittest.TestCase):
         with respx.mock:
             with open(f'{test_files}/ase1_body_error.gb', 'r') as f:
                 mock_seq = f.read()
-            respx.get(source.sequence_file_url).mock(return_value=httpx.Response(200, text=mock_seq))
+            respx.get(source.sequence_file_url).respond(200, text=mock_seq)
             response = client.post('/repository_id/seva', json=source.model_dump())
             self.assertEqual(response.status_code, 400)
             payload = response.json()
@@ -1135,7 +1131,7 @@ class SEVASourceTest(unittest.TestCase):
             mock_seq = f.read()
         # We mock to avoid extra requests
         with respx.mock:
-            respx.get(source.sequence_file_url).mock(return_value=httpx.Response(200, text=mock_seq))
+            respx.get(source.sequence_file_url).respond(200, text=mock_seq)
             response = client.post('/repository_id', json=source.model_dump())
             self.assertEqual(response.status_code, 200)
 
@@ -1149,7 +1145,7 @@ class SEVASourceTest(unittest.TestCase):
             mock_seq = f.read()
         # We mock to avoid extra requests
         with respx.mock:
-            respx.get(source.sequence_file_url).mock(return_value=httpx.Response(200, text=mock_seq))
+            respx.get(source.sequence_file_url).respond(200, text=mock_seq)
             response = client.post('/repository_id', json=source.model_dump())
             self.assertEqual(response.status_code, 200)
             payload = response.json()

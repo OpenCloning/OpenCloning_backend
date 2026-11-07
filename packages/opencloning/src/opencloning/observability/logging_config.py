@@ -69,10 +69,9 @@ def build_logging_config(level: str | None = None) -> dict[str, Any]:
             # Access logs are replaced by the ``request_completed`` event of RequestContextMiddleware.
             'gunicorn.access': {'level': 'INFO', 'handlers': [], 'propagate': False},
             'uvicorn.access': {'level': 'WARNING', 'handlers': [], 'propagate': False},
-            # httpx logs full outbound URLs at INFO, which may contain user input or credentials.
-            'httpx': {'level': 'WARNING'},
-            'httpx2': {'level': 'WARNING'},  # the fork used by recent Starlette TestClient / MCP
-            'httpcore': {'level': 'WARNING'},
+            # httpx2 logs full outbound URLs at INFO, which may contain user input or credentials.
+            'httpx2': {'level': 'WARNING'},
+            'httpcore2': {'level': 'WARNING'},
             'sqlalchemy.engine': {'level': 'WARNING'},
         },
     }

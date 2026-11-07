@@ -2,7 +2,7 @@
 
 The API runs inside this process: TestClient hands each request straight to the FastAPI app, without
 network. Routing, validation and error handling run exactly as in the deployed API. To call a remote
-API instead, replace TestClient with httpx.Client(base_url=...): the rest of the code stays the same.
+API instead, replace TestClient with httpx2.Client(base_url=...): the rest of the code stays the same.
 """
 
 from fastapi.testclient import TestClient

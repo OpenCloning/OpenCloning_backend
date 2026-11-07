@@ -24,7 +24,7 @@ repos:
         language: system
         files: \.ipynb$
         exclude: packages/opencloning/tests/
-  # Hook to ensure that httpx is only imported in the httpClient.py file
+  # Hook to ensure that httpx2 is only imported in the http_client.py file
   - repo: local
     hooks:
       - id: httpx-import-check

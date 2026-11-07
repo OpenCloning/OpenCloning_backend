@@ -39,11 +39,10 @@ def log_output():
     previous_level = root.level
     root.addHandler(handler)
     root.setLevel(logging.INFO)
-    # As in production (build_logging_config): the TestClient's httpx logs would contain full URLs
-    httpx_loggers = [logging.getLogger(name) for name in ('httpx', 'httpx2')]
-    previous_httpx_levels = [lg.level for lg in httpx_loggers]
-    for lg in httpx_loggers:
-        lg.setLevel(logging.WARNING)
+    # As in production (build_logging_config): the TestClient's httpx2 logs would contain full URLs
+    httpx_logger = logging.getLogger('httpx2')
+    previous_httpx_level = httpx_logger.level
+    httpx_logger.setLevel(logging.WARNING)
 
     class Output:
         @property
@@ -61,8 +60,7 @@ def log_output():
     yield Output()
     root.removeHandler(handler)
     root.setLevel(previous_level)
-    for lg, level in zip(httpx_loggers, previous_httpx_levels):
-        lg.setLevel(level)
+    httpx_logger.setLevel(previous_httpx_level)
 
 
 def _create_test_app() -> FastAPI:
@@ -271,7 +269,6 @@ def _run_logging_snippet(env_overrides: dict[str, str]) -> str:
         'from opencloning.observability.logging_config import build_logging_config\n'
         'logging.config.dictConfig(build_logging_config())\n'
         "logging.getLogger('some.library').debug('debug_event')\n"
-        "logging.getLogger('httpx').info('HTTP Request: GET https://x.org/?api_key=SECRET')\n"
         "logging.getLogger('httpx2').info('HTTP Request: GET https://x.org/?api_key=SECRET')\n"
         "logging.getLogger('gunicorn.error').info('Booting worker')\n"
     )
@@ -287,7 +284,7 @@ def test_log_level_debug_and_json_output():
     assert records[0]['level'] == 'debug'
     assert records[0]['version'] == __version__
     assert records[1]['logger'] == 'gunicorn.error'
-    # httpx INFO logs (outbound URLs) are suppressed
+    # httpx2 INFO logs (outbound URLs) are suppressed
     assert 'SECRET' not in output
 
 
