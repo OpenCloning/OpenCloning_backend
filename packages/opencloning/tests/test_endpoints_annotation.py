@@ -5,7 +5,7 @@ import json
 import pytest
 from importlib import reload
 import respx
-import httpx
+import httpx2
 from fastapi import HTTPException
 import os
 
@@ -71,7 +71,7 @@ class PlannotateTest(unittest.TestCase):
 
     @respx.mock
     def test_plannotate_down(self):
-        respx.post(f'{dummy_url}/annotate').mock(side_effect=httpx.ConnectError('Connection error'))
+        respx.post(f'{dummy_url}/annotate').mock(side_effect=httpx2.ConnectError('Connection error'))
         seq = Dseqrecord('aaa')
         seq = format_sequence_genbank(seq)
         source = AnnotationSource(id=0, annotation_tool='plannotate')
@@ -82,7 +82,7 @@ class PlannotateTest(unittest.TestCase):
 
     @respx.mock
     def test_plannotate_timeout(self):
-        respx.post(f'{dummy_url}/annotate').mock(side_effect=httpx.TimeoutException('Timeout error'))
+        respx.post(f'{dummy_url}/annotate').mock(side_effect=httpx2.TimeoutException('Timeout error'))
         seq = Dseqrecord('aaa')
         seq = format_sequence_genbank(seq)
         source = AnnotationSource(id=0, annotation_tool='plannotate')

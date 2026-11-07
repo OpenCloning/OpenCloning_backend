@@ -1,5 +1,5 @@
 # Response is imported into other modules from here
-from httpx import (  # noqa: F401
+from httpx2 import (  # noqa: F401
     Response,
     AsyncClient,
     ConnectError,
