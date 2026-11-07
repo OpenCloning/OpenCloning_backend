@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11, <4"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -588,32 +588,33 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.136.3"
+version = "0.162.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
+    { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/2d/ff8d91d7b564d464629a0fd50a4489c97fcb836ac230bf3a7269232a9b1f/fastapi-0.136.3.tar.gz", hash = "sha256:e487fae93ad408e6f47641ee4dfe389864fd7bec92e547ea8498fc13f43e83ab", size = 396410, upload-time = "2026-05-23T18:53:15.192Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/eb/2cf8c80abf09b2800aef0a83b41066fbfda8ee5495b7a08b9d1af40f7046/fastapi-0.162.0.tar.gz", hash = "sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f", size = 527867, upload-time = "2026-10-23T18:47:33.264Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/82/45359b62a067409bd929ae8a56b8ed13e5a8c8a61194b3c236920999ab83/fastapi-0.136.3-py3-none-any.whl", hash = "sha256:3d2a69bdf04b7e9f3afa292c3bc7a98816bbfafa10bc9b45f3f3700d2f761620", size = 117481, upload-time = "2026-05-23T18:53:16.924Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/4f/3f2c25c9b43970b5e9a08beb5e04776247edea684ddc0930f4f02f0bb6cb/fastapi-0.162.0-py3-none-any.whl", hash = "sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c", size = 148912, upload-time = "2026-10-23T18:47:31.734Z" },
 ]
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.15.14"
+version = "0.16.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/23/a6ede2d55fb92be2bff1568e84027e374311c8b1262cd908da3db65f0025/fastapi_pagination-0.15.14.tar.gz", hash = "sha256:61209b30172f928887a2537a85d144a2ae970edfadf160aab7c1fb15676dd651", size = 608334, upload-time = "2026-05-30T12:16:35.469Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/a1/73165d7932f1f87bac9f5e12e65864cbce1bd86882ed37c7603888d31299/fastapi_pagination-0.16.2.tar.gz", hash = "sha256:f9b0bec39f2156e66b3ef73c35cc6eb7345faa86a7c3149d4f63b60b0e9e5e58", size = 662215, upload-time = "2026-11-03T23:22:37.135Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/3d/9e2ee25fd0a1a2c63995967885b2ff5d4f0cc40823817a1c745351ea745c/fastapi_pagination-0.15.14-py3-none-any.whl", hash = "sha256:b1c2ae46ae9952199f75d07726e3f11909ecd32bf12701a11f3e1080f05c4e91", size = 65778, upload-time = "2026-05-30T12:16:34.384Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/01/609ad358f28bef0d1f42694e2e1894f1791c443fd8bacc426a518a10ef88/fastapi_pagination-0.16.2-py3-none-any.whl", hash = "sha256:6d154e37a1e9fefdd8c3730786863aa9502a90c08b6c59326ae3a5e07ae0a19d", size = 53227, upload-time = "2026-11-03T23:22:35.536Z" },
 ]
 
 [[package]]
@@ -1367,7 +1368,7 @@ dependencies = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.18.4" },
     { name = "fastapi", specifier = ">=0.135.3" },
-    { name = "fastapi-pagination", specifier = ">=0.15.10,<0.16" },
+    { name = "fastapi-pagination", specifier = ">=0.16.2,<0.17" },
     { name = "gunicorn", specifier = ">=26.0.0" },
     { name = "opencloning", editable = "packages/opencloning" },
     { name = "opencloning-linkml", specifier = ">=1.0.0" },
