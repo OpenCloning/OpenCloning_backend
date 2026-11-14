@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v2.1.0...opencloning-v2.1.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* switch to httpx2 ([#548](https://github.com/OpenCloning/OpenCloning_backend/issues/548)) ([7a4b3be](https://github.com/OpenCloning/OpenCloning_backend/commit/7a4b3bea7a1184ec4e3d19a430fce582a59d18e7))
+
 ## [2.1.0](https://github.com/OpenCloning/OpenCloning_backend/compare/opencloning-v2.0.1...opencloning-v2.1.0) (2026-11-06)
 
 
